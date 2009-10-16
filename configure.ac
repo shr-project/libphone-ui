@@ -1,5 +1,5 @@
 AC_PREREQ(2.53)
-AC_INIT(libframeworkd-phonegui, 0.1, http://www.openmoko.org/)
+AC_INIT(libphoneui, 0.1, http://www.openmoko.org/)
 AM_INIT_AUTOMAKE()
 AM_CONFIG_HEADER(config.h)
 AM_MAINTAINER_MODE
@@ -20,7 +20,7 @@ AC_OUTPUT([
 Makefile
 data/Makefile
 src/Makefile
-src/frameworkd-phonegui.h
-libframeworkd-phonegui.pc
+src/phoneui.h
+libphoneui.pc
 ])
 

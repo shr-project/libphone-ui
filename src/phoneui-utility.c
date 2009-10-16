@@ -7,11 +7,11 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-bindings.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-dbus.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-sim.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
+#include <glib/ogsmd/frameworkd-glib-ogsmd-dbus.h>
+#include <glib/ogsmd/frameworkd-glib-ogsmd-sim.h>
+#include <glib/ogsmd/frameworkd-glib-ogsmd-network.h>
 
-#include "frameworkd-phonegui-utility.h"
+#include "phoneui-utility.h"
 
 GHashTable *contact_cache;
 
@@ -116,7 +116,7 @@ _lookup_add_prefix(const char *_number)
 }
 
 int
-phonegui_contact_lookup(const char *_number,
+phoneui_contact_lookup(const char *_number,
 			void (*name_callback) (GError *, char *, gpointer),
 			void *data)
 {
@@ -148,7 +148,7 @@ phonegui_contact_lookup(const char *_number,
 }
 
 char *
-phonegui_contact_cache_lookup(char *number)
+phoneui_contact_cache_lookup(char *number)
 {
 	if (contact_cache == NULL)
 		return (number);
@@ -178,14 +178,14 @@ phonegui_contact_cache_lookup(char *number)
 }
 
 void
-phonegui_init_contacts_cache()
+phoneui_init_contacts_cache()
 {
 	ogsmd_sim_retrieve_phonebook("contacts", cache_phonebook_callback,
 				     NULL);
 }
 
 void
-phonegui_destroy_contacts_cache()
+phoneui_destroy_contacts_cache()
 {
 	g_hash_table_destroy(contact_cache);
 }
@@ -196,7 +196,7 @@ _add_opimd_message(const char *number, const char *message)
 {
 	/*FIXME: ATM it just saves it as saved and tell the user everything
 	 * is ok, even if it didn't save. We really need to fix that,
-	 * we should verify if frameworkd-glib's callbacks work */
+	 * we should verify if glib's callbacks work */
 	/*TODO: add timzone and handle messagesent correctly */
 	/* add to opimd */
 
@@ -228,7 +228,7 @@ _add_opimd_message(const char *number, const char *message)
 }
 
 int
-phonegui_sms_send(const char *message, GPtrArray * recipients, void *callback1,
+phoneui_sms_send(const char *message, GPtrArray * recipients, void *callback1,
 		  void *callback2)
 /* FIXME: add real callbacks types when I find out */
 {
@@ -367,7 +367,7 @@ phonegui_sms_send(const char *message, GPtrArray * recipients, void *callback1,
 
 
 int
-phonegui_call_initiate(const char *number,
+phoneui_call_initiate(const char *number,
 			void (*callback)(GError *, int id_call, gpointer),
 			gpointer userdata)
 {
@@ -377,7 +377,7 @@ phonegui_call_initiate(const char *number,
 }
 
 int
-phonegui_call_release(int call_id, 
+phoneui_call_release(int call_id, 
 			void (*callback)(GError *, int id_call, gpointer),
 			gpointer userdata)
 {
@@ -386,7 +386,7 @@ phonegui_call_release(int call_id,
 }
 
 int
-phonegui_call_activate(int call_id, 
+phoneui_call_activate(int call_id, 
 			void (*callback)(GError *, int id_call, gpointer),
 			gpointer userdata)
 {
@@ -395,7 +395,7 @@ phonegui_call_activate(int call_id,
 }
 
 int
-phonegui_contact_delete(const char *path,
+phoneui_contact_delete(const char *path,
 				void (*callback) (GError *, char *, gpointer),
 				void *data)
 {
@@ -404,7 +404,7 @@ phonegui_contact_delete(const char *path,
 }
 
 int
-phonegui_call_send_dtmf(const char *tones,
+phoneui_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
@@ -413,7 +413,7 @@ phonegui_call_send_dtmf(const char *tones,
 }
 
 int
-phonegui_network_send_ussd_request(char *request,
+phoneui_network_send_ussd_request(char *request,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
@@ -422,7 +422,7 @@ phonegui_network_send_ussd_request(char *request,
 }
 
 int
-phonegui_message_delete(const char *path,
+phoneui_message_delete(const char *path,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
@@ -431,7 +431,7 @@ phonegui_message_delete(const char *path,
 }
 
 int
-phonegui_contact_update(const char *path,
+phoneui_contact_update(const char *path,
 				GHashTable *contact_data,
 				void (*callback)(GError *, gpointer),
 				void* data)
@@ -441,7 +441,7 @@ phonegui_contact_update(const char *path,
 }
 
 int
-phonegui_contact_add(const GHashTable *contact_data,
+phoneui_contact_add(const GHashTable *contact_data,
 			void (*callback)(GError*, char *, gpointer),
 			void* data)
 {

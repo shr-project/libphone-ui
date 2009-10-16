@@ -3,6 +3,7 @@
  *      Authors (alphabetical) :
  *              Julien "Ainulindalë" Cassignol
  *              quickdev
+ * 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Public License as published by
@@ -14,7 +15,7 @@
  *  GNU Lesser Public License for more details.
  */
 
-#include "frameworkd-phonegui.h"
+#include "phoneui.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -26,30 +27,30 @@
 #include <phone-utils.h>
 
 /* Calls */
-static void (*_phonegui_incoming_call_show) (const int id, const int status,
+static void (*_phoneui_incoming_call_show) (const int id, const int status,
 					     const char *number) = NULL;
-static void (*_phonegui_incoming_call_hide) (const int id) = NULL;
-static void (*_phonegui_outgoing_call_show) (const int id, const int status,
+static void (*_phoneui_incoming_call_hide) (const int id) = NULL;
+static void (*_phoneui_outgoing_call_show) (const int id, const int status,
 					     const char *number) = NULL;
-static void (*_phonegui_outgoing_call_hide) (const int id) = NULL;
+static void (*_phoneui_outgoing_call_hide) (const int id) = NULL;
 
 /* Contacts */
-static void (*_phonegui_contacts_show) () = NULL;
-static void (*_phonegui_contacts_new_show) (const char *name, const char *number) = NULL;
+static void (*_phoneui_contacts_show) () = NULL;
+static void (*_phoneui_contacts_new_show) (const char *name, const char *number) = NULL;
 
 /* Messages */
-static void (*_phonegui_messages_show) () = NULL;
-static void (*_phonegui_messages_message_show) (const int id) = NULL;
+static void (*_phoneui_messages_show) () = NULL;
+static void (*_phoneui_messages_message_show) (const int id) = NULL;
 
 /* Dialer */
-static void (*_phonegui_dialer_show) () = NULL;
-static void (*_phonegui_dialer_hide) () = NULL;
+static void (*_phoneui_dialer_show) () = NULL;
+static void (*_phoneui_dialer_hide) () = NULL;
 
 /* Notifications */
-static void (*_phonegui_dialog_show) (int type) = NULL;
-static void (*_phonegui_sim_auth_show) (const int status) = NULL;
-static void (*_phonegui_sim_auth_hide) (const int status) = NULL;
-static void (*_phonegui_ussd_show) (int mode, const char *message) = NULL;
+static void (*_phoneui_dialog_show) (int type) = NULL;
+static void (*_phoneui_sim_auth_show) (const int status) = NULL;
+static void (*_phoneui_sim_auth_hide) (const int status) = NULL;
+static void (*_phoneui_ussd_show) (int mode, const char *message) = NULL;
 
 typedef const char * BackendType;
 
@@ -84,10 +85,10 @@ static struct BackendInfo backends[] = {
 					{NULL, NULL}
 					};
 
-static void phonegui_connect();
+static void phoneui_connect();
 
 void
-phonegui_load_backend(enum BackendType type)
+phoneui_load_backend(enum BackendType type)
 {
 	GKeyFile *keyfile;
 	GKeyFileFlags flags;
@@ -118,14 +119,14 @@ phonegui_load_backend(enum BackendType type)
 }
 
 void
-phonegui_load(const char *application_name)
+phoneui_load(const char *application_name)
 {
 	int i;
 	for (i = 0 ; i < BACKEND_NO ; i++) {
-		phonegui_load_backend(i);
+		phoneui_load_backend(i);
 	}
 	
-	phonegui_connect();
+	phoneui_connect();
 	/* init phone utils */
 	/* FIXME: should deinit somewhere! */
 	phone_utils_init();
@@ -133,13 +134,13 @@ phonegui_load(const char *application_name)
 
 
 void *
-phonegui_get_function(const char *name, void *phonegui_library)
+phoneui_get_function(const char *name, void *phoneui_library)
 {
-	if (phonegui_library == NULL) {
-		g_error("phonegui library not loaded");
+	if (phoneui_library == NULL) {
+		g_error("phoneui library not loaded");
 	}
 
-	void *pointer = dlsym(phonegui_library, name);
+	void *pointer = dlsym(phoneui_library, name);
 	char *error;
 	if ((error = dlerror()) != NULL) {
 		g_debug("Symbol not found: %s", error);
@@ -148,80 +149,80 @@ phonegui_get_function(const char *name, void *phonegui_library)
 }
 
 static void
-phonegui_connect()
+phoneui_connect()
 {
-	_phonegui_incoming_call_show =
-		phonegui_get_function("phonegui_backend_incoming_call_show",
+	_phoneui_incoming_call_show =
+		phoneui_get_function("phoneui_backend_incoming_call_show",
 					backends[BACKEND_CALLS].library);
-	_phonegui_incoming_call_hide =
-		phonegui_get_function("phonegui_backend_incoming_call_hide",
+	_phoneui_incoming_call_hide =
+		phoneui_get_function("phoneui_backend_incoming_call_hide",
 					backends[BACKEND_CALLS].library);
-	_phonegui_outgoing_call_show =
-		phonegui_get_function("phonegui_backend_outgoing_call_show",
+	_phoneui_outgoing_call_show =
+		phoneui_get_function("phoneui_backend_outgoing_call_show",
 					backends[BACKEND_CALLS].library);
-	_phonegui_outgoing_call_hide =
-		phonegui_get_function("phonegui_backend_outgoing_call_hide",
+	_phoneui_outgoing_call_hide =
+		phoneui_get_function("phoneui_backend_outgoing_call_hide",
 					backends[BACKEND_CALLS].library);
 
-	_phonegui_contacts_show =
-		phonegui_get_function("phonegui_backend_contacts_show",
+	_phoneui_contacts_show =
+		phoneui_get_function("phoneui_backend_contacts_show",
 					backends[BACKEND_CONTACTS].library);
-	_phonegui_contacts_new_show =
-		phonegui_get_function("phonegui_backend_contacts_new_show",
+	_phoneui_contacts_new_show =
+		phoneui_get_function("phoneui_backend_contacts_new_show",
 					backends[BACKEND_CONTACTS].library);
 
-	_phonegui_dialer_show =
-		phonegui_get_function("phonegui_backend_dialer_show",
+	_phoneui_dialer_show =
+		phoneui_get_function("phoneui_backend_dialer_show",
 					backends[BACKEND_DIALER].library);
 
-	_phonegui_dialog_show =
-		phonegui_get_function("phonegui_backend_dialog_show",
+	_phoneui_dialog_show =
+		phoneui_get_function("phoneui_backend_dialog_show",
 					backends[BACKEND_NOTIFICATION].library);
 
-	_phonegui_messages_message_show =
-		phonegui_get_function("phonegui_backend_messages_message_show",
+	_phoneui_messages_message_show =
+		phoneui_get_function("phoneui_backend_messages_message_show",
 					backends[BACKEND_MESSAGES].library);
-	_phonegui_messages_show =
-		phonegui_get_function("phonegui_backend_messages_show",
+	_phoneui_messages_show =
+		phoneui_get_function("phoneui_backend_messages_show",
 					backends[BACKEND_MESSAGES].library);
 
-	_phonegui_sim_auth_show =
-		phonegui_get_function("phonegui_backend_sim_auth_show",
+	_phoneui_sim_auth_show =
+		phoneui_get_function("phoneui_backend_sim_auth_show",
 					backends[BACKEND_NOTIFICATION].library);
-	_phonegui_sim_auth_hide =
-		phonegui_get_function("phonegui_backend_sim_auth_hide",
+	_phoneui_sim_auth_hide =
+		phoneui_get_function("phoneui_backend_sim_auth_hide",
 					backends[BACKEND_NOTIFICATION].library);
-	_phonegui_ussd_show =
-		phonegui_get_function("phonegui_backend_ussd_show",
+	_phoneui_ussd_show =
+		phoneui_get_function("phoneui_backend_ussd_show",
 					backends[BACKEND_NOTIFICATION].library);
 }
 
 static void
-_phonegui_backend_init(int argc, char **argv, void (*exit_cb) (),
+_phoneui_backend_init(int argc, char **argv, void (*exit_cb) (),
 			enum BackendType type)
 {
-	void (*_phonegui_init) (int argc, char **argv, void (*exit_cb) ());
-	_phonegui_init = phonegui_get_function("phonegui_backend_init", backends[type].library);
-	if (_phonegui_init)
-		_phonegui_init(argc, argv, exit_cb);
+	void (*_phoneui_init) (int argc, char **argv, void (*exit_cb) ());
+	_phoneui_init = phoneui_get_function("phoneui_backend_init", backends[type].library);
+	if (_phoneui_init)
+		_phoneui_init(argc, argv, exit_cb);
 	else
 		g_debug("can't find function %s", __FUNCTION__);	
 }
 
 static void
-_phonegui_backend_loop(enum BackendType type)
+_phoneui_backend_loop(enum BackendType type)
 {
-	void (*_phonegui_loop) ();
-	_phonegui_loop = phonegui_get_function("phonegui_backend_loop", backends[type].library);
-	if (_phonegui_loop)
-		_phonegui_loop();
+	void (*_phoneui_loop) ();
+	_phoneui_loop = phoneui_get_function("phoneui_backend_loop", backends[type].library);
+	if (_phoneui_loop)
+		_phoneui_loop();
 	else
 		g_debug("can't find function %s", __FUNCTION__);	
 }
 
 /* Implementation prototypes */
 void
-phonegui_init(int argc, char **argv, void (*exit_cb) ())
+phoneui_init(int argc, char **argv, void (*exit_cb) ())
 {
 	/* the hash table is used to make sure we only init one backend once */
 	int i;
@@ -231,7 +232,7 @@ phonegui_init(int argc, char **argv, void (*exit_cb) ())
 	for (i = 0 ; i < BACKEND_NO ; i++) {
 		if (!g_hash_table_lookup(inits, backends[i].library)) {
 			g_hash_table_insert(inits, backends[i].library, backends[i].name);
-			_phonegui_backend_init(argc, argv, exit_cb, i);
+			_phoneui_backend_init(argc, argv, exit_cb, i);
 		}
 	}
 
@@ -239,137 +240,137 @@ phonegui_init(int argc, char **argv, void (*exit_cb) ())
 }
 
 void
-phonegui_loop()
+phoneui_loop()
 {
 #if 0
 	int i;
 	for (i = 0 ; i < BACKEND_NO ; i++) {
-		_phonegui_backend_loop(i);
+		_phoneui_backend_loop(i);
 	}
 #else
 	/* FIXME: until we add support for threads, run only one loop */
-	_phonegui_backend_loop(BACKEND_CALLS);
+	_phoneui_backend_loop(BACKEND_CALLS);
 #endif
 }
 
 /* Calls */
 void
-phonegui_incoming_call_show(const int id, const int status, const char *number)
+phoneui_incoming_call_show(const int id, const int status, const char *number)
 {
-	if (_phonegui_incoming_call_show)
-		_phonegui_incoming_call_show(id, status, number);
+	if (_phoneui_incoming_call_show)
+		_phoneui_incoming_call_show(id, status, number);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_incoming_call_hide(const int id)
+phoneui_incoming_call_hide(const int id)
 {
-	if (_phonegui_incoming_call_hide)
-		_phonegui_incoming_call_hide(id);
+	if (_phoneui_incoming_call_hide)
+		_phoneui_incoming_call_hide(id);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_outgoing_call_show(const int id, const int status, const char *number)
+phoneui_outgoing_call_show(const int id, const int status, const char *number)
 {
-	if (_phonegui_outgoing_call_show)
-		_phonegui_outgoing_call_show(id, status, number);
+	if (_phoneui_outgoing_call_show)
+		_phoneui_outgoing_call_show(id, status, number);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_outgoing_call_hide(const int id)
+phoneui_outgoing_call_hide(const int id)
 {
-	if (_phonegui_outgoing_call_hide)
-		_phonegui_outgoing_call_hide(id);
+	if (_phoneui_outgoing_call_hide)
+		_phoneui_outgoing_call_hide(id);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 /* Contacts */
 void
-phonegui_contacts_show()
+phoneui_contacts_show()
 {
-	if (_phonegui_contacts_show)
-		_phonegui_contacts_show();
+	if (_phoneui_contacts_show)
+		_phoneui_contacts_show();
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_contacts_new_show(const char *name, const char *number)
+phoneui_contacts_new_show(const char *name, const char *number)
 {
-	if (_phonegui_contacts_new_show)
-		_phonegui_contacts_new_show(name, number);
+	if (_phoneui_contacts_new_show)
+		_phoneui_contacts_new_show(name, number);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 /* Messages */
 void
-phonegui_messages_show()
+phoneui_messages_show()
 {
-	if (_phonegui_messages_show)
-		_phonegui_messages_show();
+	if (_phoneui_messages_show)
+		_phoneui_messages_show();
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_messages_message_show(const int id)
+phoneui_messages_message_show(const int id)
 {
-	if (_phonegui_messages_message_show)
-		_phonegui_messages_message_show(id);
+	if (_phoneui_messages_message_show)
+		_phoneui_messages_message_show(id);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 /* Dialer */
 void
-phonegui_dialer_show()
+phoneui_dialer_show()
 {
-	if (_phonegui_dialer_show)
-		_phonegui_dialer_show();
+	if (_phoneui_dialer_show)
+		_phoneui_dialer_show();
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 /* Notifications */
 void
-phonegui_dialog_show(int type)
+phoneui_dialog_show(int type)
 {
-	if (_phonegui_dialog_show)
-		_phonegui_dialog_show(type);
+	if (_phoneui_dialog_show)
+		_phoneui_dialog_show(type);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_sim_auth_show(const int status)
+phoneui_sim_auth_show(const int status)
 {
-	if (_phonegui_sim_auth_show)
-		_phonegui_sim_auth_show(status);
+	if (_phoneui_sim_auth_show)
+		_phoneui_sim_auth_show(status);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_sim_auth_hide(const int status)
+phoneui_sim_auth_hide(const int status)
 {
-	if (_phonegui_sim_auth_hide)
-		_phonegui_sim_auth_hide(status);
+	if (_phoneui_sim_auth_hide)
+		_phoneui_sim_auth_hide(status);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
 void
-phonegui_ussd_show(int mode, const char *message)
+phoneui_ussd_show(int mode, const char *message)
 {
-	if (_phonegui_ussd_show)
-		_phonegui_ussd_show(mode, message);
+	if (_phoneui_ussd_show)
+		_phoneui_ussd_show(mode, message);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }

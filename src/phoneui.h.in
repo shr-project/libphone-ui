@@ -1,0 +1,57 @@
+/*
+ *  Copyright (C) 2008
+ *      Authors (alphabetical) :
+ *              quickdev
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU Public License as published by
+ *  the Free Software Foundation; version 2 of the license.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser Public License for more details.
+ */
+
+#ifndef _FRAMEWORKD_PHONEGUI_H
+#define _FRAMEWORKD_PHONEGUI_H
+#include <glib.h>
+
+#include "phoneui-utility.h"
+
+#define FRAMEWORKD_PHONEGUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
+
+void phoneui_load(const char *application_name);
+void *phoneui_get_function(const char *name, void *phoneui_library);
+
+/* Implementation prototypes */
+void phoneui_init(int argc, char **argv, void (*exit_cb) ());
+void phoneui_loop();
+
+/* Calls */
+void phoneui_incoming_call_show(const int id, const int status,
+				 const char *number);
+void phoneui_incoming_call_hide(const int id);
+void phoneui_outgoing_call_show(const int id, const int status,
+				 const char *number);
+void phoneui_outgoing_call_hide(const int id);
+
+/* Contacts */
+void phoneui_contacts_show();
+void phoneui_contacts_new_show(const char *name, const char *number);
+
+/* Messages */
+void phoneui_messages_show();
+void phoneui_messages_message_show(const int id);
+
+/* Dialer */
+void phoneui_dialer_show();
+
+/* Notifications */
+void phoneui_dialog_show(int type);
+void phoneui_sim_auth_show(const int status);
+void phoneui_sim_auth_hide(const int status);
+void phoneui_ussd_show(int mode, const char *message);
+
+
+#endif
