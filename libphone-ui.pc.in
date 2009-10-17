@@ -7,7 +7,7 @@ Name: libphone-ui
 Description: phoneui library
 Version: @VERSION@
 Requires: dbus-glib-1 glib-2.0 gobject-2.0 libframeworkd-glib
-Libs: -L${libdir} -llibphoneui
+Libs: -L${libdir} -lphone-ui
 Cflags: -I${includedir}/phoneui
 
 
