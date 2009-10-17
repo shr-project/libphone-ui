@@ -446,4 +446,5 @@ phoneui_contact_add(const GHashTable *contact_data,
 			void* data)
 {
 	opimd_contacts_add(contact_data, callback, data);
+	return 0;
 }
