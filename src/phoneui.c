@@ -107,8 +107,14 @@ phoneui_load_backend(enum BackendType type)
 		g_key_file_get_string(keyfile, backends[type].name, "library", NULL);
 	/* Load library */
 	if (library != NULL) {
+		char *library_path = malloc(strlen(library) + strlen(PHONEUI_MODULES_PATH) + 1);
+		if (!library_path) {
+			g_error("Loading %s failed, no memory");
+		}
 		backends[type].library = 
-			dlopen(library, RTLD_LOCAL | RTLD_LAZY);
+			dlopen(library_path, RTLD_LOCAL | RTLD_LAZY);
+
+		free(library_path);
 		if (!backends[type].library) {
 			g_error("Loading %s failed: %s", library, dlerror());
 		}
