@@ -7,9 +7,9 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-bindings.h>
-#include <glib/ogsmd/frameworkd-glib-ogsmd-dbus.h>
-#include <glib/ogsmd/frameworkd-glib-ogsmd-sim.h>
-#include <glib/ogsmd/frameworkd-glib-ogsmd-network.h>
+#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-dbus.h>
+#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-sim.h>
+#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
 
 #include "phoneui-utility.h"
 
