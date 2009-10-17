@@ -3,11 +3,11 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libframeworkd-phonegui
-Description: phonegui library for frameworkd
+Name: libphone-ui
+Description: phoneui library
 Version: @VERSION@
 Requires: dbus-glib-1 glib-2.0 gobject-2.0 libframeworkd-glib
-Libs: -L${libdir} -lframeworkd-phonegui
-Cflags: -I${includedir}/frameworkd-phonegui
+Libs: -L${libdir} -llibphoneui
+Cflags: -I${includedir}/phoneui
 
 
