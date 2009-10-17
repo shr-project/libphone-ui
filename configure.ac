@@ -21,6 +21,6 @@ Makefile
 data/Makefile
 src/Makefile
 src/phoneui.h
-libphoneui.pc
+libphone-ui.pc
 ])
 
