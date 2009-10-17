@@ -108,7 +108,7 @@ phoneui_load_backend(enum BackendType type)
 	/* Load library */
 	if (library != NULL) {
 		/*FIXME: drop the hardcoded .so*/
-		char *library_path = malloc(strlen(library) + strlen(".so");
+		char *library_path = malloc(strlen(library) + strlen(".so") +
 					strlen(PHONEUI_MODULES_PATH) + 1);
 		if (!library_path) {
 			g_error("Loading %s failed, no memory");
