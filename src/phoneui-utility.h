@@ -1,5 +1,5 @@
-#ifndef _FRAMEWORKD_PHONEGUI_UTILITY_H
-#define _FRAMEWORKD_PHONEGUI_UTILITY_H
+#ifndef _PHONEUI_UTILITY_H
+#define _PHONEUI_UTILITY_H
 #include <glib.h>
 
 typedef enum {

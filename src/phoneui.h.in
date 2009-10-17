@@ -13,13 +13,13 @@
  *  GNU Lesser Public License for more details.
  */
 
-#ifndef _FRAMEWORKD_PHONEGUI_H
-#define _FRAMEWORKD_PHONEGUI_H
+#ifndef _PHONEUI_H
+#define _PHONEUI_H
 #include <glib.h>
 
 #include "phoneui-utility.h"
 
-#define FRAMEWORKD_PHONEGUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
+#define PHONEUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
 
 void phoneui_load(const char *application_name);
 void *phoneui_get_function(const char *name, void *phoneui_library);

@@ -98,7 +98,7 @@ phoneui_load_backend(enum BackendType type)
 	keyfile = g_key_file_new();
 	flags = G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS;
 	if (!g_key_file_load_from_file
-	    (keyfile, FRAMEWORKD_PHONEGUI_CONFIG, flags, &error)) {
+	    (keyfile, PHONEUI_CONFIG, flags, &error)) {
 		g_error(error->message);
 		return;
 	}
