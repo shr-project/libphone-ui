@@ -15,6 +15,7 @@ PKG_CHECK_MODULES(GLIB, glib-2.0)
 PKG_CHECK_MODULES(LIBPHONE_UTILS, libphone-utils)
 
 EXPAND(SYSCONFDIR, $sysconfdir)
+EXPAND(LIBDIR, $libdir)
 
 AC_OUTPUT([
 Makefile

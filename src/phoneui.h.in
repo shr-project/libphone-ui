@@ -20,7 +20,7 @@
 #include "phoneui-utility.h"
 
 #define PHONEUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
-#define PHONEUI_MODULES_PATH "@LIBDIR@/phoneui/modules"
+#define PHONEUI_MODULES_PATH "@LIBDIR@/phoneui/modules/"
 
 void phoneui_load(const char *application_name);
 void *phoneui_get_function(const char *name, void *phoneui_library);
