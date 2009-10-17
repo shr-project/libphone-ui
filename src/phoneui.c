@@ -104,20 +104,25 @@ phoneui_load_backend(enum BackendType type)
 	}
 
 	library =
-		g_key_file_get_string(keyfile, backends[type].name, "library", NULL);
+		g_key_file_get_string(keyfile, backends[type].name, "module", NULL);
 	/* Load library */
 	if (library != NULL) {
-		char *library_path = malloc(strlen(library) + strlen(PHONEUI_MODULES_PATH) + 1);
+		/*FIXME: drop the hardcoded .so*/
+		char *library_path = malloc(strlen(library) + strlen(".so");
+					strlen(PHONEUI_MODULES_PATH) + 1);
 		if (!library_path) {
 			g_error("Loading %s failed, no memory");
 		}
+		strcpy(library_path, PHONEUI_MODULES_PATH);
+		strcat(library_path, library);
+		strcat(library_path, ".so");
 		backends[type].library = 
 			dlopen(library_path, RTLD_LOCAL | RTLD_LAZY);
+		if (!backends[type].library) {
+			g_error("Loading %s failed: %s", library_path, dlerror());
+		}
 
 		free(library_path);
-		if (!backends[type].library) {
-			g_error("Loading %s failed: %s", library, dlerror());
-		}
 	}
 	else {
 		g_error("Loading failed. library not set.");
