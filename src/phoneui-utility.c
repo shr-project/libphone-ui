@@ -448,3 +448,13 @@ phoneui_contact_add(const GHashTable *contact_data,
 	opimd_contacts_add(contact_data, callback, data);
 	return 0;
 }
+
+int
+phoneui_contact_get(const char *contact_path,
+		void (*callback)(GError*, GHashTable*, gpointer), void *data)
+{
+	opimd_contact_get_content(contact_path, callback, data);
+	return (0);
+}
+
+

@@ -31,6 +31,9 @@ int phoneui_contact_update(const char *path,
 int phoneui_contact_add(const GHashTable *contact_data,
 			void (*callback)(GError*, char *, gpointer),
 			void* data);
+int phoneui_contact_get(const char *contact_path,
+		void (*callback)(GError*, GHashTable*, gpointer),
+		void *data);
 /* FIXME: rename to message send */
 int phoneui_sms_send(const char *message, GPtrArray * recipients,
 		void *callback1, void *callback2);
