@@ -37,6 +37,8 @@ static void (*_phoneui_outgoing_call_hide) (const int id) = NULL;
 
 /* Contacts */
 static void (*_phoneui_contacts_show) () = NULL;
+static void (*_phoneui_contacts_refresh) () = NULL;
+static void (*_phoneui_contacts_contact_show) (const char *path) = NULL;
 static void (*_phoneui_contacts_new_show) (const char *name, const char *number) = NULL;
 
 /* Messages */
@@ -179,6 +181,12 @@ phoneui_connect()
 	_phoneui_contacts_show =
 		phoneui_get_function("phoneui_backend_contacts_show",
 					backends[BACKEND_CONTACTS].library);
+	_phoneui_contacts_refresh =
+		phoneui_get_function("phoneui_backend_contacts_refresh",
+					backends[BACKEND_CONTACTS].library);
+	_phoneui_contacts_contact_show =
+		phoneui_get_function("phoneui_backend_contacts_contact_show",
+					backends[BACKEND_CONTACTS].library);
 	_phoneui_contacts_new_show =
 		phoneui_get_function("phoneui_backend_contacts_new_show",
 					backends[BACKEND_CONTACTS].library);
@@ -310,6 +318,23 @@ phoneui_contacts_show()
 {
 	if (_phoneui_contacts_show)
 		_phoneui_contacts_show();
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_contacts_refresh()
+{
+	if (_phoneui_contacts_refresh)
+		_phoneui_contacts_refresh();
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_contacts_contact_show(const char *contact_path)
+{	if (_phoneui_contacts_contact_show)
+		_phoneui_contacts_contact_show(contact_path);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
