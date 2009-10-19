@@ -1,7 +1,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 localedir = $(datadir)/locale
-AM_CPPFLAGS = -DLOCALEDIR=\"$(localedir)\" -DPKGDATADIR=\"$(pkgdatadir)\"
+AM_CPPFLAGS = -DLOCALEDIR=\"$(localedir)\" -DPKGDATADIR=\"$(pkgdatadir)\" -DG_LOG_DOMAIN=\"libphone-ui\"
 AM_CFLAGS = -Wall @GLIB_CFLAGS@ @DBUS_GLIB_CFLAGS@ @FRAMEWORKD_GLIB_CFLAGS@ @LIBPHONE_UTILS_CFLAGS@
 
 lib_LTLIBRARIES = libphone-ui.la
