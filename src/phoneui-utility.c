@@ -458,3 +458,47 @@ phoneui_contact_get(const char *contact_path,
 }
 
 
+/* --- SIM Auth handling --- */
+static void
+_auth_get_status_callback(GError *error, int status, gpointer data)
+{
+	g_debug("_auth_get_status_callback(error=%s,status=%d)", error ? "ERROR" : "OK", status);
+	if (status == SIM_READY) {
+		g_debug("hiding auth dialog");
+		phoneui_sim_auth_hide(status);
+	}
+	else {
+		g_debug("re-showing auth dialog");
+		phoneui_sim_auth_show(status);
+	}
+}
+
+static void
+_auth_send_callback(GError *error, gpointer data)
+{
+	g_debug("_auth_send_callback(%s)", error ? "ERROR" : "OK");
+	if (error != NULL) {
+		g_debug("SIM authentification error");
+	}
+	/* we have to re-get the current status of
+	 * needed sim auth, because it might change
+	 * from PIN to PUK and if auth worked we
+	 * have to hide the sim auth dialog */
+	ogsmd_sim_get_auth_status(_auth_get_status_callback, NULL);
+}
+
+void
+phoneui_sim_pin_send(const char *pin)
+{
+	g_debug("phoneui_sim_pin_send()");
+	ogsmd_sim_send_auth_code(pin, _auth_send_callback, NULL);
+}
+
+void
+phoneui_sim_puk_send(const char *puk, const char *new_pin)
+{
+	g_debug("phoneui_sim_puk_send()");
+	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, NULL);
+}
+
+

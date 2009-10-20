@@ -58,4 +58,7 @@ int phoneui_network_send_ussd_request(char *request,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
+void phoneui_sim_pin_send(const char *pin);
+void phoneui_sim_puk_send(const char *puk, const char *new_pin);
+
 #endif
