@@ -10,6 +10,11 @@
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-dbus.h>
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-sim.h>
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
+#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-sms.h>
+#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-call.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-dbus.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
 
 #include "phoneui-utility.h"
 
