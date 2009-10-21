@@ -435,6 +435,9 @@ phoneui_message_delete(const char *path,
 	return 0;
 }
 
+
+/* --- contacts utilities --- */
+
 int
 phoneui_contact_update(const char *path,
 				GHashTable *contact_data,
@@ -454,12 +457,259 @@ phoneui_contact_add(const GHashTable *contact_data,
 	return 0;
 }
 
+GHashTable *
+phoneui_contact_sanitize_content(GHashTable *source)
+{
+	g_debug("sanitizing a contact content...");
+	gpointer _key, _val;
+	char *name = NULL;
+	char *phone = NULL;
+	char *firstname = NULL, *lastname = NULL, *nickname = NULL;
+	GHashTableIter iter;
+	GHashTable *sani = g_hash_table_new_full
+		(g_str_hash, g_str_equal, free, free);
+
+	g_hash_table_iter_init(&iter, source);
+	while (g_hash_table_iter_next(&iter, &_key, &_val)) {
+		char *key = (char *)_key;
+		GValue *val = (GValue *)_val;
+
+		g_debug("  sanitizing field '%s'", key);
+		if (!val) {
+			g_debug("  hmm... field has no value?");
+			continue;
+		}
+
+		char *s_val = g_value_get_string(val);
+
+		/* sanitize phone numbers */
+		if (strcasestr(key, "Phone")) {
+			/* for phonenumbers we have to strip the tel: prefix */
+			if (g_str_has_prefix(s_val, "tel:"))
+				s_val += 4;
+
+			/* if key is exactly 'Phone' we want that is default
+			 * phone number for this contact */
+			if (strcmp(key, "Phone")) {
+				phone = s_val;
+			}
+			/* otherwise we take it as default if it is the
+			 * first phone number we see ... */
+			else if (!phone) {
+				phone = s_val;
+			}
+		}
+		else if (!strcmp(key, "Name")) {
+			g_debug("   Name found (%s)", s_val);
+			name = s_val;
+		}
+		else if (!strcasecmp(key, "firstname")) {
+			g_debug("   firstname found (%s)", s_val);
+			firstname = s_val;
+		}
+		else if (!strcasecmp(key, "lastname")) {
+			g_debug("   lastname found (%s)", s_val);
+			lastname = s_val;
+		}
+		else if (!strcasecmp(key, "nick")) {
+			g_debug("   nickname found (%s)", s_val);
+			nickname = s_val;
+		}
+
+		g_hash_table_insert(sani, g_strdup(key),
+				_new_gvalue_string(s_val));
+	}
+
+	/* insert special field "_Phone" for the default phone number */
+	if (phone) {
+		g_debug("   setting _Phone to '%s'", phone);
+		g_hash_table_insert(sani, g_strdup("_Phone"),
+				_new_gvalue_string(phone));
+	}
+
+	/* insert special field "_Name" as display name */
+	if (name) {
+		g_debug("   setting _Name to '%s'", name);
+		g_hash_table_insert(sani, g_strdup("_Name"),
+				_new_gvalue_string(name));
+	}
+	/* if there is no Name field defined for this contact
+	 * try to construct _Name out of other well known fields */
+	else {
+		/* see if we can do: firstname 'nickname' lastname */
+		if (firstname && lastname && nickname) {
+			name = g_strdup_printf("%s '%s' %s", firstname,
+					nickname, lastname);
+		}
+		/* next preferred variant: firstname lastname */
+		else if (firstname && lastname) {
+			name = g_strdup_printf("%s %s", firstname,
+					lastname);
+		}
+		/* next is: nickname */
+		else if (nickname) {
+			name = g_strdup(nickname);
+		}
+		/* next is: firstname */
+		else if (firstname) {
+			name = g_strdup(firstname);
+		}
+		/* last is: lastname */
+		else if (lastname) {
+			name = g_strdup(lastname);
+		}
+		/* bad! we did not find _any_ name */
+		else {
+			g_debug("NO NAME found!!!!");
+			return (sani);
+		}
+
+		g_debug("   setting _Name to '%s'", name);
+		g_hash_table_insert(sani, g_strdup("_Name"),
+				_new_gvalue_string(name));
+		free(name);
+	}
+
+	return (sani);
+}
+
+
+struct _contact_get_pack {
+	gpointer data;
+	void (*callback)(GHashTable *, gpointer);
+};
+
+static void
+_contact_get_callback(GError *error, GHashTable *_content, gpointer userdata)
+{
+	if (!error) {
+		struct _contact_get_pack *data =
+			(struct _contact_get_pack *)userdata;
+		data->callback(phoneui_contact_sanitize_content(_content), data->data);
+	}
+}
+
+
 int
 phoneui_contact_get(const char *contact_path,
-		void (*callback)(GError*, GHashTable*, gpointer), void *data)
+		void (*callback)(GHashTable*, gpointer), void *data)
 {
-	opimd_contact_get_content(contact_path, callback, data);
+	struct _contact_get_pack *_pack =
+		g_slice_alloc0(sizeof(struct _contact_get_pack));
+	_pack->data = data;
+	_pack->callback = callback;
+	opimd_contact_get_content(contact_path, _contact_get_callback, _pack);
 	return (0);
+}
+
+struct _contact_list_pack {
+	gpointer data;
+	int *count;
+	void (*callback)(GHashTable *, gpointer);
+	DBusGProxy *query;
+};
+
+static gint
+_compare_contacts(gconstpointer _a, gconstpointer _b)
+{
+	GHashTable **a = (GHashTable **) _a;
+	GHashTable **b = (GHashTable **) _b;
+	gpointer p;
+	const char *name_a, *name_b;
+
+	p = g_hash_table_lookup(*a, "_Name");
+	if (!p) {
+		name_a = "";
+		g_debug("name a not found!!!!");
+	}
+	else
+		name_a = g_value_get_string(p);
+
+	p = g_hash_table_lookup(*b, "_Name");
+	if (!p) {
+		name_b = "";
+		g_debug("name b not found!!!!");
+	}
+	else
+		name_b = g_value_get_string(p);
+
+	return (strcasecmp(name_a, name_b));
+}
+
+static void
+_clone_and_sanitize_contacts(gpointer _entry, gpointer _target)
+{
+	GPtrArray *target = (GPtrArray *)_target;
+	GHashTable *entry = (GHashTable *)_entry;
+
+	GHashTable *sani = phoneui_contact_sanitize_content(entry);
+
+	g_ptr_array_add(target, sani);
+}
+
+static void
+_contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
+{
+	g_debug("_contact_list_result_callback()");
+	struct _contact_list_pack *data =
+		(struct _contact_list_pack *)_data;
+
+	if (error || !_contacts) {
+		g_debug("got no contacts from query!!!");
+		return;
+	}
+
+	GPtrArray *contacts = g_ptr_array_new();
+	g_ptr_array_foreach(_contacts, _clone_and_sanitize_contacts, contacts);
+	g_ptr_array_sort(contacts, _compare_contacts);
+	g_ptr_array_foreach(contacts, data->callback, data->data);
+	opimd_contact_query_dispose(data->query, NULL, NULL);
+}
+
+static void
+_contact_list_count_callback(GError *error, const int count, gpointer _data)
+{
+	struct _contact_list_pack *data =
+		(struct _contact_list_pack *)_data;
+	g_debug("result gave %d entries", count);
+	*data->count = count;
+	g_debug("getting first entry...");
+	opimd_contact_query_get_multiple_results(data->query,
+			count, _contact_list_result_callback, data);
+}
+
+
+static void
+_contact_query_callback(GError *error, const char *query_path, gpointer _data)
+{
+	if (error == NULL) {
+		g_debug("query succeeded... get count of result");
+		struct _contact_list_pack *data =
+			(struct _contact_list_pack *)_data;
+		data->query = (DBusGProxy *)
+			dbus_connect_to_opimd_contact_query(query_path);
+		opimd_contact_query_get_result_count(data->query,
+				_contact_list_count_callback, data);
+	}
+}
+
+void
+phoneui_contacts_get(int *count,
+		void (*callback)(GError *, GHashTable *, gpointer),
+		gpointer userdata)
+{
+	g_debug("phoneui_contacts_get()");
+	struct _contact_list_pack *data =
+		g_slice_alloc0(sizeof(struct _contact_list_pack));
+	data->data = userdata;
+	data->callback = callback;
+	data->count = count;
+
+	GHashTable *qry = g_hash_table_new_full
+		(g_str_hash, g_str_equal, NULL, free);
+	//g_hash_table_insert(qry, "_sortby", _new_gvalue_string("Name"));
+	opimd_contacts_query(qry, _contact_query_callback, data);
+	g_hash_table_destroy(qry);
 }
 
 
