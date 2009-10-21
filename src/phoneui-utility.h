@@ -19,9 +19,10 @@ void phoneui_destroy_contacts_cache();
 /* end of soon to be deleted */
 
 
-int phoneui_contact_lookup(const char *number,
-			     void (*name_callback) (GError *, char *, gpointer),
-			     void *data);
+int
+phoneui_contact_lookup(const char *_number,
+			void (*_callback) (GHashTable *, gpointer),
+			void *_data);
 int phoneui_contact_delete(const char *path,
 				void (*name_callback) (GError *, char *, gpointer),
 				void *data);

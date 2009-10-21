@@ -115,18 +115,40 @@ _lookup_add_prefix(const char *_number)
 		strcpy(number, "tel:");
 		strcat(number, _number);
 	}
+	else
+		number = g_strdup(_number);
 
 
 	return number;
 }
 
+struct _contact_lookup_pack {
+	gpointer *data;
+	void (*callback)(GHashTable *, gpointer);
+};
+
+static void
+_contact_lookup_callback(GError *error, const char *path, gpointer userdata)
+{
+	struct _contact_lookup_pack *data =
+		(struct _contact_lookup_pack *)userdata;
+	if (!error && path && *path) {
+		g_debug("found contact %s", path);
+		phoneui_contact_get(path, data->callback, data->data);
+	}
+	else {
+		g_debug("no contact found...");
+		data->callback(NULL, data->data);
+	}
+}
+
 int
 phoneui_contact_lookup(const char *_number,
-			void (*name_callback) (GError *, char *, gpointer),
-			void *data)
+			void (*_callback) (GHashTable *, gpointer),
+			void *_data)
 {
 	GHashTable *query =
-		g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
+		g_hash_table_new(g_str_hash, g_str_equal);
 	char *number = _lookup_add_prefix(_number);
 	if (!number) {
 		return 1;
@@ -135,19 +157,23 @@ phoneui_contact_lookup(const char *_number,
 	g_debug("Attempting to resolve name for: \"%s\"", number);
 
 
-	GValue *value = _new_gvalue_string((number) ? number : _number);	/*  we prefer using number */
+	GValue *value = _new_gvalue_string(number);	/*  we prefer using number */
 	if (!value) {
 		free(number);
 		return 1;
 	}
 	g_hash_table_insert(query, "Phone", value);
 
+	struct _contact_lookup_pack *data =
+		g_slice_alloc0(sizeof(struct _contact_lookup_pack));
+	data->data = _data;
+	data->callback = _callback;
 
-	opimd_contacts_get_single_entry_single_field(query, "Name",
-						     name_callback, data);
+	opimd_contacts_get_single_entry_single_field
+		(query, "Path", _contact_lookup_callback, data);
 
-	if (number)
-		free(number);
+	free(number);
+	g_hash_table_destroy(query);
 
 	return 0;
 }
@@ -598,6 +624,7 @@ phoneui_contact_get(const char *contact_path,
 		g_slice_alloc0(sizeof(struct _contact_get_pack));
 	_pack->data = data;
 	_pack->callback = callback;
+	g_debug("getting data of contact %s", contact_path);
 	opimd_contact_get_content(contact_path, _contact_get_callback, _pack);
 	return (0);
 }
