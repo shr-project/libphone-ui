@@ -488,9 +488,10 @@ phoneui_contact_sanitize_content(GHashTable *source)
 {
 	g_debug("sanitizing a contact content...");
 	gpointer _key, _val;
-	char *name = NULL;
+	char *name = NULL, *surname = NULL;
+	char *middlename = NULL, *nickname = NULL;
+	char *displayname = NULL;
 	char *phone = NULL;
-	char *firstname = NULL, *lastname = NULL, *nickname = NULL;
 	GHashTableIter iter;
 	GHashTable *sani = g_hash_table_new_full
 		(g_str_hash, g_str_equal, free, free);
@@ -529,16 +530,16 @@ phoneui_contact_sanitize_content(GHashTable *source)
 			g_debug("   Name found (%s)", s_val);
 			name = s_val;
 		}
-		else if (!strcasecmp(key, "firstname")) {
-			g_debug("   firstname found (%s)", s_val);
-			firstname = s_val;
+		else if (!strcmp(key, "Surname")) {
+			g_debug("   Surname found (%s)", s_val);
+			surname = s_val;
 		}
-		else if (!strcasecmp(key, "lastname")) {
-			g_debug("   lastname found (%s)", s_val);
-			lastname = s_val;
+		else if (!strcmp(key, "Middlename")) {
+			g_debug("   Middlename found (%s)", s_val);
+			middlename = s_val;
 		}
-		else if (!strcasecmp(key, "nick")) {
-			g_debug("   nickname found (%s)", s_val);
+		else if (!strcmp(key, "Nickname")) {
+			g_debug("   Nickname found (%s)", s_val);
 			nickname = s_val;
 		}
 
@@ -553,47 +554,31 @@ phoneui_contact_sanitize_content(GHashTable *source)
 				_new_gvalue_string(phone));
 	}
 
-	/* insert special field "_Name" as display name */
-	if (name) {
-		g_debug("   setting _Name to '%s'", name);
-		g_hash_table_insert(sani, g_strdup("_Name"),
-				_new_gvalue_string(name));
+	/* construct some sane display name from the fields */
+	if (name && nickname && surname) {
+		displayname = g_strdup_printf("%s '%s' %s",
+				name, nickname, surname);
 	}
-	/* if there is no Name field defined for this contact
-	 * try to construct _Name out of other well known fields */
-	else {
-		/* see if we can do: firstname 'nickname' lastname */
-		if (firstname && lastname && nickname) {
-			name = g_strdup_printf("%s '%s' %s", firstname,
-					nickname, lastname);
-		}
-		/* next preferred variant: firstname lastname */
-		else if (firstname && lastname) {
-			name = g_strdup_printf("%s %s", firstname,
-					lastname);
-		}
-		/* next is: nickname */
-		else if (nickname) {
-			name = g_strdup(nickname);
-		}
-		/* next is: firstname */
-		else if (firstname) {
-			name = g_strdup(firstname);
-		}
-		/* last is: lastname */
-		else if (lastname) {
-			name = g_strdup(lastname);
-		}
-		/* bad! we did not find _any_ name */
-		else {
-			g_debug("NO NAME found!!!!");
-			return (sani);
-		}
+	else if (name && middlename && surname) {
+		displayname = g_strdup_printf("%s %s %s",
+				name, middlename, surname);
+	}
+	else if (name && surname) {
+		displayname = g_strdup_printf("%s %s",
+				name, surname);
+	}
+	else if (nickname) {
+		displayname = g_strdup(nickname);
+	}
+	else if (name) {
+		displayname = g_strdup(name);
+	}
 
-		g_debug("   setting _Name to '%s'", name);
+	/* insert special field "_Name" as display name */
+	if (displayname) {
+		g_debug("   setting _Name to '%s'", displayname);
 		g_hash_table_insert(sani, g_strdup("_Name"),
-				_new_gvalue_string(name));
-		free(name);
+				_new_gvalue_string(displayname));
 	}
 
 	return (sani);
