@@ -431,6 +431,27 @@ phoneui_message_delete(const char *path,
 }
 
 int
+phoneui_message_set_read_status(const char *path, int read,
+				void (*callback) (GError *, gpointer),
+				void *data)
+{
+	GValue *message_read;
+	GHashTable *options = g_hash_table_new(g_str_hash, g_str_equal);
+	if (!options)
+		return 0;
+	message_read = _new_gvalue_boolean(read);
+	if (!message_read) {
+		free(options);
+		return 0;
+	}
+	g_hash_table_insert(options, "MessageRead", message_read);
+	opimd_message_update(path, options, callback, data);
+	free(message_read);
+	g_hash_table_destroy(options);
+}
+
+
+int
 phoneui_contact_update(const char *path,
 				GHashTable *contact_data,
 				void (*callback)(GError *, gpointer),

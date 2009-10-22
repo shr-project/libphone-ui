@@ -40,6 +40,9 @@ int phoneui_sms_send(const char *message, GPtrArray * recipients,
 int phoneui_message_delete(const char *message_path,
 				void (*callback)(GError *, gpointer),
 				void *data);
+int phoneui_message_set_read_status(const char *path, int read,
+				void (*callback) (GError *, gpointer),
+				void *data);
 
 int phoneui_call_initiate(const char *number,
 				void (*callback)(GError *, int id_call, gpointer),
