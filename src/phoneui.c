@@ -356,7 +356,7 @@ void
 phoneui_contacts_contact_edit(const char *contact_path)
 {
 	if (_phoneui_contacts_contact_new)
-		_phoneui_contacts_contact_new(name, number);
+		_phoneui_contacts_contact_edit(contact_path);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
