@@ -19,9 +19,10 @@ void phoneui_destroy_contacts_cache();
 /* end of soon to be deleted */
 
 
-int phoneui_contact_lookup(const char *number,
-			     void (*name_callback) (GError *, char *, gpointer),
-			     void *data);
+int
+phoneui_contact_lookup(const char *_number,
+			void (*_callback) (GHashTable *, gpointer),
+			void *_data);
 int phoneui_contact_delete(const char *path,
 				void (*name_callback) (GError *, char *, gpointer),
 				void *data);
@@ -32,8 +33,14 @@ int phoneui_contact_add(const GHashTable *contact_data,
 			void (*callback)(GError*, char *, gpointer),
 			void* data);
 int phoneui_contact_get(const char *contact_path,
-		void (*callback)(GError*, GHashTable*, gpointer),
-		void *data);
+		void (*callback)(GHashTable*, gpointer), void *data);
+void
+phoneui_contacts_get(int *count,
+		void (*callback)(GError *, GHashTable *, gpointer),
+		gpointer userdata);
+GHashTable *
+phoneui_contact_sanitize_content(GHashTable *source);
+
 /* FIXME: rename to message send */
 int phoneui_sms_send(const char *message, GPtrArray * recipients,
 		void *callback1, void *callback2);
@@ -60,5 +67,8 @@ int phoneui_call_send_dtmf(const char *tones,
 int phoneui_network_send_ussd_request(char *request,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
+
+void phoneui_sim_pin_send(const char *pin);
+void phoneui_sim_puk_send(const char *puk, const char *new_pin);
 
 #endif
