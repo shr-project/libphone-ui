@@ -39,7 +39,8 @@ static void (*_phoneui_outgoing_call_hide) (const int id) = NULL;
 static void (*_phoneui_contacts_show) () = NULL;
 static void (*_phoneui_contacts_refresh) () = NULL;
 static void (*_phoneui_contacts_contact_show) (const char *path) = NULL;
-static void (*_phoneui_contacts_new_show) (const char *name, const char *number) = NULL;
+static void (*_phoneui_contacts_contact_new) (GHashTable *values) = NULL;
+static void (*_phoneui_contacts_contact_edit) (const char *path) = NULL;
 
 /* Messages */
 static void (*_phoneui_messages_show) () = NULL;
@@ -187,8 +188,11 @@ phoneui_connect()
 	_phoneui_contacts_contact_show =
 		phoneui_get_function("phoneui_backend_contacts_contact_show",
 					backends[BACKEND_CONTACTS].library);
-	_phoneui_contacts_new_show =
-		phoneui_get_function("phoneui_backend_contacts_new_show",
+	_phoneui_contacts_contact_new =
+		phoneui_get_function("phoneui_backend_contacts_contact_new",
+					backends[BACKEND_CONTACTS].library);
+	_phoneui_contacts_contact_edit =
+		phoneui_get_function("phoneui_backend_contacts_contact_edit",
 					backends[BACKEND_CONTACTS].library);
 
 	_phoneui_dialer_show =
@@ -340,10 +344,19 @@ phoneui_contacts_contact_show(const char *contact_path)
 }
 
 void
-phoneui_contacts_new_show(const char *name, const char *number)
+phoneui_contacts_contact_new(GHashTable *values)
 {
-	if (_phoneui_contacts_new_show)
-		_phoneui_contacts_new_show(name, number);
+	if (_phoneui_contacts_contact_new)
+		_phoneui_contacts_contact_new(values);
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_contacts_contact_edit(const char *contact_path)
+{
+	if (_phoneui_contacts_contact_new)
+		_phoneui_contacts_contact_edit(contact_path);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
