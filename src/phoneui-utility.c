@@ -18,6 +18,9 @@
 
 #include "phoneui-utility.h"
 
+/*FIXME: BAD BAD BAD SHOULD REMOVE AS SOON AS I FIX SIM_AUTH */
+#include "phoneui.h"
+
 static GValue *
 _new_gvalue_string(const char *value)
 {
@@ -57,17 +60,6 @@ _new_gvalue_boolean(int value)
 	return val;
 }
 
-static
-  guint
-phone_number_hash(gconstpointer v)
-{
-	gchar *n = phone_utils_normalize_number((char *) v);
-	guint ret = g_str_hash(n);
-	g_free(n);
-	return (ret);
-}
-
-
 static char *
 _lookup_add_prefix(const char *_number)
 {
@@ -93,7 +85,7 @@ struct _contact_lookup_pack {
 };
 
 static void
-_contact_lookup_callback(GError *error, const char *path, gpointer userdata)
+_contact_lookup_callback(GError *error, char *path, gpointer userdata)
 {
 	struct _contact_lookup_pack *data =
 		(struct _contact_lookup_pack *)userdata;
@@ -181,14 +173,14 @@ _add_opimd_message(const char *number, const char *message)
 }
 
 int
-phoneui_sms_send(const char *message, GPtrArray * recipients, void *callback1,
-		  void *callback2)
-/* FIXME: add real callbacks types when I find out */
+phoneui_sms_send(const char *message, GPtrArray * recipients, void (*callback)
+		(GError *, int transaction_index, const char *timestamp, gpointer),
+		  void *userdata)
 {
 	/*FIXME: seems ok, though should verify for potential memory leaks */
 	int len;
 	int ucs;
-	int i;
+	unsigned int i;
 	int csm_num = 0;
 	int csm_id = 1;		/* do we need a better way? */
 	int csm_seq;
@@ -276,13 +268,13 @@ phoneui_sms_send(const char *message, GPtrArray * recipients, void *callback1,
 						     val_csm_seq);
 				ogsmd_sms_send_message(number,
 						       messages[csm_seq - 1],
-						       options, NULL, NULL);
+						       options, callback, userdata);
 
 			}
 		}
 		else {
 			ogsmd_sms_send_message(number, messages[0], options,
-					       NULL, NULL);
+					       callback, userdata);
 		}
 		_add_opimd_message(number, message);
 	}
@@ -331,7 +323,7 @@ phoneui_call_initiate(const char *number,
 
 int
 phoneui_call_release(int call_id, 
-			void (*callback)(GError *, int id_call, gpointer),
+			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
 	ogsmd_call_release(call_id, callback, userdata);
@@ -340,7 +332,7 @@ phoneui_call_release(int call_id,
 
 int
 phoneui_call_activate(int call_id, 
-			void (*callback)(GError *, int id_call, gpointer),
+			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
 	ogsmd_call_activate(call_id, callback, userdata);
@@ -349,7 +341,7 @@ phoneui_call_activate(int call_id,
 
 int
 phoneui_contact_delete(const char *path,
-				void (*callback) (GError *, char *, gpointer),
+				void (*callback) (GError *, gpointer),
 				void *data)
 {
 	opimd_contact_delete(path, callback, data);
@@ -394,16 +386,18 @@ phoneui_message_set_read_status(const char *path, int read,
 	GValue *message_read;
 	GHashTable *options = g_hash_table_new(g_str_hash, g_str_equal);
 	if (!options)
-		return 0;
+		return 1;
 	message_read = _new_gvalue_boolean(read);
 	if (!message_read) {
 		free(options);
-		return 0;
+		return 1;
 	}
 	g_hash_table_insert(options, "MessageRead", message_read);
 	opimd_message_update(path, options, callback, data);
 	free(message_read);
 	g_hash_table_destroy(options);
+
+	return 0;
 }
 
 
@@ -431,10 +425,10 @@ phoneui_contact_sanitize_content(GHashTable *source)
 {
 	g_debug("sanitizing a contact content...");
 	gpointer _key, _val;
-	char *name = NULL, *surname = NULL;
-	char *middlename = NULL, *nickname = NULL;
-	char *displayname = NULL;
-	char *phone = NULL;
+	const char *name = NULL, *surname = NULL;
+	const char *middlename = NULL, *nickname = NULL;
+	const char *displayname = NULL;
+	const char *phone = NULL;
 	GHashTableIter iter;
 	GHashTable *sani = g_hash_table_new_full
 		(g_str_hash, g_str_equal, free, free);
@@ -450,10 +444,10 @@ phoneui_contact_sanitize_content(GHashTable *source)
 			continue;
 		}
 
-		char *s_val = g_value_get_string(val);
+		const char *s_val = g_value_get_string(val);
 
 		/* sanitize phone numbers */
-		if (strcasestr(key, "Phone")) {
+		if (strstr(key, "Phone")) {
 			/* for phonenumbers we have to strip the tel: prefix */
 			if (g_str_has_prefix(s_val, "tel:"))
 				s_val += 4;
@@ -560,7 +554,7 @@ phoneui_contact_get(const char *contact_path,
 struct _contact_list_pack {
 	gpointer data;
 	int *count;
-	void (*callback)(GHashTable *, gpointer);
+	void (*callback)(gpointer, gpointer);
 	DBusGProxy *query;
 };
 
@@ -605,6 +599,8 @@ _clone_and_sanitize_contacts(gpointer _entry, gpointer _target)
 static void
 _contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
 {
+	/*FIXME: should we check the value of error? */
+	(void) error;
 	g_debug("_contact_list_result_callback()");
 	struct _contact_list_pack *data =
 		(struct _contact_list_pack *)_data;
@@ -624,6 +620,8 @@ _contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
 static void
 _contact_list_count_callback(GError *error, const int count, gpointer _data)
 {
+	/*FIXME: should we use error? */
+	(void) error;
 	struct _contact_list_pack *data =
 		(struct _contact_list_pack *)_data;
 	g_debug("result gave %d entries", count);
@@ -635,7 +633,7 @@ _contact_list_count_callback(GError *error, const int count, gpointer _data)
 
 
 static void
-_contact_query_callback(GError *error, const char *query_path, gpointer _data)
+_contact_query_callback(GError *error, char *query_path, gpointer _data)
 {
 	if (error == NULL) {
 		g_debug("query succeeded... get count of result");
@@ -650,12 +648,12 @@ _contact_query_callback(GError *error, const char *query_path, gpointer _data)
 
 void
 phoneui_contacts_get(int *count,
-		void (*callback)(GError *, GHashTable *, gpointer),
+		void (*callback)(gpointer, gpointer),
 		gpointer userdata)
 {
 	g_debug("phoneui_contacts_get()");
 	struct _contact_list_pack *data =
-		g_slice_alloc0(sizeof(struct _contact_list_pack));
+		malloc(sizeof(struct _contact_list_pack));
 	data->data = userdata;
 	data->callback = callback;
 	data->count = count;
@@ -669,9 +667,15 @@ phoneui_contacts_get(int *count,
 
 
 /* --- SIM Auth handling --- */
+/*FIXME: should NOT exist, should be implemented in phone-ui-shr!!
+ * we don't know, maybe the backend wants to do something else as well,
+ * not only show the window, it should provide this function, should not
+ * be provided here, maybe it wants to show an error message as well?*/
 static void
 _auth_get_status_callback(GError *error, int status, gpointer data)
 {
+	/*FIXME: do we want to do anything with data? */
+	(void) data;
 	g_debug("_auth_get_status_callback(error=%s,status=%d)", error ? "ERROR" : "OK", status);
 	if (status == SIM_READY) {
 		g_debug("hiding auth dialog");
@@ -686,6 +690,8 @@ _auth_get_status_callback(GError *error, int status, gpointer data)
 static void
 _auth_send_callback(GError *error, gpointer data)
 {
+	/*FIXME: do we want to do anything with data? */
+	(void) data;
 	g_debug("_auth_send_callback(%s)", error ? "ERROR" : "OK");
 	if (error != NULL) {
 		g_debug("SIM authentification error");

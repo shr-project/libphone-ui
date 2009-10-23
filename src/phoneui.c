@@ -115,7 +115,7 @@ phoneui_load_backend(enum BackendType type)
 		char *library_path = malloc(strlen(library) + strlen(".so") +
 					strlen(PHONEUI_MODULES_PATH) + 1);
 		if (!library_path) {
-			g_error("Loading %s failed, no memory");
+			g_error("Loading %s failed, no memory", library);
 		}
 		strcpy(library_path, PHONEUI_MODULES_PATH);
 		strcat(library_path, library);
@@ -136,6 +136,7 @@ phoneui_load_backend(enum BackendType type)
 void
 phoneui_load(const char *application_name)
 {
+	g_debug("Loading %s", application_name);	
 	int i;
 	for (i = 0 ; i < BACKEND_NO ; i++) {
 		phoneui_load_backend(i);
@@ -198,6 +199,9 @@ phoneui_connect()
 	_phoneui_dialer_show =
 		phoneui_get_function("phoneui_backend_dialer_show",
 					backends[BACKEND_DIALER].library);
+	_phoneui_dialer_hide =
+		phoneui_get_function("phoneui_backend_dialer_hide",
+					backends[BACKEND_DIALER].library);
 
 	_phoneui_dialog_show =
 		phoneui_get_function("phoneui_backend_dialog_show",
@@ -257,7 +261,8 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 
 	for (i = 0 ; i < BACKEND_NO ; i++) {
 		if (!g_hash_table_lookup(inits, backends[i].library)) {
-			g_hash_table_insert(inits, backends[i].library, backends[i].name);
+			/* FIXME: the char * is a cast hack, since we won't change the content anyway */
+			g_hash_table_insert(inits, backends[i].library, (char *) backends[i].name);
 			_phoneui_backend_init(argc, argv, exit_cb, i);
 		}
 	}
@@ -386,6 +391,15 @@ phoneui_dialer_show()
 {
 	if (_phoneui_dialer_show)
 		_phoneui_dialer_show();
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_dialer_hide()
+{
+	if (_phoneui_dialer_hide)
+		_phoneui_dialer_hide();
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }

@@ -18,7 +18,7 @@ phoneui_contact_lookup(const char *_number,
 			void (*_callback) (GHashTable *, gpointer),
 			void *_data);
 int phoneui_contact_delete(const char *path,
-				void (*name_callback) (GError *, char *, gpointer),
+				void (*name_callback) (GError *, gpointer),
 				void *data);
 int phoneui_contact_update(const char *path,
 				GHashTable *contact_data, void (*callback)(GError *, gpointer),
@@ -28,16 +28,16 @@ int phoneui_contact_add(const GHashTable *contact_data,
 			void* data);
 int phoneui_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data);
-void
-phoneui_contacts_get(int *count,
-		void (*callback)(GError *, GHashTable *, gpointer),
+void phoneui_contacts_get(int *count,
+		void (*callback)(gpointer , gpointer),
 		gpointer userdata);
 GHashTable *
 phoneui_contact_sanitize_content(GHashTable *source);
 
 /* FIXME: rename to message send */
-int phoneui_sms_send(const char *message, GPtrArray * recipients,
-		void *callback1, void *callback2);
+int phoneui_sms_send(const char *message, GPtrArray * recipients, void (*callback)
+		(GError *, int transaction_index, const char *timestamp, gpointer),
+		  void *userdata);
 int phoneui_message_delete(const char *message_path,
 				void (*callback)(GError *, gpointer),
 				void *data);
@@ -49,10 +49,10 @@ int phoneui_call_initiate(const char *number,
 				void (*callback)(GError *, int id_call, gpointer),
 				gpointer userdata);
 int phoneui_call_release(int call_id, 
-			void (*callback)(GError *, int id_call, gpointer),
+			void (*callback)(GError *, gpointer),
 			gpointer userdata);
 int phoneui_call_activate(int call_id, 
-			void (*callback)(GError *, int id_call, gpointer),
+			void (*callback)(GError *, gpointer),
 			gpointer userdata);
 int phoneui_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
