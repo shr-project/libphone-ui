@@ -426,3 +426,4 @@ phoneui_ussd_show(int mode, const char *message)
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
+
