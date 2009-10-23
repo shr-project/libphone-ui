@@ -12,12 +12,6 @@ typedef enum {
 
 gchar *phoneui_get_user_home_prefix();
 gchar *phoneui_get_user_home_code();
-/* soon to be deleted functions */
-char *phoneui_contact_cache_lookup(char *number);
-void phoneui_init_contacts_cache();
-void phoneui_destroy_contacts_cache();
-/* end of soon to be deleted */
-
 
 int
 phoneui_contact_lookup(const char *_number,

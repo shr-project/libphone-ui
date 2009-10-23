@@ -18,8 +18,6 @@
 
 #include "phoneui-utility.h"
 
-GHashTable *contact_cache;
-
 static GValue *
 _new_gvalue_string(const char *value)
 {
@@ -69,39 +67,6 @@ phone_number_hash(gconstpointer v)
 	return (ret);
 }
 
-void
-cache_phonebook_entry(GValueArray * entry, void *data)
-{
-	char *number =
-		strdup(g_value_get_string(g_value_array_get_nth(entry, 2)));
-	char *name =
-		strdup(g_value_get_string(g_value_array_get_nth(entry, 1)));
-	g_hash_table_insert(contact_cache, number, name);
-}
-
-
-void
-cache_phonebook_callback(GError * error, GPtrArray * contacts,
-			 gpointer userdata)
-{
-	g_debug("cache_phonebook_callback called");
-	if (error == NULL && contacts != NULL) {
-		g_debug("creating contact_cache");
-		contact_cache =
-			g_hash_table_new_full(phone_number_hash,
-					      phone_utils_numbers_equal, free,
-					      free);
-		if (!contact_cache) {
-			g_warning("could not allocate contact cache");
-			return;
-		}
-		g_ptr_array_foreach(contacts, cache_phonebook_entry, NULL);
-	}
-	else
-		g_debug("caching phonebook failed: %s %s %d", error->message,
-			g_quark_to_string(error->domain), error->code);
-
-}
 
 static char *
 _lookup_add_prefix(const char *_number)
@@ -176,49 +141,6 @@ phoneui_contact_lookup(const char *_number,
 	g_hash_table_destroy(query);
 
 	return 0;
-}
-
-char *
-phoneui_contact_cache_lookup(char *number)
-{
-	if (contact_cache == NULL)
-		return (number);
-	g_debug("looking for '%s' in contacts_cache", number);
-	if (!number || !*number || !strcmp(number, "*****")) {
-		g_debug("contact_cache: got unknown number");
-		return ("");
-	}
-	if (*number == '"') {
-		number++;
-		char *s = number;
-		while (*s) {
-			if (*s == '"') {
-				*s = '\0';
-				break;
-			}
-			s++;
-		}
-	}
-
-	char *name = g_hash_table_lookup(contact_cache, number);
-	if (name && *name) {
-		g_debug("found name '%s'", name);
-		return (name);
-	}
-	return (number);
-}
-
-void
-phoneui_init_contacts_cache()
-{
-	ogsmd_sim_retrieve_phonebook("contacts", cache_phonebook_callback,
-				     NULL);
-}
-
-void
-phoneui_destroy_contacts_cache()
-{
-	g_hash_table_destroy(contact_cache);
 }
 
 
