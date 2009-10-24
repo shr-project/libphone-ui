@@ -10,6 +10,7 @@ typedef enum {
 	PHONEGUI_DIALOG_SIM_NOT_PRESENT
 } PhoneguiDialogType;
 
+
 gchar *phoneui_get_user_home_prefix();
 gchar *phoneui_get_user_home_code();
 
@@ -62,8 +63,10 @@ int phoneui_network_send_ussd_request(char *request,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
-void phoneui_sim_pin_send(const char *pin);
-void phoneui_sim_puk_send(const char *puk, const char *new_pin);
+void phoneui_sim_pin_send(const char *pin,
+		void (*callback)(int, gpointer), gpointer userdata);
+void phoneui_sim_puk_send(const char *puk, const char *new_pin,
+		void (*callback)(int, gpointer), gpointer userdata);
 
 #endif
 
