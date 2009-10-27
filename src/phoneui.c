@@ -356,7 +356,7 @@ phoneui_contacts_contact_new(GHashTable *values)
 void
 phoneui_contacts_contact_edit(const char *contact_path)
 {
-	if (_phoneui_contacts_contact_new)
+	if (_phoneui_contacts_contact_edit)
 		_phoneui_contacts_contact_edit(contact_path);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
