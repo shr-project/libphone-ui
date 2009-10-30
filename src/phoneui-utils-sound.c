@@ -70,14 +70,20 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	long value, min, max;
 	unsigned int i,count;
 	const char *ctl_name = controls[sound_state][type].name;
-	
 	snd_ctl_elem_value_t *control;
-	snd_ctl_elem_value_alloca(&control);
+	snd_hctl_elem_t *elem;
 	snd_ctl_elem_id_t *id;
+	
+	snd_ctl_elem_value_alloca(&control);
 	snd_ctl_elem_id_alloca(&id);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, ctl_name);
-	snd_hctl_elem_t *elem = snd_hctl_find_elem(hctl, id);
+	elem = snd_hctl_find_elem(hctl, id);
+	if (!elem) {
+		g_debug("ALSA: No control named '%s' found - "
+			"Sound state: %d type: %d", ctl_name, sound_state, type);
+		return -1;
+	}
 	
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
 		return -1;
@@ -106,13 +112,20 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	unsigned int i, count;
 	long min, max;
 	const char *ctl_name = controls[sound_state][type].name;
-	/*FIXME: verify it's writeable and of the correct element type */
 	snd_ctl_elem_id_t *id;
+	snd_hctl_elem_t *elem;
+	snd_ctl_elem_value_t *control;
+	
+	/*FIXME: verify it's writeable and of the correct element type */
 	snd_ctl_elem_id_alloca(&id);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, ctl_name);
-	snd_hctl_elem_t *elem = snd_hctl_find_elem(hctl, id);
-	snd_ctl_elem_value_t *control;
+	elem = snd_hctl_find_elem(hctl, id);
+	if (!elem) {
+		g_debug("ALSA: No control named '%s' found - "
+			"Sound state: %d type: %d", ctl_name, sound_state, type);
+		return -1;
+	}
 	snd_ctl_elem_value_alloca(&control);
 	snd_ctl_elem_value_set_id(control, id);
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
@@ -121,7 +134,7 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	for (i = 0 ; i < count ; i++) {		
 		snd_ctl_elem_value_set_integer(control, i, new_value);
 	}
-
+	
 	err = snd_hctl_elem_write(elem, control);
 	if (err) {
 		g_debug("%s", snd_strerror(err));
