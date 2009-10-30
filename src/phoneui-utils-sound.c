@@ -14,15 +14,7 @@ struct SoundControl {
 	const char *name;
 };
 
-/* FIXME: I guessed all of these values, most of them are probably incorrect */
-/* The order must be the same as SoundState (rows) and SoundControlType (columns */
-static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END] = {
-		{{"PCM Volume"}, {""}},
-		{{"Headphone Playback Volume"}, {"Mono Sidetone Playback Volume"}},
-		{{"Speaker Playback Volume"}, {"Mono Sidetone Playback Volume"}},
-		{{"Headphone Playback Volume"}, {"Mono Sidetone Playback Volume"}},
-		{{"Speaker Playback Volume"}, {"Speaker Playback Volume"}} /* didn't even bother to guess, no idea */
-		};
+static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
@@ -143,16 +135,53 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	return 0;
 }
 
+
+static void
+_phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
+				enum SoundState state)
+{
+	char *field;
+	const char *speaker = NULL;
+	const char *microphone = NULL;
+	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
+	if (field) {
+		strcpy(field, "alsa_control_");
+		strcat(field, _field);
+		speaker = g_key_file_get_string(keyfile, field, "speaker", NULL);
+		microphone = g_key_file_get_string(keyfile, field, "microphone", NULL);
+		free(field);
+	}
+	if (!speaker) {
+		g_debug("No speaker value for %s found, using none", _field);
+		speaker = "";
+	}
+	if (!microphone) {
+		g_debug("No microphone value for %s found, using none", _field);
+		microphone = "";
+	}
+	controls[state][CONTROL_SPEAKER].name = strdup(speaker);
+	controls[state][CONTROL_MICROPHONE].name = strdup(microphone);
+}
+
 int
 phoneui_utils_sound_init(GKeyFile *keyfile)
 {
 	int err;
 	const char *device_name;
+
 	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
 	if (!device_name) {
 		g_debug("No hw control found, using default");
 		device_name = "hw:0";
 	}
+
+	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE);
+	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", SOUND_STATE_BT);
+	_phoneui_utils_sound_init_set_control(keyfile, "handset", SOUND_STATE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "headset", SOUND_STATE_HEADSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER);
+
+
 	if (hctl) {
 		snd_hctl_close(hctl);
 	}
