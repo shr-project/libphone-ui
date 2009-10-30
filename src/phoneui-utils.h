@@ -71,7 +71,7 @@ void phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 		void (*callback)(int, gpointer), gpointer userdata);
 
 		
-int phoneui_utils_init();
+int phoneui_utils_init(GKeyFile *keyfile);
 
 #endif
 

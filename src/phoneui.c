@@ -92,21 +92,10 @@ static struct BackendInfo backends[] = {
 
 static void phoneui_connect();
 
-void
-phoneui_load_backend(enum BackendType type)
+static void
+phoneui_load_backend(GKeyFile *keyfile, enum BackendType type)
 {
-	GKeyFile *keyfile;
-	GKeyFileFlags flags;
-	GError *error = NULL;
 	char *library;
-
-	keyfile = g_key_file_new();
-	flags = G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS;
-	if (!g_key_file_load_from_file
-	    (keyfile, PHONEUI_CONFIG, flags, &error)) {
-		g_error(error->message);
-		return;
-	}
 
 	library =
 		g_key_file_get_string(keyfile, backends[type].name, "module", NULL);
@@ -132,8 +121,6 @@ phoneui_load_backend(enum BackendType type)
 	else {
 		g_error("Loading failed. library not set.");
 	}
-
-	g_key_file_free(keyfile);
 }
 
 void
@@ -141,14 +128,29 @@ phoneui_load(const char *application_name)
 {
 	g_debug("Loading %s", application_name);	
 	int i;
+	GKeyFile *keyfile;
+	GKeyFileFlags flags;
+	GError *error = NULL;
+	keyfile = g_key_file_new();
+	flags = G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS;
+	if (!g_key_file_load_from_file
+	    (keyfile, PHONEUI_CONFIG, flags, &error)) {
+		g_error(error->message);
+		return;
+	}
+	
 	for (i = 0 ; i < BACKEND_NO ; i++) {
-		phoneui_load_backend(i);
+		phoneui_load_backend(keyfile, i);
 	}
 	
 	phoneui_connect();
 	/* init phone utils */
 	/* FIXME: should deinit somewhere! */
 	phone_utils_init();
+
+	phoneui_utils_init(keyfile);
+
+	g_key_file_free(keyfile);
 }
 
 
@@ -268,8 +270,6 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 	}
 
 	g_hash_table_destroy(inits);
-
-	phoneui_utils_init();
 }
 
 void

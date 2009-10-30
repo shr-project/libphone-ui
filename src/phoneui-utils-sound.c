@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <glib.h>
 #include <alsa/asoundlib.h>
 
 #include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-audio.h>
@@ -29,6 +30,7 @@ static snd_hctl_t *hctl = NULL;
 static int
 _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
 {
+	int err;
 	const char *ctl_name = controls[sound_state][type].name;
 	
 	snd_ctl_elem_id_t *id;
@@ -40,8 +42,10 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 	snd_ctl_elem_info_t *info;
 	snd_ctl_elem_info_alloca(&info);
 	
-	if (snd_hctl_elem_info(elem, info) < 0) {
-		return 1;
+	err = snd_hctl_elem_info(elem, info);
+	if (err < 0) {
+		g_debug("%s", snd_strerror(err));
+		return -1;
 	}
 
 	/* verify type != integer */
@@ -62,6 +66,7 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 int
 phoneui_utils_sound_volume_get(enum SoundControlType type)
 {
+	int err;
 	long value, min, max;
 	unsigned int i,count;
 	const char *ctl_name = controls[sound_state][type].name;
@@ -77,9 +82,12 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
 		return -1;
 
-	if (snd_hctl_elem_read(elem, control) < 0) {
-		return 1;
+	err = snd_hctl_elem_read(elem, control);
+	if (err < 0) {
+		g_debug("%s", snd_strerror(err));
+		return -1;
 	}
+	
 	value = 0;
 	/* FIXME: possible long overflow */
 	for (i = 0 ; i < count ; i++) {
@@ -115,23 +123,35 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	}
 
 	err = snd_hctl_elem_write(elem, control);
-
+	if (err) {
+		g_debug("%s", snd_strerror(err));
+		return -1;
+	}
 	return 0;
 }
 
 int
-phoneui_utils_sound_init(const char *device_name)
+phoneui_utils_sound_init(GKeyFile *keyfile)
 {
 	int err;
-	//err = snd_hctl_open(&hctl, "hw:0", 0);
+	const char *device_name;
+	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
+	if (!device_name) {
+		g_debug("No hw control found, using default");
+		device_name = "hw:0";
+	}
 	if (hctl) {
 		snd_hctl_close(hctl);
 	}
 	err = snd_hctl_open(&hctl, device_name, 0);
 	if (err) {
+		g_debug("%s", snd_strerror(err));
 		return err;
 	}
 	err = snd_hctl_load(hctl);
+	if (err) {
+		g_debug("%s", snd_strerror(err));
+	}
 	return err;
 }
 
