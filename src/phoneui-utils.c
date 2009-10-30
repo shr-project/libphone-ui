@@ -19,9 +19,6 @@
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 
-/*FIXME: BAD BAD BAD SHOULD REMOVE AS SOON AS I FIX SIM_AUTH */
-#include "phoneui.h"
-
 static GValue *
 _new_gvalue_string(const char *value)
 {
@@ -673,56 +670,69 @@ phoneui_utils_contacts_get(int *count,
 	g_hash_table_destroy(qry);
 }
 
-
 /* --- SIM Auth handling --- */
-/*FIXME: should NOT exist, should be implemented in phone-ui-shr!!
- * we don't know, maybe the backend wants to do something else as well,
- * not only show the window, it should provide this function, should not
- * be provided here, maybe it wants to show an error message as well?*/
+struct _auth_pack {
+	gpointer data;
+	void (*callback)(int, gpointer);
+};
+
 static void
-_auth_get_status_callback(GError *error, int status, gpointer data)
+_auth_get_status_callback(GError *error, int status, gpointer _data)
 {
-	/*FIXME: do we want to do anything with data? */
-	(void) data;
+	struct _auth_pack *data = (struct _auth_pack *)_data;
 	g_debug("_auth_get_status_callback(error=%s,status=%d)", error ? "ERROR" : "OK", status);
-	if (status == SIM_READY) {
-		g_debug("hiding auth dialog");
-		phoneui_utils_sim_auth_hide(status);
+	if (!data->callback) {
+		g_debug("no callback set!");
+		return;
+	}
+
+	if (error) {
+		g_debug("_auth_get_status_callback: %s", error->message);
+		data->callback(SIM_UNKNOWN, data->data);
+		g_error_free(error);
 	}
 	else {
-		g_debug("re-showing auth dialog");
-		phoneui_utils_sim_auth_show(status);
+		data->callback(status, data->data);
 	}
+	free(data);
 }
 
 static void
-_auth_send_callback(GError *error, gpointer data)
+_auth_send_callback(GError *error, gpointer _data)
 {
-	/*FIXME: do we want to do anything with data? */
-	(void) data;
+	struct _auth_pack *data = (struct _auth_pack *)_data;
 	g_debug("_auth_send_callback(%s)", error ? "ERROR" : "OK");
 	if (error != NULL) {
-		g_debug("SIM authentification error");
+		g_debug("_auth_send_callback: %s", error->message);
+		g_error_free(error);
 	}
 	/* we have to re-get the current status of
 	 * needed sim auth, because it might change
 	 * from PIN to PUK and if auth worked we
 	 * have to hide the sim auth dialog */
-	ogsmd_sim_get_auth_status(_auth_get_status_callback, NULL);
+	ogsmd_sim_get_auth_status(_auth_get_status_callback, data);
 }
 
 void
-phoneui_utils_sim_pin_send(const char *pin)
+phoneui_utils_sim_pin_send(const char *pin,
+		void (*callback)(int, gpointer), gpointer userdata)
 {
-	g_debug("phoneui_utils_sim_pin_send()");
-	ogsmd_sim_send_auth_code(pin, _auth_send_callback, NULL);
+	g_debug("phoneui_sim_pin_send()");
+	struct _auth_pack *data = malloc(sizeof(struct _auth_pack));
+	data->data = userdata;
+	data->callback = callback;
+	ogsmd_sim_send_auth_code(pin, _auth_send_callback, data);
 }
 
 void
-phoneui_utils_sim_puk_send(const char *puk, const char *new_pin)
+phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
+		void (*callback)(int, gpointer), gpointer userdata)
 {
-	g_debug("phoneui_utils_sim_puk_send()");
-	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, NULL);
+	g_debug("phoneui_sim_puk_send()");
+	struct _auth_pack *data = malloc(sizeof(struct _auth_pack));
+	data->data = userdata;
+	data->callback = callback;
+	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, data);
 }
 
 

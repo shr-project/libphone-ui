@@ -48,7 +48,6 @@ static void (*_phoneui_messages_message_show) (const int id) = NULL;
 
 /* Dialer */
 static void (*_phoneui_dialer_show) () = NULL;
-static void (*_phoneui_dialer_hide) () = NULL;
 
 /* Notifications */
 static void (*_phoneui_dialog_show) (int type) = NULL;
@@ -198,9 +197,6 @@ phoneui_connect()
 
 	_phoneui_dialer_show =
 		phoneui_get_function("phoneui_backend_dialer_show",
-					backends[BACKEND_DIALER].library);
-	_phoneui_dialer_hide =
-		phoneui_get_function("phoneui_backend_dialer_hide",
 					backends[BACKEND_DIALER].library);
 
 	_phoneui_dialog_show =
@@ -360,7 +356,7 @@ phoneui_contacts_contact_new(GHashTable *values)
 void
 phoneui_contacts_contact_edit(const char *contact_path)
 {
-	if (_phoneui_contacts_contact_new)
+	if (_phoneui_contacts_contact_edit)
 		_phoneui_contacts_contact_edit(contact_path);
 	else
 		g_debug("can't find function %s", __FUNCTION__);
@@ -391,15 +387,6 @@ phoneui_dialer_show()
 {
 	if (_phoneui_dialer_show)
 		_phoneui_dialer_show();
-	else
-		g_debug("can't find function %s", __FUNCTION__);
-}
-
-void
-phoneui_dialer_hide()
-{
-	if (_phoneui_dialer_hide)
-		_phoneui_dialer_hide();
 	else
 		g_debug("can't find function %s", __FUNCTION__);
 }
