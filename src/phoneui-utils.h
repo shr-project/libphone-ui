@@ -1,6 +1,7 @@
 #ifndef _phoneui_utils_UTILITY_H
 #define _phoneui_utils_UTILITY_H
 #include <glib.h>
+#include "phoneui-utils-sound.h"
 
 typedef enum {
 	PHONEGUI_DIALOG_ERROR_DO_NOT_USE,

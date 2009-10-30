@@ -6,8 +6,9 @@ AM_CFLAGS = -Wall -Wextra -Werror @GLIB_CFLAGS@ @DBUS_GLIB_CFLAGS@ @FRAMEWORKD_G
 
 lib_LTLIBRARIES = libphone-ui.la
 
-libphone_ui_la_SOURCES = phoneui.c phoneui.h phoneui-utility.h phoneui-utility.c 
-libphone_ui_HEADERS = phoneui.h phoneui-utility.h
+libphone_ui_la_SOURCES = phoneui.c phoneui.h phoneui-utils.h phoneui-utils.c \
+			 phoneui-utils-sound.c phoneui-utils-sound.h
+libphone_ui_HEADERS = phoneui.h phoneui-utils.h phoneui-utils-sound.h
 
 
 libphone_uidir = $(includedir)/phoneui
