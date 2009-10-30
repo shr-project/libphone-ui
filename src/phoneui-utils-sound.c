@@ -1,26 +1,27 @@
+#include <stdio.h>
 #include <alsa/asoundlib.h>
+
+#include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-audio.h>
 
 #include "phoneui-utils-sound.h"
 
+/* The sound state */
+static enum SoundState sound_state = SOUND_STATE_CLEAR;
 
-#include <stdio.h>
-
+/* Controlling sound */
 struct SoundControl {
 	const char *name;
 };
 
 /* FIXME: I guessed all of these values, most of them are probably incorrect */
-static struct SoundControl controls[] = {
-/*CONTROL_IDLE_SPEAKER		*/	{"PCM Volume"},
-/*CONTROL_HEADSET_SPEAKER	*/	{"Headphone Playback Volume"},
-/*CONTROL_HEADSET_MICROPHONE	*/	{"Mono Sidetone Playback Volume"},
-/*CONTROL_HANDSET_SPEAKER	*/	{"Speaker Playback Volume"},
-/*CONTROL_HANDSET_MICROPHONE	*/	{"Mono Sidetone Playback Volume"},
-/*CONTROL_SPEAKER_SPEAKER	*/	{"Headphone Playback Volume"},
-/*CONTROL_SPEAKER_MICROPHONE	*/	{"Mono Sidetone Playback Volume"},
-/*CONTROL_BLUETOOTH_SPEAKER	*/	{"Speaker Playback Volume"}, /* didn't even bother to guess, no idea */
-/*CONTORL_BLUETOOTH_MICROPHONE	*/	{"Speaker Playback Volume"} /* didn't even bother to guess, no idea */
-					};
+/* The order must be the same as SoundState (rows) and SoundControlType (columns */
+static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END] = {
+		{{"PCM Volume"}, {""}},
+		{{"Headphone Playback Volume"}, {"Mono Sidetone Playback Volume"}},
+		{{"Speaker Playback Volume"}, {"Mono Sidetone Playback Volume"}},
+		{{"Headphone Playback Volume"}, {"Mono Sidetone Playback Volume"}},
+		{{"Speaker Playback Volume"}, {"Speaker Playback Volume"}} /* didn't even bother to guess, no idea */
+		};
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
@@ -30,7 +31,7 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 {
 	unsigned int count;
 	long min, max, step;
-	const char *ctl_name = controls[type].name;
+	const char *ctl_name = controls[sound_state][type].name;
 	
 	snd_ctl_elem_id_t *id;
 	snd_ctl_elem_id_alloca(&id);
@@ -70,7 +71,7 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 {
 	long value, min, max;
 	unsigned int i,count;
-	const char *ctl_name = controls[type].name;
+	const char *ctl_name = controls[sound_state][type].name;
 	
 	snd_ctl_elem_value_t *control;
 	snd_ctl_elem_value_alloca(&control);
@@ -103,7 +104,7 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	long new_value;
 	unsigned int i, count;
 	long min, max;
-	const char *ctl_name = controls[type].name;
+	const char *ctl_name = controls[sound_state][type].name;
 	/*FIXME: verify it's writeable and of the correct element type */
 	snd_ctl_elem_id_t *id;
 	snd_ctl_elem_id_alloca(&id);
@@ -148,3 +149,52 @@ phoneui_utils_sound_deinit()
 	hctl = NULL;
 	return 0;
 }
+
+int
+phoneui_utils_sound_state_set(enum SoundState state)
+{
+	/* remove last one from stack 
+	 * unless it's an init and then make init.
+	 */
+	/* init only if sound_state was CLEAR */
+	if (state == SOUND_STATE_INIT) {
+		state = SOUND_STATE_HANDSET;
+		if (sound_state != SOUND_STATE_CLEAR) {
+			return 1;
+		}
+	}
+
+	if (sound_state != SOUND_STATE_CLEAR) {
+		odeviced_audio_pull_scenario(NULL, NULL);
+	}
+
+	sound_state = state;
+	switch (sound_state) {
+	case SOUND_STATE_SPEAKER:
+		odeviced_audio_push_scenario("gsmspeakerout", NULL, NULL);
+		break;
+	case SOUND_STATE_HEADSET:
+		odeviced_audio_push_scenario("gsmheadset", NULL, NULL);
+		break;
+	case SOUND_STATE_HANDSET:
+		odeviced_audio_push_scenario("gsmhandset", NULL, NULL);
+		break;
+	case SOUND_STATE_BT:
+		odeviced_audio_push_scenario("gsmbluetooth", NULL, NULL);
+		break;
+	case SOUND_STATE_CLEAR:
+		break;
+	default:
+		break;
+	}
+	
+	return 0;
+
+}
+
+enum SoundState
+phoneui_utils_sound_state_get()
+{
+	return sound_state;
+}
+
