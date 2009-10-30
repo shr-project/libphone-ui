@@ -6,7 +6,7 @@
 #include "phoneui-utils-sound.h"
 
 /* The sound state */
-static enum SoundState sound_state = SOUND_STATE_CLEAR;
+static enum SoundState sound_state = SOUND_STATE_IDLE;
 
 /* Controlling sound */
 struct SoundControl {
@@ -159,12 +159,12 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	/* init only if sound_state was CLEAR */
 	if (state == SOUND_STATE_INIT) {
 		state = SOUND_STATE_HANDSET;
-		if (sound_state != SOUND_STATE_CLEAR) {
+		if (sound_state != SOUND_STATE_IDLE) {
 			return 1;
 		}
 	}
 
-	if (sound_state != SOUND_STATE_CLEAR) {
+	if (sound_state != SOUND_STATE_IDLE) {
 		odeviced_audio_pull_scenario(NULL, NULL);
 	}
 
@@ -182,7 +182,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	case SOUND_STATE_BT:
 		odeviced_audio_push_scenario("gsmbluetooth", NULL, NULL);
 		break;
-	case SOUND_STATE_CLEAR:
+	case SOUND_STATE_IDLE:
 		break;
 	default:
 		break;
