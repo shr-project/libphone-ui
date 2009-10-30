@@ -27,6 +27,8 @@
 #include <frameworkd-glib/frameworkd-glib-dbus.h>
 #include <phone-utils.h>
 
+#include "phoneui-utils-sound.h"
+
 /* Calls */
 static void (*_phoneui_incoming_call_show) (const int id, const int status,
 					     const char *number) = NULL;
@@ -130,6 +132,8 @@ phoneui_load_backend(enum BackendType type)
 	else {
 		g_error("Loading failed. library not set.");
 	}
+
+	g_free(keyfile);
 }
 
 void
@@ -264,6 +268,8 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 	}
 
 	g_hash_table_destroy(inits);
+
+	phoneui_utils_init();
 }
 
 void

@@ -129,6 +129,9 @@ phoneui_utils_sound_init(const char *device_name)
 		snd_hctl_close(hctl);
 	}
 	err = snd_hctl_open(&hctl, device_name, 0);
+	if (err) {
+		return err;
+	}
 	err = snd_hctl_load(hctl);
 	return err;
 }

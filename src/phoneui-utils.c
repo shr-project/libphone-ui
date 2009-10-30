@@ -98,9 +98,11 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 }
 
 int
-phoneui_utils_utility_init()
+phoneui_utils_init()
 {
-	
+	int ret;
+	/*FIXME: change so it'll be set from config */
+	ret = phoneui_utils_sound_init("hw:0");
 	return 0;
 }
 
