@@ -133,7 +133,7 @@ phoneui_load_backend(enum BackendType type)
 		g_error("Loading failed. library not set.");
 	}
 
-	g_free(keyfile);
+	g_key_file_free(keyfile);
 }
 
 void

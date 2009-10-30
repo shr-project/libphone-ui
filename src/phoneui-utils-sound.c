@@ -5,9 +5,6 @@
 
 #include <stdio.h>
 
-
-
-
 struct SoundControl {
 	const char *name;
 };
