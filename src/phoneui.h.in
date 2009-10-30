@@ -17,7 +17,7 @@
 #define _PHONEUI_H
 #include <glib.h>
 
-#include "phoneui-utility.h"
+#include "phoneui-utils.h"
 
 #define PHONEUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
 #define PHONEUI_MODULES_PATH "@LIBDIR@/phoneui/modules/"
