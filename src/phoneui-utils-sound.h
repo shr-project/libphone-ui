@@ -1,0 +1,4 @@
+#ifndef _PHONEUI_UTILS_SOUND_H
+#define _PHONEUI_UTILS_SOUND_H
+
+#endif
