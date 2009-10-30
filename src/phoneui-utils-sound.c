@@ -12,16 +12,24 @@ struct SoundControl {
 	const char *name;
 };
 
+/* FIXME: I guessed all of these values, most of them are probably incorrect */
 static struct SoundControl controls[] = {
-					{"Master Capture Volume"},
-					{"Master Playback Volume"}
+/*CONTROL_IDLE_SPEAKER		*/	{"PCM Volume"},
+/*CONTROL_HEADSET_SPEAKER	*/	{"Headphone Playback Volume"},
+/*CONTROL_HEADSET_MICROPHONE	*/	{"Mono Sidetone Playback Volume"},
+/*CONTROL_HANDSET_SPEAKER	*/	{"Speaker Playback Volume"},
+/*CONTROL_HANDSET_MICROPHONE	*/	{"Mono Sidetone Playback Volume"},
+/*CONTROL_SPEAKER_SPEAKER	*/	{"Headphone Playback Volume"},
+/*CONTROL_SPEAKER_MICROPHONE	*/	{"Mono Sidetone Playback Volume"},
+/*CONTROL_BLUETOOTH_SPEAKER	*/	{"Speaker Playback Volume"}, /* didn't even bother to guess, no idea */
+/*CONTORL_BLUETOOTH_MICROPHONE	*/	{"Speaker Playback Volume"} /* didn't even bother to guess, no idea */
 					};
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
 
 static int
-_phoneui_utils_sound_volume_get_stats(enum SoundDeviceType type, long *_min, long *_max, long *_step, unsigned int *_count)
+_phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
 {
 	unsigned int count;
 	long min, max, step;
@@ -61,7 +69,7 @@ _phoneui_utils_sound_volume_get_stats(enum SoundDeviceType type, long *_min, lon
 }
 
 int
-phoneui_utils_sound_volume_get(enum SoundDeviceType type)
+phoneui_utils_sound_volume_get(enum SoundControlType type)
 {
 	long value, min, max;
 	unsigned int i,count;
@@ -92,7 +100,7 @@ phoneui_utils_sound_volume_get(enum SoundDeviceType type)
 }
 
 int
-phoneui_utils_sound_volume_set(enum SoundDeviceType type, int percent)
+phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 {
 	int err;
 	long new_value;
