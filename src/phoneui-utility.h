@@ -1,5 +1,5 @@
-#ifndef _PHONEUI_UTILITY_H
-#define _PHONEUI_UTILITY_H
+#ifndef _phoneui_utils_UTILITY_H
+#define _phoneui_utils_UTILITY_H
 #include <glib.h>
 
 typedef enum {
@@ -10,60 +10,60 @@ typedef enum {
 	PHONEGUI_DIALOG_SIM_NOT_PRESENT
 } PhoneguiDialogType;
 
-gchar *phoneui_get_user_home_prefix();
-gchar *phoneui_get_user_home_code();
+gchar *phoneui_utils_get_user_home_prefix();
+gchar *phoneui_utils_get_user_home_code();
 
 int
-phoneui_contact_lookup(const char *_number,
+phoneui_utils_contact_lookup(const char *_number,
 			void (*_callback) (GHashTable *, gpointer),
 			void *_data);
-int phoneui_contact_delete(const char *path,
+int phoneui_utils_contact_delete(const char *path,
 				void (*name_callback) (GError *, gpointer),
 				void *data);
-int phoneui_contact_update(const char *path,
+int phoneui_utils_contact_update(const char *path,
 				GHashTable *contact_data, void (*callback)(GError *, gpointer),
 				void* data);
-int phoneui_contact_add(const GHashTable *contact_data,
+int phoneui_utils_contact_add(const GHashTable *contact_data,
 			void (*callback)(GError*, char *, gpointer),
 			void* data);
-int phoneui_contact_get(const char *contact_path,
+int phoneui_utils_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data);
-void phoneui_contacts_get(int *count,
+void phoneui_utils_contacts_get(int *count,
 		void (*callback)(gpointer , gpointer),
 		gpointer userdata);
 GHashTable *
-phoneui_contact_sanitize_content(GHashTable *source);
+phoneui_utils_contact_sanitize_content(GHashTable *source);
 
 /* FIXME: rename to message send */
-int phoneui_sms_send(const char *message, GPtrArray * recipients, void (*callback)
+int phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),
 		  void *userdata);
-int phoneui_message_delete(const char *message_path,
+int phoneui_utils_message_delete(const char *message_path,
 				void (*callback)(GError *, gpointer),
 				void *data);
-int phoneui_message_set_read_status(const char *path, int read,
+int phoneui_utils_message_set_read_status(const char *path, int read,
 				void (*callback) (GError *, gpointer),
 				void *data);
 
-int phoneui_call_initiate(const char *number,
+int phoneui_utils_call_initiate(const char *number,
 				void (*callback)(GError *, int id_call, gpointer),
 				gpointer userdata);
-int phoneui_call_release(int call_id, 
+int phoneui_utils_call_release(int call_id, 
 			void (*callback)(GError *, gpointer),
 			gpointer userdata);
-int phoneui_call_activate(int call_id, 
+int phoneui_utils_call_activate(int call_id, 
 			void (*callback)(GError *, gpointer),
 			gpointer userdata);
-int phoneui_call_send_dtmf(const char *tones,
+int phoneui_utils_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
-int phoneui_network_send_ussd_request(char *request,
+int phoneui_utils_network_send_ussd_request(char *request,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
-void phoneui_sim_pin_send(const char *pin);
-void phoneui_sim_puk_send(const char *puk, const char *new_pin);
+void phoneui_utils_sim_pin_send(const char *pin);
+void phoneui_utils_sim_puk_send(const char *puk, const char *new_pin);
 
 #endif
 

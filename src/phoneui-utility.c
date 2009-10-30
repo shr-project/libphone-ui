@@ -16,7 +16,8 @@
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
 
-#include "phoneui-utility.h"
+#include "phoneui-utils.h"
+#include "phoneui-utils-sound.h"
 
 /*FIXME: BAD BAD BAD SHOULD REMOVE AS SOON AS I FIX SIM_AUTH */
 #include "phoneui.h"
@@ -91,7 +92,7 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 		(struct _contact_lookup_pack *)userdata;
 	if (!error && path && *path) {
 		g_debug("found contact %s", path);
-		phoneui_contact_get(path, data->callback, data->data);
+		phoneui_utils_contact_get(path, data->callback, data->data);
 	}
 	else {
 		g_debug("no contact found...");
@@ -100,7 +101,14 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 }
 
 int
-phoneui_contact_lookup(const char *_number,
+phoneui_utils_utility_init()
+{
+	
+	return 0;
+}
+
+int
+phoneui_utils_contact_lookup(const char *_number,
 			void (*_callback) (GHashTable *, gpointer),
 			void *_data)
 {
@@ -173,7 +181,7 @@ _add_opimd_message(const char *number, const char *message)
 }
 
 int
-phoneui_sms_send(const char *message, GPtrArray * recipients, void (*callback)
+phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),
 		  void *userdata)
 {
@@ -312,7 +320,7 @@ phoneui_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 
 
 int
-phoneui_call_initiate(const char *number,
+phoneui_utils_call_initiate(const char *number,
 			void (*callback)(GError *, int id_call, gpointer),
 			gpointer userdata)
 {
@@ -322,7 +330,7 @@ phoneui_call_initiate(const char *number,
 }
 
 int
-phoneui_call_release(int call_id, 
+phoneui_utils_call_release(int call_id, 
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
@@ -331,7 +339,7 @@ phoneui_call_release(int call_id,
 }
 
 int
-phoneui_call_activate(int call_id, 
+phoneui_utils_call_activate(int call_id, 
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
@@ -340,7 +348,7 @@ phoneui_call_activate(int call_id,
 }
 
 int
-phoneui_contact_delete(const char *path,
+phoneui_utils_contact_delete(const char *path,
 				void (*callback) (GError *, gpointer),
 				void *data)
 {
@@ -349,7 +357,7 @@ phoneui_contact_delete(const char *path,
 }
 
 int
-phoneui_call_send_dtmf(const char *tones,
+phoneui_utils_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
@@ -358,7 +366,7 @@ phoneui_call_send_dtmf(const char *tones,
 }
 
 int
-phoneui_network_send_ussd_request(char *request,
+phoneui_utils_network_send_ussd_request(char *request,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
@@ -367,7 +375,7 @@ phoneui_network_send_ussd_request(char *request,
 }
 
 int
-phoneui_message_delete(const char *path,
+phoneui_utils_message_delete(const char *path,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
@@ -379,7 +387,7 @@ phoneui_message_delete(const char *path,
 /* --- contacts utilities --- */
 
 int
-phoneui_message_set_read_status(const char *path, int read,
+phoneui_utils_message_set_read_status(const char *path, int read,
 				void (*callback) (GError *, gpointer),
 				void *data)
 {
@@ -402,7 +410,7 @@ phoneui_message_set_read_status(const char *path, int read,
 
 
 int
-phoneui_contact_update(const char *path,
+phoneui_utils_contact_update(const char *path,
 				GHashTable *contact_data,
 				void (*callback)(GError *, gpointer),
 				void* data)
@@ -412,7 +420,7 @@ phoneui_contact_update(const char *path,
 }
 
 int
-phoneui_contact_add(const GHashTable *contact_data,
+phoneui_utils_contact_add(const GHashTable *contact_data,
 			void (*callback)(GError*, char *, gpointer),
 			void* data)
 {
@@ -421,7 +429,7 @@ phoneui_contact_add(const GHashTable *contact_data,
 }
 
 GHashTable *
-phoneui_contact_sanitize_content(GHashTable *source)
+phoneui_utils_contact_sanitize_content(GHashTable *source)
 {
 	g_debug("sanitizing a contact content...");
 	gpointer _key, _val;
@@ -533,13 +541,13 @@ _contact_get_callback(GError *error, GHashTable *_content, gpointer userdata)
 	if (!error) {
 		struct _contact_get_pack *data =
 			(struct _contact_get_pack *)userdata;
-		data->callback(phoneui_contact_sanitize_content(_content), data->data);
+		data->callback(phoneui_utils_contact_sanitize_content(_content), data->data);
 	}
 }
 
 
 int
-phoneui_contact_get(const char *contact_path,
+phoneui_utils_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data)
 {
 	struct _contact_get_pack *_pack =
@@ -591,7 +599,7 @@ _clone_and_sanitize_contacts(gpointer _entry, gpointer _target)
 	GPtrArray *target = (GPtrArray *)_target;
 	GHashTable *entry = (GHashTable *)_entry;
 
-	GHashTable *sani = phoneui_contact_sanitize_content(entry);
+	GHashTable *sani = phoneui_utils_contact_sanitize_content(entry);
 
 	g_ptr_array_add(target, sani);
 }
@@ -647,11 +655,11 @@ _contact_query_callback(GError *error, char *query_path, gpointer _data)
 }
 
 void
-phoneui_contacts_get(int *count,
+phoneui_utils_contacts_get(int *count,
 		void (*callback)(gpointer, gpointer),
 		gpointer userdata)
 {
-	g_debug("phoneui_contacts_get()");
+	g_debug("phoneui_utils_contacts_get()");
 	struct _contact_list_pack *data =
 		malloc(sizeof(struct _contact_list_pack));
 	data->data = userdata;
@@ -679,11 +687,11 @@ _auth_get_status_callback(GError *error, int status, gpointer data)
 	g_debug("_auth_get_status_callback(error=%s,status=%d)", error ? "ERROR" : "OK", status);
 	if (status == SIM_READY) {
 		g_debug("hiding auth dialog");
-		phoneui_sim_auth_hide(status);
+		phoneui_utils_sim_auth_hide(status);
 	}
 	else {
 		g_debug("re-showing auth dialog");
-		phoneui_sim_auth_show(status);
+		phoneui_utils_sim_auth_show(status);
 	}
 }
 
@@ -704,16 +712,16 @@ _auth_send_callback(GError *error, gpointer data)
 }
 
 void
-phoneui_sim_pin_send(const char *pin)
+phoneui_utils_sim_pin_send(const char *pin)
 {
-	g_debug("phoneui_sim_pin_send()");
+	g_debug("phoneui_utils_sim_pin_send()");
 	ogsmd_sim_send_auth_code(pin, _auth_send_callback, NULL);
 }
 
 void
-phoneui_sim_puk_send(const char *puk, const char *new_pin)
+phoneui_utils_sim_puk_send(const char *puk, const char *new_pin)
 {
-	g_debug("phoneui_sim_puk_send()");
+	g_debug("phoneui_utils_sim_puk_send()");
 	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, NULL);
 }
 
