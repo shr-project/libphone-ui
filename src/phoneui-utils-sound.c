@@ -29,8 +29,6 @@ static snd_hctl_t *hctl = NULL;
 static int
 _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
 {
-	unsigned int count;
-	long min, max, step;
 	const char *ctl_name = controls[sound_state][type].name;
 	
 	snd_ctl_elem_id_t *id;
@@ -46,22 +44,17 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 		return 1;
 	}
 
-	count = snd_ctl_elem_info_get_count(info);
-
 	/* verify type != integer */
 	element_type = snd_ctl_elem_info_get_type(info);
-	min = snd_ctl_elem_info_get_min(info);
-	max = snd_ctl_elem_info_get_max(info);
-	step = snd_ctl_elem_info_get_step(info);
 
 	if (_min)
-		*_min = min;
+		*_min = snd_ctl_elem_info_get_min(info);
 	if (_max)
-		*_max = max;
+		*_max = snd_ctl_elem_info_get_max(info);
 	if (_step)
-		*_step = step;
+		*_step = snd_ctl_elem_info_get_step(info);
 	if (_count)
-		*_count = count;
+		*_count = snd_ctl_elem_info_get_count(info);
 		
 	return 0;
 }
