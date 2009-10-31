@@ -40,7 +40,7 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 		return -1;
 	}
 
-	/* verify type != integer */
+	/* verify type == integer */
 	element_type = snd_ctl_elem_info_get_type(info);
 
 	if (_min)
@@ -200,6 +200,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 int
 phoneui_utils_sound_deinit()
 {
+	/*FIXME: add freeing the controls array */
 	snd_hctl_close(hctl);
 	hctl = NULL;
 	return 0;
@@ -208,10 +209,13 @@ phoneui_utils_sound_deinit()
 int
 phoneui_utils_sound_state_set(enum SoundState state)
 {
-	/* remove last one from stack 
-	 * unless it's an init and then make init.
-	 */
-	/* init only if sound_state was CLEAR */
+	const char *scenario = NULL;
+	/* if there's nothing to do, abort */
+	if (state == sound_state) {
+		return 0;
+	}
+
+	/* allow INIT only if sound_state was IDLE */
 	if (state == SOUND_STATE_INIT) {
 		state = SOUND_STATE_HANDSET;
 		if (sound_state != SOUND_STATE_IDLE) {
@@ -219,30 +223,41 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		}
 	}
 
-	if (sound_state != SOUND_STATE_IDLE) {
-		odeviced_audio_pull_scenario(NULL, NULL);
-	}
-
-	sound_state = state;
-	switch (sound_state) {
+	
+	switch (state) {
 	case SOUND_STATE_SPEAKER:
-		odeviced_audio_push_scenario("gsmspeakerout", NULL, NULL);
+		scenario = "gsmspeakerout";
 		break;
 	case SOUND_STATE_HEADSET:
-		odeviced_audio_push_scenario("gsmheadset", NULL, NULL);
+		scenario = "gsmheadset";
 		break;
 	case SOUND_STATE_HANDSET:
-		odeviced_audio_push_scenario("gsmhandset", NULL, NULL);
+		scenario = "gsmhandset";
 		break;
 	case SOUND_STATE_BT:
-		odeviced_audio_push_scenario("gsmbluetooth", NULL, NULL);
+		scenario = "gsmbluetooth";
 		break;
 	case SOUND_STATE_IDLE:
+		/* return to the last active scenario */
+		odeviced_audio_pull_scenario(NULL, NULL);
+		return 0;
 		break;
 	default:
 		break;
 	}
-	
+
+	/* if the previous state was idle (i.e not controlled by us)
+	 * we should push the scenario */
+	/*FIXME: fix casts, they are there just because frameworkd-glib
+	 * is broken there */
+	if (sound_state == SOUND_STATE_IDLE) {
+		odeviced_audio_push_scenario((char *) scenario, NULL, NULL);
+	}
+	else {
+		odeviced_audio_set_scenario((char *) scenario, NULL, NULL);	
+	}
+
+	sound_state = state;
 	return 0;
 
 }
