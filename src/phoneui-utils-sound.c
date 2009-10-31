@@ -19,6 +19,8 @@ static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
 
+/*FIXME: remove all the info_ptr and id_ptr and control_ptr hacks to overcome
+ * the bug in alsa when we update alsa to a newer version */
 static int
 _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
 {
@@ -26,13 +28,15 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 	const char *ctl_name = controls[sound_state][type].name;
 	
 	snd_ctl_elem_id_t *id;
-	snd_ctl_elem_id_alloca(&id);
+	snd_ctl_elem_id_t **id_ptr = &id;
+	snd_ctl_elem_id_alloca(id_ptr);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, ctl_name);
 	snd_hctl_elem_t *elem = snd_hctl_find_elem(hctl, id);
 	snd_ctl_elem_type_t element_type;
 	snd_ctl_elem_info_t *info;
-	snd_ctl_elem_info_alloca(&info);
+	snd_ctl_elem_info_t **info_ptr = &info;	
+	snd_ctl_elem_info_alloca(info_ptr);
 	
 	err = snd_hctl_elem_info(elem, info);
 	if (err < 0) {
@@ -63,11 +67,13 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	unsigned int i,count;
 	const char *ctl_name = controls[sound_state][type].name;
 	snd_ctl_elem_value_t *control;
+	snd_ctl_elem_value_t **control_ptr = &control;
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_id_t *id;
+	snd_ctl_elem_id_t **id_ptr = &id;
 	
-	snd_ctl_elem_value_alloca(&control);
-	snd_ctl_elem_id_alloca(&id);
+	snd_ctl_elem_value_alloca(control_ptr);
+	snd_ctl_elem_id_alloca(id_ptr);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, ctl_name);
 	elem = snd_hctl_find_elem(hctl, id);
@@ -105,11 +111,13 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	long min, max;
 	const char *ctl_name = controls[sound_state][type].name;
 	snd_ctl_elem_id_t *id;
+	snd_ctl_elem_id_t **id_ptr = &id;
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
+	snd_ctl_elem_value_t **control_ptr = &control;
 	
 	/*FIXME: verify it's writeable and of the correct element type */
-	snd_ctl_elem_id_alloca(&id);
+	snd_ctl_elem_id_alloca(id_ptr);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, ctl_name);
 	elem = snd_hctl_find_elem(hctl, id);
@@ -118,7 +126,7 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 			"Sound state: %d type: %d", ctl_name, sound_state, type);
 		return -1;
 	}
-	snd_ctl_elem_value_alloca(&control);
+	snd_ctl_elem_value_alloca(control_ptr);
 	snd_ctl_elem_value_set_id(control, id);
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
 		return -1;
