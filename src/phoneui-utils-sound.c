@@ -251,7 +251,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	case SOUND_STATE_IDLE:
 		/* return to the last active scenario */
 		odeviced_audio_pull_scenario(NULL, NULL);
-		return 0;
+		goto end;
 		break;
 	default:
 		break;
@@ -269,6 +269,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		odeviced_audio_set_scenario((char *) scenario, NULL, NULL);	
 	}
 
+end:
 	sound_state = state;
 	return 0;
 
