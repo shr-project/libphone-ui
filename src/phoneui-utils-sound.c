@@ -12,6 +12,7 @@ static enum SoundState sound_state = SOUND_STATE_IDLE;
 /* Controlling sound */
 struct SoundControl {
 	const char *name;
+	snd_hctl_elem_t *element;
 };
 
 static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
@@ -19,23 +20,20 @@ static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
 
+static int _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask);
 /*FIXME: remove all the info_ptr and id_ptr and control_ptr hacks to overcome
  * the bug in alsa when we update alsa to a newer version */
 static int
 _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
 {
 	int err;
-	const char *ctl_name = controls[sound_state][type].name;
 	
-	snd_ctl_elem_id_t *id;
-	snd_ctl_elem_id_t **id_ptr = &id;
-	snd_ctl_elem_id_alloca(id_ptr);
-	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
-	snd_ctl_elem_id_set_name(id, ctl_name);
-	snd_hctl_elem_t *elem = snd_hctl_find_elem(hctl, id);
 	snd_ctl_elem_type_t element_type;
 	snd_ctl_elem_info_t *info;
 	snd_ctl_elem_info_t **info_ptr = &info;	
+	snd_hctl_elem_t *elem;
+	
+	elem = controls[sound_state][type].element;
 	snd_ctl_elem_info_alloca(info_ptr);
 	
 	err = snd_hctl_elem_info(elem, info);
@@ -65,21 +63,15 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	int err;
 	long value, min, max;
 	unsigned int i,count;
-	const char *ctl_name = controls[sound_state][type].name;
+
 	snd_ctl_elem_value_t *control;
 	snd_ctl_elem_value_t **control_ptr = &control;
-	snd_hctl_elem_t *elem;
-	snd_ctl_elem_id_t *id;
-	snd_ctl_elem_id_t **id_ptr = &id;
-	
 	snd_ctl_elem_value_alloca(control_ptr);
-	snd_ctl_elem_id_alloca(id_ptr);
-	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
-	snd_ctl_elem_id_set_name(id, ctl_name);
-	elem = snd_hctl_find_elem(hctl, id);
+	
+	snd_hctl_elem_t *elem;
+	
+	elem = controls[sound_state][type].element;
 	if (!elem) {
-		g_debug("ALSA: No control named '%s' found - "
-			"Sound state: %d type: %d", ctl_name, sound_state, type);
 		return -1;
 	}
 	
@@ -109,25 +101,17 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	long new_value;
 	unsigned int i, count;
 	long min, max;
-	const char *ctl_name = controls[sound_state][type].name;
-	snd_ctl_elem_id_t *id;
-	snd_ctl_elem_id_t **id_ptr = &id;
+
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
 	snd_ctl_elem_value_t **control_ptr = &control;
 	
-	/*FIXME: verify it's writeable and of the correct element type */
-	snd_ctl_elem_id_alloca(id_ptr);
-	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
-	snd_ctl_elem_id_set_name(id, ctl_name);
-	elem = snd_hctl_find_elem(hctl, id);
+	
+	elem = controls[sound_state][type].element;
 	if (!elem) {
-		g_debug("ALSA: No control named '%s' found - "
-			"Sound state: %d type: %d", ctl_name, sound_state, type);
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(control_ptr);
-	snd_ctl_elem_value_set_id(control, id);
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
 		return -1;
 	new_value = ((max - min) * percent) / 100;
@@ -143,7 +127,27 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	return 0;
 }
 
+static void
+_phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundControlType type)
+{
+	const char *ctl_name = controls[sound_state][type].name;
+	snd_ctl_elem_id_t *id;
+	snd_ctl_elem_id_t **id_ptr = &id;
+	snd_hctl_elem_t *elem;
 
+	snd_ctl_elem_id_alloca(id_ptr);
+	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+	snd_ctl_elem_id_set_name(id, controls[state][type].name);
+	elem = controls[state][type].element = snd_hctl_find_elem(hctl, id);
+	if (elem) {
+		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_element_cb);
+	}
+	else {
+		g_debug("ALSA: No control named '%s' found - "
+			"Sound state: %d type: %d", ctl_name, state, type);
+	}
+	
+}
 static void
 _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 				enum SoundState state)
@@ -169,6 +173,9 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	}
 	controls[state][CONTROL_SPEAKER].name = strdup(speaker);
 	controls[state][CONTROL_MICROPHONE].name = strdup(microphone);
+	_phoneui_utils_sound_init_set_alsa_control(state, CONTROL_SPEAKER);
+	_phoneui_utils_sound_init_set_alsa_control(state, CONTROL_MICROPHONE);
+	
 }
 
 int
@@ -184,13 +191,6 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		device_name = "hw:0";
 	}
 
-	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE);
-	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", SOUND_STATE_BT);
-	_phoneui_utils_sound_init_set_control(keyfile, "handset", SOUND_STATE_HANDSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "headset", SOUND_STATE_HEADSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER);
-
-
 	if (hctl) {
 		snd_hctl_close(hctl);
 	}
@@ -199,10 +199,20 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		g_debug("%s", snd_strerror(err));
 		return err;
 	}
+	
 	err = snd_hctl_load(hctl);
 	if (err) {
 		g_debug("%s", snd_strerror(err));
 	}
+
+	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE);
+	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", SOUND_STATE_BT);
+	_phoneui_utils_sound_init_set_control(keyfile, "handset", SOUND_STATE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "headset", SOUND_STATE_HEADSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER);
+
+	snd_hctl_nonblock(hctl, 1);
+
 	return err;
 }
 
@@ -284,3 +294,17 @@ phoneui_utils_sound_state_get()
 	return sound_state;
 }
 
+static int
+_phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask)
+{
+	snd_ctl_elem_value_t *control;
+        if (mask == SND_CTL_EVENT_MASK_REMOVE)
+                return 0;
+        if (mask & SND_CTL_EVENT_MASK_VALUE) {
+                snd_ctl_elem_value_alloca(&control);
+                snd_hctl_elem_read(elem, control);
+                g_debug("cb %d %d\n", mask, (int)
+                                snd_ctl_elem_value_get_integer(control,0));
+        }
+	return 0;
+}
