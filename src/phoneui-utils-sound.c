@@ -233,6 +233,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		}
 	}
 
+	g_debug("Setting sound state to %d", state);
 	
 	switch (state) {
 	case SOUND_STATE_SPEAKER:
@@ -260,7 +261,6 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	 * we should push the scenario */
 	/*FIXME: fix casts, they are there just because frameworkd-glib
 	 * is broken there */
-	g_debug("Setting sound state to %d", state);
 
 	if (sound_state == SOUND_STATE_IDLE) {
 		odeviced_audio_push_scenario((char *) scenario, NULL, NULL);
