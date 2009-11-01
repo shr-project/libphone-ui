@@ -227,8 +227,10 @@ phoneui_utils_sound_state_set(enum SoundState state)
 
 	/* allow INIT only if sound_state was IDLE */
 	if (state == SOUND_STATE_INIT) {
-		state = SOUND_STATE_HANDSET;
-		if (sound_state != SOUND_STATE_IDLE) {
+		if (sound_state == SOUND_STATE_IDLE) {
+			state = SOUND_STATE_HANDSET;
+		}
+		else {
 			return 1;
 		}
 	}
@@ -250,6 +252,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		break;
 	case SOUND_STATE_IDLE:
 		/* return to the last active scenario */
+		g_debug("Pulled last phoneuid controlled scenario");
 		odeviced_audio_pull_scenario(NULL, NULL);
 		goto end;
 		break;
