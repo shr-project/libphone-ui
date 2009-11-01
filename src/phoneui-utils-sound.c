@@ -177,6 +177,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	int err;
 	const char *device_name;
 
+	sound_state = SOUND_STATE_IDLE;
 	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
 	if (!device_name) {
 		g_debug("No hw control found, using default");
@@ -209,6 +210,7 @@ int
 phoneui_utils_sound_deinit()
 {
 	/*FIXME: add freeing the controls array */
+	sound_state = SOUND_STATE_IDLE;
 	snd_hctl_close(hctl);
 	hctl = NULL;
 	return 0;
@@ -258,6 +260,8 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	 * we should push the scenario */
 	/*FIXME: fix casts, they are there just because frameworkd-glib
 	 * is broken there */
+	g_debug("Setting sound state to %d", state);
+
 	if (sound_state == SOUND_STATE_IDLE) {
 		odeviced_audio_push_scenario((char *) scenario, NULL, NULL);
 	}
