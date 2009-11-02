@@ -135,7 +135,7 @@ phoneui_load(const char *application_name)
 	flags = G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS;
 	if (!g_key_file_load_from_file
 	    (keyfile, PHONEUI_CONFIG, flags, &error)) {
-		g_error(error->message);
+		g_error("%s", error->message);
 		return;
 	}
 	
