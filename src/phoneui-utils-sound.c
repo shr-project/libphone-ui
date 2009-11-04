@@ -21,8 +21,7 @@ static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 static snd_hctl_t *hctl = NULL;
 
 static int _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask);
-/*FIXME: remove all the info_ptr and id_ptr and control_ptr hacks to overcome
- * the bug in alsa when we update alsa to a newer version */
+
 static int
 _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
 {
@@ -30,11 +29,10 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 	
 	snd_ctl_elem_type_t element_type;
 	snd_ctl_elem_info_t *info;
-	snd_ctl_elem_info_t **info_ptr = &info;	
 	snd_hctl_elem_t *elem;
 	
 	elem = controls[sound_state][type].element;
-	snd_ctl_elem_info_alloca(info_ptr);
+	snd_ctl_elem_info_alloca(&info);
 	
 	err = snd_hctl_elem_info(elem, info);
 	if (err < 0) {
@@ -65,8 +63,7 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	unsigned int i,count;
 
 	snd_ctl_elem_value_t *control;
-	snd_ctl_elem_value_t **control_ptr = &control;
-	snd_ctl_elem_value_alloca(control_ptr);
+	snd_ctl_elem_value_alloca(&control);
 	
 	snd_hctl_elem_t *elem;
 	
@@ -104,14 +101,13 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
-	snd_ctl_elem_value_t **control_ptr = &control;
 	
 	
 	elem = controls[sound_state][type].element;
 	if (!elem) {
 		return -1;
 	}
-	snd_ctl_elem_value_alloca(control_ptr);
+	snd_ctl_elem_value_alloca(&control);
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
 		return -1;
 	new_value = ((max - min) * percent) / 100;
@@ -132,10 +128,9 @@ _phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundCont
 {
 	const char *ctl_name = controls[sound_state][type].name;
 	snd_ctl_elem_id_t *id;
-	snd_ctl_elem_id_t **id_ptr = &id;
 	snd_hctl_elem_t *elem;
 
-	snd_ctl_elem_id_alloca(id_ptr);
+	snd_ctl_elem_id_alloca(&id);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, controls[state][type].name);
 	elem = controls[state][type].element = snd_hctl_find_elem(hctl, id);
