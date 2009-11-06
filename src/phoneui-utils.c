@@ -691,7 +691,6 @@ _auth_get_status_callback(GError *error, int status, gpointer _data)
 	if (error) {
 		g_debug("_auth_get_status_callback: %s", error->message);
 		data->callback(SIM_UNKNOWN, data->data);
-		g_error_free(error);
 	}
 	else {
 		data->callback(status, data->data);
@@ -705,8 +704,7 @@ _auth_send_callback(GError *error, gpointer _data)
 	struct _auth_pack *data = (struct _auth_pack *)_data;
 	g_debug("_auth_send_callback(%s)", error ? "ERROR" : "OK");
 	if (error != NULL) {
-		g_debug("_auth_send_callback: %s", error->message);
-		g_error_free(error);
+		g_debug("_auth_send_callback: (%d) %s", error->code, error->message);
 	}
 	/* we have to re-get the current status of
 	 * needed sim auth, because it might change
