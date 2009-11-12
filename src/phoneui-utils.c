@@ -743,7 +743,7 @@ _auth_get_status_callback(GError *error, int status, gpointer _data)
 
 	if (error) {
 		g_debug("_auth_get_status_callback: %s", error->message);
-		data->callback(SIM_UNKNOWN, data->data);
+		data->callback(PHONEUI_SIM_UNKNOWN, data->data);
 	}
 	else {
 		data->callback(status, data->data);
