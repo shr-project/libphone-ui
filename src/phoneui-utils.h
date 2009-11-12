@@ -3,6 +3,7 @@
 #include <glib.h>
 #include "phoneui-utils-sound.h"
 
+/*FIXME: rename to PhoneuiDialogType*/
 typedef enum {
 	PHONEGUI_DIALOG_ERROR_DO_NOT_USE,
 	// This value is used for checking if we get a wrong pointer out of a HashTable. 
@@ -11,6 +12,14 @@ typedef enum {
 	PHONEGUI_DIALOG_SIM_NOT_PRESENT
 } PhoneguiDialogType;
 
+typedef enum {
+        SIM_UNKNOWN,
+        SIM_READY,
+        SIM_PIN_REQUIRED,
+        SIM_PUK_REQUIRED,
+        SIM_PIN2_REQUIRED,
+        SIM_PUK2_REQUIRED
+} PhoneuiSimStatus;
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
