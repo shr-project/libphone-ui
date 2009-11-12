@@ -12,14 +12,14 @@ typedef enum {
 	PHONEGUI_DIALOG_SIM_NOT_PRESENT
 } PhoneguiDialogType;
 
-enum {
+enum PhoneuiSimStatus{
         PHONEUI_SIM_UNKNOWN,
         PHONEUI_SIM_READY,
         PHONEUI_SIM_PIN_REQUIRED,
         PHONEUI_SIM_PUK_REQUIRED,
         PHONEUI_SIM_PIN2_REQUIRED,
         PHONEUI_SIM_PUK2_REQUIRED
-} PhoneuiSimStatus;
+};
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
