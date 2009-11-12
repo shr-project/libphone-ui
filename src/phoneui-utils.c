@@ -317,6 +317,66 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 
 }
 
+struct _phoneui_utils_dial_pack {
+	void (*callback)(GError *, int id_call, gpointer);
+	gpointer data;
+};
+static void
+_phoneui_utils_dial_call_cb(GError *error, int id_call, gpointer userdata)
+{
+	struct _phoneui_utils_dial_pack *pack = userdata; /*can never be null */
+	if (pack) {
+		if (pack->callback) {
+			pack->callback(error, id_call, pack->data);
+		}
+		free(pack);
+	}
+}
+static void
+_phoneui_utils_dial_ussd_cb(GError *error, gpointer userdata)
+{
+	struct _phoneui_utils_dial_pack *pack = userdata; /*can never be null */
+	if (pack) {
+		if (pack->callback) {
+			pack->callback(error, 0, pack->data);
+		}
+		free(pack);
+	}
+}
+
+/* Starts either a call or an ussd request */
+int
+phoneui_utils_dial(const char *number,
+			void (*callback)(GError *, int id_call, gpointer),
+			gpointer userdata)
+{
+	struct _phoneui_utils_dial_pack *pack;
+	pack = malloc(sizeof(*pack));
+	if (!pack) {
+		g_debug("Failed to allocate memory");
+		return 1;
+	}
+	pack->data = userdata;
+	pack->callback = callback;
+	if (phone_utils_gsm_number_is_ussd(number)) {
+		phoneui_utils_ussd_initiate(number, _phoneui_utils_dial_ussd_cb, pack);
+	}
+	else {
+		phoneui_utils_call_initiate(number, _phoneui_utils_dial_call_cb, pack);
+	}
+	return 0;
+}
+
+int
+phoneui_utils_ussd_initiate(const char *request,
+				void (*callback)(GError *, gpointer),
+				void *data)
+{
+	g_debug("Inititating a USSD request %s\n", request);
+	/*FIXME: fix this (char *) cast when it's fixed in libframewrokd-glib */
+	ogsmd_network_send_ussd_request((char *) request, callback, data);
+	return 0;
+}
 
 int
 phoneui_utils_call_initiate(const char *number,
@@ -364,14 +424,7 @@ phoneui_utils_call_send_dtmf(const char *tones,
 	return 0;
 }
 
-int
-phoneui_utils_network_send_ussd_request(char *request,
-				void (*callback)(GError *, gpointer),
-				void *data)
-{
-	ogsmd_network_send_ussd_request(request, callback, data);
-	return 0;
-}
+
 
 int
 phoneui_utils_message_delete(const char *path,

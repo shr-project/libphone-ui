@@ -47,7 +47,10 @@ int phoneui_utils_message_delete(const char *message_path,
 int phoneui_utils_message_set_read_status(const char *path, int read,
 				void (*callback) (GError *, gpointer),
 				void *data);
-
+int phoneui_utils_dial(const char *number,
+				void (*callback)(GError *, int id_call, gpointer),
+				gpointer userdata);
+				
 int phoneui_utils_call_initiate(const char *number,
 				void (*callback)(GError *, int id_call, gpointer),
 				gpointer userdata);
@@ -61,7 +64,7 @@ int phoneui_utils_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
-int phoneui_utils_network_send_ussd_request(char *request,
+int phoneui_utils_ussd_initiate(const char *request,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
