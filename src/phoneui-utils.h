@@ -12,7 +12,7 @@ typedef enum {
 	PHONEGUI_DIALOG_SIM_NOT_PRESENT
 } PhoneguiDialogType;
 
-typedef enum {
+enum {
         PHONEUI_SIM_UNKNOWN,
         PHONEUI_SIM_READY,
         PHONEUI_SIM_PIN_REQUIRED,
@@ -46,7 +46,6 @@ void phoneui_utils_contacts_get(int *count,
 GHashTable *
 phoneui_utils_contact_sanitize_content(GHashTable *source);
 
-/* FIXME: rename to message send */
 int phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),
 		  void *userdata);
