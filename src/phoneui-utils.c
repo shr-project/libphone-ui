@@ -344,7 +344,8 @@ _phoneui_utils_dial_ussd_cb(GError *error, gpointer userdata)
 	}
 }
 
-/* Starts either a call or an ussd request */
+/* Starts either a call or an ussd request
+ * expects a valid number*/
 int
 phoneui_utils_dial(const char *number,
 			void (*callback)(GError *, int id_call, gpointer),
