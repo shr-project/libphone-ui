@@ -454,7 +454,7 @@ phoneui_utils_contact_sanitize_content(GHashTable *source)
 		const char *s_val = g_value_get_string(val);
 
 		/* sanitize phone numbers */
-		if (strstr(key, "Phone")) {
+		if (strstr(key, "Phone") || strstr(key, "phone")) {
 			/* for phonenumbers we have to strip the tel: prefix */
 			if (g_str_has_prefix(s_val, "tel:"))
 				s_val += 4;
