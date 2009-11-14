@@ -3,6 +3,7 @@
 #include <glib.h>
 #include "phoneui-utils-sound.h"
 
+/*FIXME: rename to PhoneuiDialogType*/
 typedef enum {
 	PHONEGUI_DIALOG_ERROR_DO_NOT_USE,
 	// This value is used for checking if we get a wrong pointer out of a HashTable. 
@@ -11,6 +12,14 @@ typedef enum {
 	PHONEGUI_DIALOG_SIM_NOT_PRESENT
 } PhoneguiDialogType;
 
+enum PhoneuiSimStatus{
+        PHONEUI_SIM_UNKNOWN,
+        PHONEUI_SIM_READY,
+        PHONEUI_SIM_PIN_REQUIRED,
+        PHONEUI_SIM_PUK_REQUIRED,
+        PHONEUI_SIM_PIN2_REQUIRED,
+        PHONEUI_SIM_PUK2_REQUIRED
+};
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
@@ -37,7 +46,6 @@ void phoneui_utils_contacts_get(int *count,
 GHashTable *
 phoneui_utils_contact_sanitize_content(GHashTable *source);
 
-/* FIXME: rename to message send */
 int phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),
 		  void *userdata);
@@ -47,7 +55,10 @@ int phoneui_utils_message_delete(const char *message_path,
 int phoneui_utils_message_set_read_status(const char *path, int read,
 				void (*callback) (GError *, gpointer),
 				void *data);
-
+int phoneui_utils_dial(const char *number,
+				void (*callback)(GError *, int id_call, gpointer),
+				gpointer userdata);
+				
 int phoneui_utils_call_initiate(const char *number,
 				void (*callback)(GError *, int id_call, gpointer),
 				gpointer userdata);
@@ -61,7 +72,7 @@ int phoneui_utils_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
-int phoneui_utils_network_send_ussd_request(char *request,
+int phoneui_utils_ussd_initiate(const char *request,
 				void (*callback)(GError *, gpointer),
 				gpointer userdata);
 
