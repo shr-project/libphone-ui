@@ -58,7 +58,7 @@ void phoneui_messages_message_show(const int id);
 void phoneui_dialer_show();
 
 /* Notifications */
-void phoneui_dialog_show(int type);
+void phoneui_dialog_show(const int type);
 void phoneui_sim_auth_show(const int status);
 void phoneui_sim_auth_hide(const int status);
 void phoneui_ussd_show(int mode, const char *message);
