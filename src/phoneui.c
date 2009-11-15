@@ -52,7 +52,7 @@ static void (*_phoneui_messages_message_show) (const int id) = NULL;
 static void (*_phoneui_dialer_show) () = NULL;
 
 /* Notifications */
-static void (*_phoneui_dialog_show) (int type) = NULL;
+static void (*_phoneui_dialog_show) (const int type) = NULL;
 static void (*_phoneui_sim_auth_show) (const int status) = NULL;
 static void (*_phoneui_sim_auth_hide) (const int status) = NULL;
 static void (*_phoneui_ussd_show) (int mode, const char *message) = NULL;
@@ -399,7 +399,7 @@ phoneui_dialer_show()
 
 /* Notifications */
 void
-phoneui_dialog_show(int type)
+phoneui_dialog_show(const int type)
 {
 	if (_phoneui_dialog_show)
 		_phoneui_dialog_show(type);
