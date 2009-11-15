@@ -19,6 +19,9 @@
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 
+/*FIXME: fix this hackish var, drop it */
+static DBusGProxy *GQuery = NULL;
+
 static GValue *
 _new_gvalue_string(const char *value)
 {
@@ -789,5 +792,59 @@ phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, data);
 }
 
+/*FIXME: make this less ugly, do like I did in conacts */
+struct _messages_pack {
+	void (*callback) (GError *, GPtrArray *, void *);
+	void *data;
+};
 
+
+static void
+_result_callback(GError * error, int count, void *_data)
+{
+	struct _messages_pack *data = (struct _messages_pack *) _data;
+	if (error == NULL) {
+		g_debug("result gave %d entries --> retrieving", count);
+		opimd_message_query_get_multiple_results(GQuery, count,
+							 data->callback,
+							 data->data);
+	}
+}
+
+static void
+_query_callback(GError * error, char *query_path, void *data)
+{
+	if (error == NULL) {
+		g_debug("query path is %s", query_path);
+		GQuery = dbus_connect_to_opimd_message_query(query_path);
+		opimd_message_query_get_result_count(GQuery, _result_callback,
+						     data);
+	}
+}
+
+void
+phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
+		      void *_data)
+{
+	struct _messages_pack *data;
+	g_debug("retrieving messagebook");
+	/*FIXME: I need to free, I allocate and don't free */
+	data = malloc(sizeof(struct _messages_pack *));
+	data->callback = callback;
+	data->data = _data;
+	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);	/*g_slice_alloc0 needs freeing */
+
+	GValue *sortby = g_slice_alloc0(sizeof(GValue));
+	g_value_init(sortby, G_TYPE_STRING);
+	g_value_set_string(sortby, "Timestamp");
+	g_hash_table_insert(query, "_sortby", sortby);
+
+	GValue *sortdesc = g_slice_alloc0(sizeof(GValue));
+	g_value_init(sortdesc, G_TYPE_BOOLEAN);
+	g_value_set_boolean(sortdesc, 1);
+	g_hash_table_insert(query, "_sortdesc", sortdesc);
+
+	opimd_messages_query(query, _query_callback, data);
+	g_hash_table_destroy(query);
+}
 

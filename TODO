@@ -1,2 +1,3 @@
 * document utility (and non utility, but mostly utility) functions
 * consider lodaing utilityl functions from modules as well (an opimd module and an alsa module to start with)
+* drop all the g_slice0
