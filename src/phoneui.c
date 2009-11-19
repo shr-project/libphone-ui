@@ -57,6 +57,11 @@ static void (*_phoneui_sim_auth_show) (const int status) = NULL;
 static void (*_phoneui_sim_auth_hide) (const int status) = NULL;
 static void (*_phoneui_ussd_show) (int mode, const char *message) = NULL;
 
+/* Idle screen */
+static void (*_phoneui_idle_screen_show) () = NULL;
+static void (*_phoneui_idle_screen_hide) () = NULL;
+static void (*_phoneui_idle_screen_update) (enum PhoneuiIdleScreenRefresh type) = NULL;
+
 typedef const char * BackendType;
 
 
@@ -225,6 +230,16 @@ phoneui_connect()
 	_phoneui_ussd_show =
 		phoneui_get_function("phoneui_backend_ussd_show",
 					backends[BACKEND_NOTIFICATION].library);
+
+	_phoneui_idle_screen_show =
+		phoneui_get_function("phoneui_backend_idle_screen_show",
+					backends[BACKEND_IDLE_SCREEN].library);
+	_phoneui_idle_screen_hide =
+		phoneui_get_function("phoneui_backend_idle_screen_hide",
+					backends[BACKEND_IDLE_SCREEN].library);
+	_phoneui_idle_screen_update =
+		phoneui_get_function("phoneui_backend_idle_screen_update",
+					backends[BACKEND_IDLE_SCREEN].library);
 }
 
 static void
@@ -434,3 +449,30 @@ phoneui_ussd_show(int mode, const char *message)
 		g_debug("can't find function %s", __FUNCTION__);
 }
 
+/* Idle Screen */
+void
+phoneui_idle_screen_show()
+{
+	if (_phoneui_idle_screen_show)
+		_phoneui_idle_screen_show();
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_idle_screen_hide()
+{
+	if (_phoneui_idle_screen_hide)
+		_phoneui_idle_screen_hide();
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_idle_screen_update(enum PhoneuiIdleScreenRefresh type)
+{
+	if (_phoneui_idle_screen_update)
+		_phoneui_idle_screen_update(type);
+	else
+		g_debug("can't find function %s", __FUNCTION__);
+}

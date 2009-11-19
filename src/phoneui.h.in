@@ -28,6 +28,19 @@ enum {
 	PHONEUI_DIALOG_MESSAGE_STORAGE_FULL
 };
 
+enum PhoneuiIdleScreenRefresh {
+	PHONEUI_IDLE_SCREEN_REFRESH_ALL,
+	PHONEUI_IDLE_SCREEN_REFRESH_MISSED_CALLS,
+	PHONEUI_IDLE_SCREEN_REFRESH_MESSAGES,
+	PHONEUI_IDLE_SCREEN_REFRESH_TASKS,
+	PHONEUI_IDLE_SCREEN_REFRESH_POWER,
+	PHONEUI_IDLE_SCREEN_REFRESH_CALL,
+	PHONEUI_IDLE_SCREEN_REFRESH_GSM,
+	PHONEUI_IDLE_SCREEN_REFRESH_RESOURCES,
+	PHONEUI_IDLE_SCREEN_REFRESH_TIME,
+	PHONEUI_IDLE_SCREEN_REFRESH_ALARM
+};
+
 void phoneui_load(const char *application_name);
 void *phoneui_get_function(const char *name, void *phoneui_library);
 
@@ -63,6 +76,10 @@ void phoneui_sim_auth_show(const int status);
 void phoneui_sim_auth_hide(const int status);
 void phoneui_ussd_show(int mode, const char *message);
 
+/* Idle screen */
+void phoneui_idle_screen_show();
+void phoneui_idle_screen_hide();
+void phoneui_idle_screen_update(enum PhoneuiIdleScreenRefresh type);
 
 #endif
 
