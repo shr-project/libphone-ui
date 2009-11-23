@@ -19,7 +19,11 @@ enum SoundState {
 
 int phoneui_utils_sound_volume_get(enum SoundControlType type);
 
+long phoneui_utils_sound_volume_raw_get(enum SoundControlType type);
+
 int phoneui_utils_sound_volume_set(enum SoundControlType type, int percent);
+
+int phoneui_utils_sound_volume_save(enum SoundControlType type);
 
 int phoneui_utils_sound_init(GKeyFile *keyfile);
 

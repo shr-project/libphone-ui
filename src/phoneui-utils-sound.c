@@ -55,8 +55,8 @@ _phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, lo
 	return 0;
 }
 
-int
-phoneui_utils_sound_volume_get(enum SoundControlType type)
+long
+phoneui_utils_sound_volume_raw_get(enum SoundControlType type)
 {
 	int err;
 	long value, min, max;
@@ -87,7 +87,21 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 		value += snd_ctl_elem_value_get_integer(control, i);
 	}
 	value /= count;
-	
+
+	return value;
+}
+
+int
+phoneui_utils_sound_volume_get(enum SoundControlType type)
+{
+	long value;
+	long min, max;
+
+	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, NULL))
+		return -1;
+
+	value = phoneui_utils_sound_volume_raw_get(type);
+
 	return ((double) (value - min) / (max - min)) * 100.0;
 }
 
@@ -120,6 +134,43 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 		g_debug("%s", snd_strerror(err));
 		return -1;
 	}
+	/* FIXME put it somewhere else, this is not the correct place! */
+	phoneui_utils_sound_volume_save(type);
+
+	return 0;
+}
+
+int
+phoneui_utils_sound_volume_save(enum SoundControlType type)
+{
+	/* FIXME: hack until framework adds saving sound state 
+	 Yes, I know there's a potential BOF here if a user
+	 sets the config, but this will hopefully be removed
+	 before it even hits production */
+	char script[500];
+	char *scenario="";
+
+	switch (sound_state) {
+	case SOUND_STATE_SPEAKER:
+		scenario = "gsmspeakerout";
+		break;
+	case SOUND_STATE_HEADSET:
+		scenario = "gsmheadset";
+		break;
+	case SOUND_STATE_HANDSET:
+		scenario = "gsmhandset";
+		break;
+	case SOUND_STATE_BT:
+		scenario = "gsmbluetooth";
+		break;
+	default:
+		g_debug("Unknown sound state, not saving");
+		break;
+	}
+	sprintf(script, "/bin/sh /usr/share/libphone-ui/scripts/modify_state.sh \"%s\" \"%s\" %d", scenario, controls[sound_state][type].name, (int) phoneui_utils_sound_volume_raw_get(type));
+	g_debug("saving state, issued '%s'", script);
+	system(script);
+	/* END OF HACK */
 	return 0;
 }
 
