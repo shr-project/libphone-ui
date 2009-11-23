@@ -106,10 +106,9 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 }
 
 int
-phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
+phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 {
 	int err;
-	long new_value;
 	unsigned int i, count;
 	long min, max;
 
@@ -124,9 +123,9 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	snd_ctl_elem_value_alloca(&control);
 	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
 		return -1;
-	new_value = ((max - min) * percent) / 100;
+	
 	for (i = 0 ; i < count ; i++) {		
-		snd_ctl_elem_value_set_integer(control, i, new_value);
+		snd_ctl_elem_value_set_integer(control, i, value);
 	}
 	
 	err = snd_hctl_elem_write(elem, control);
@@ -138,6 +137,28 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	phoneui_utils_sound_volume_save(type);
 
 	return 0;
+}
+
+int
+phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
+{
+	long min, max, value;
+	snd_hctl_elem_t *elem;
+	snd_ctl_elem_value_t *control;
+	
+	
+	elem = controls[sound_state][type].element;
+	if (!elem) {
+		return -1;
+	}
+	snd_ctl_elem_value_alloca(&control);
+	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, NULL))
+		return -1;
+	
+	
+	value = ((max - min) * percent) / 100;
+	phoneui_utils_sound_volume_raw_set(type, value)
+	return 
 }
 
 int
