@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <poll.h>
 #include <glib.h>
 #include <alsa/asoundlib.h>
 
@@ -20,8 +21,12 @@ struct SoundControl {
 
 static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 
+
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
+
+static int poll_fd_count = 0;
+static struct pollfd *poll_fds = NULL;
 
 static int _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask);
 
@@ -296,11 +301,55 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	
 }
 
+static gboolean
+_sourcefunc_prepare(GSource *source, gint *timeout)
+{
+	(void) source;
+	(void) timeout;
+
+	return (FALSE);
+}
+
+static gboolean
+_sourcefunc_check(GSource *source)
+{
+	int f;
+	(void) source;
+
+	for (f = 0; f < poll_fd_count; f++) {
+		if (poll_fds[f].revents & G_IO_IN)
+			return (TRUE);
+	}
+	return (FALSE);
+}
+
+static gboolean
+_sourcefunc_dispatch(GSource *source, GSourceFunc callback, gpointer userdata)
+{
+	(void) source;
+	(void) callback;
+	(void) userdata;
+
+	snd_hctl_handle_events(hctl);
+
+	return (TRUE);
+}
+
+
 int
 phoneui_utils_sound_init(GKeyFile *keyfile)
 {
-	int err;
+	int err, f;
 	const char *device_name;
+	static GSourceFuncs funcs = {
+                _sourcefunc_prepare,
+                _sourcefunc_check,
+                _sourcefunc_dispatch,
+                0,
+		0,
+		0
+        };
+
 
 	sound_state = SOUND_STATE_IDLE;
 	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
@@ -330,6 +379,16 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER);
 
 	snd_hctl_nonblock(hctl, 1);
+
+	poll_fd_count = snd_hctl_poll_descriptors_count(hctl);
+	poll_fds = malloc(sizeof(struct pollfd) * poll_fd_count);
+	snd_hctl_poll_descriptors(hctl, poll_fds, poll_fd_count);
+
+	GSource *src = g_source_new(&funcs, sizeof(GSource));
+	for (f = 0; f < poll_fd_count; f++) {
+		g_source_add_poll(src, (GPollFD *)&poll_fds[f]);
+	}
+	g_source_attach(src, NULL);
 
 	return err;
 }
