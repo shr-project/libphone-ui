@@ -24,6 +24,7 @@ static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
+static void (*_phoneui_utils_sound_volume_changed_callback) (enum SoundControlType type, long volume);
 
 static int poll_fd_count = 0;
 static struct pollfd *poll_fds = NULL;
@@ -471,17 +472,49 @@ phoneui_utils_sound_state_get()
 	return sound_state;
 }
 
+static enum SoundControlType
+_phoneui_utils_sound_element_to_type(snd_hctl_elem_t *elem)
+{
+	int i;
+	
+	for (i = 0 ; i < CONTROL_END ; i++) {
+		if (controls[sound_state][i].element == elem) {
+			return i;
+		}
+	}
+	return CONTROL_END;
+}
+
 static int
 _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask)
 {
 	snd_ctl_elem_value_t *control;
+	enum SoundControlType type;
+	int volume;
+	
+	
         if (mask == SND_CTL_EVENT_MASK_REMOVE)
                 return 0;
         if (mask & SND_CTL_EVENT_MASK_VALUE) {
                 snd_ctl_elem_value_alloca(&control);
                 snd_hctl_elem_read(elem, control);
-                g_debug("cb %d %d\n", mask, (int)
-                                snd_ctl_elem_value_get_integer(control,0));
+                type = _phoneui_utils_sound_element_to_type(elem);
+                if (type != CONTROL_END) {
+			volume = phoneui_utils_sound_volume_get(type);
+			g_debug("Got alsa volume change for control '%s', new value: %d%%",
+				controls[sound_state][type].name, volume);
+			if (_phoneui_utils_sound_volume_changed_callback) {
+				_phoneui_utils_sound_volume_changed_callback(type, volume);
+			}
+		}
         }
 	return 0;
 }
+
+int
+phoneui_utils_sound_volume_change_callback_set(void (*cb)(enum SoundControlType, long))
+{
+	_phoneui_utils_sound_volume_changed_callback = cb;
+	return 0;
+}
+
