@@ -15,7 +15,7 @@ struct SoundControl {
 	snd_hctl_elem_t *element;
 	long min;
 	long max;
-	int count; /*number of channels*/
+	unsigned int count; /*number of channels*/
 };
 
 static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
@@ -26,42 +26,12 @@ static snd_hctl_t *hctl = NULL;
 static int _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask);
 
 static int
-_phoneui_utils_sound_volume_get_stats(enum SoundControlType type, long *_min, long *_max, long *_step, unsigned int *_count)
-{
-	int err;
-	
-	snd_ctl_elem_type_t element_type;
-	snd_ctl_elem_info_t *info;
-	snd_hctl_elem_t *elem;
-	
-	elem = controls[sound_state][type].element;
-	snd_ctl_elem_info_alloca(&info);
-	
-	err = snd_hctl_elem_info(elem, info);
-	if (err < 0) {
-		g_debug("%s", snd_strerror(err));
-		return -1;
-	}
-
-	/* verify type == integer */
-	element_type = snd_ctl_elem_info_get_type(info);
-
-	if (_min)
-		*_min = snd_ctl_elem_info_get_min(info);
-	if (_max)
-		*_max = snd_ctl_elem_info_get_max(info);
-	if (_step)
-		*_step = snd_ctl_elem_info_get_step(info);
-	if (_count)
-		*_count = snd_ctl_elem_info_get_count(info);
-		
-	return 0;
-}
-
-static int
 _phoneui_utils_sound_volume_load_stats(struct SoundControl *control)
 {
 	int err;
+
+	if (!control->element)
+		return -1;
 	
 	snd_ctl_elem_type_t element_type;
 	snd_ctl_elem_info_t *info;
@@ -89,22 +59,20 @@ long
 phoneui_utils_sound_volume_raw_get(enum SoundControlType type)
 {
 	int err;
-	long value, min, max;
+	long value;
 	unsigned int i,count;
 
 	snd_ctl_elem_value_t *control;
 	snd_ctl_elem_value_alloca(&control);
 	
 	snd_hctl_elem_t *elem;
-	
+
+	count = controls[sound_state][type].count;	
 	elem = controls[sound_state][type].element;
 	if (!elem) {
 		return -1;
 	}
 	
-	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
-		return -1;
-
 	err = snd_hctl_elem_read(elem, control);
 	if (err < 0) {
 		g_debug("%s", snd_strerror(err));
@@ -127,8 +95,8 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	long value;
 	long min, max;
 
-	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, NULL))
-		return -1;
+	min = controls[sound_state][type].min;
+	max = controls[sound_state][type].max;
 
 	value = phoneui_utils_sound_volume_raw_get(type);
 
@@ -140,7 +108,6 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 {
 	int err;
 	unsigned int i, count;
-	long min, max;
 
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
@@ -151,8 +118,7 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(&control);
-	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, &count))
-		return -1;
+	count = controls[sound_state][type].count;
 	
 	for (i = 0 ; i < count ; i++) {		
 		snd_ctl_elem_value_set_integer(control, i, value);
@@ -163,6 +129,7 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 		g_debug("%s", snd_strerror(err));
 		return -1;
 	}
+	g_debug("set raw volume for type %d to %d", type, (int) value);
 	/* FIXME put it somewhere else, this is not the correct place! */
 	phoneui_utils_sound_volume_save(type);
 
@@ -182,11 +149,10 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(&control);
-	if (_phoneui_utils_sound_volume_get_stats(type, &min, &max, NULL, NULL))
-		return -1;
+	min = controls[sound_state][type].min;
+	max = controls[sound_state][type].max;
 	
-	
-	value = ((max - min) * percent) / 100;
+	value = min + ((max - min) * percent) / 100;
 	phoneui_utils_sound_volume_raw_set(type, value);
 	return 0;
 }
@@ -253,22 +219,43 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	const char *speaker = NULL;
 	const char *microphone = NULL;
 
+	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
+	if (field) {
+		/* init for now and for the next if */
+		strcpy(field, "alsa_control_");
+		strcat(field, _field);
+		
+		speaker = g_key_file_get_string(keyfile, field, "speaker", NULL);
+		microphone = g_key_file_get_string(keyfile, field, "microphone", NULL);
+
+		/* does not yet free field because of the next if */
+	}
+	if (!speaker) {
+		g_debug("No speaker value for %s found, using none", _field);
+		speaker = "";
+	}
+	if (!microphone) {
+		g_debug("No microphone value for %s found, using none", _field);
+		microphone = "";
+	}
+	
+	controls[state][CONTROL_SPEAKER].name = strdup(speaker);
+	controls[state][CONTROL_MICROPHONE].name = strdup(microphone);
+	_phoneui_utils_sound_init_set_alsa_control(state, CONTROL_SPEAKER);
+	_phoneui_utils_sound_init_set_alsa_control(state, CONTROL_MICROPHONE);
+
 	/* Load min, max and count from alsa and init to zero before instead
 	 * of handling errors, hackish but fast. */
 	controls[state][CONTROL_SPEAKER].min = controls[state][CONTROL_SPEAKER].max = 0;
 	controls[state][CONTROL_MICROPHONE].min = controls[state][CONTROL_MICROPHONE].max = 0;
+	controls[state][CONTROL_MICROPHONE].count = 0;
+	/* The function handles the case where the control has no element */
 	_phoneui_utils_sound_volume_load_stats(&controls[state][CONTROL_SPEAKER]);
 	_phoneui_utils_sound_volume_load_stats(&controls[state][CONTROL_MICROPHONE]);
-	
-	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
+
 	if (field) {
 		int tmp;
 		
-		strcpy(field, "alsa_control_");
-		strcat(field, _field);
-		speaker = g_key_file_get_string(keyfile, field, "speaker", NULL);
-		microphone = g_key_file_get_string(keyfile, field, "microphone", NULL);
-
 		/* If the user specifies his own min and max for that control,
 		 * check values for sanity and then apply them. */
 		if (g_key_file_has_key(keyfile, field, "microphone_min", NULL)) {
@@ -292,7 +279,8 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 			if (tmp > controls[state][CONTROL_SPEAKER].min &&
 				tmp < controls[state][CONTROL_SPEAKER].max) {
 
-				controls[state][CONTROL_SPEAKER].min = tmp;			
+				controls[state][CONTROL_SPEAKER].min = tmp;
+				g_debug("settisg speaker_min to %d", (int) tmp);		
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "speaker_max", NULL)) {
@@ -305,19 +293,6 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		}
 		free(field);
 	}
-	if (!speaker) {
-		g_debug("No speaker value for %s found, using none", _field);
-		speaker = "";
-	}
-	if (!microphone) {
-		g_debug("No microphone value for %s found, using none", _field);
-		microphone = "";
-	}
-	
-	controls[state][CONTROL_SPEAKER].name = strdup(speaker);
-	controls[state][CONTROL_MICROPHONE].name = strdup(microphone);
-	_phoneui_utils_sound_init_set_alsa_control(state, CONTROL_SPEAKER);
-	_phoneui_utils_sound_init_set_alsa_control(state, CONTROL_MICROPHONE);
 	
 }
 
