@@ -14,6 +14,7 @@ static enum SoundState sound_state = SOUND_STATE_IDLE;
 struct SoundControl {
 	const char *name;
 	snd_hctl_elem_t *element;
+	snd_hctl_elem_t *mute_element;
 	long min;
 	long max;
 	unsigned int count; /*number of channels*/
@@ -143,6 +144,57 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 }
 
 int
+phoneui_utils_sound_volume_mute_get(enum SoundControlType type)
+{
+	int err;
+
+	snd_ctl_elem_value_t *control;
+	snd_ctl_elem_value_alloca(&control);
+	
+	snd_hctl_elem_t *elem;
+
+
+	elem = controls[sound_state][type].mute_element;
+	if (!elem) {
+		return -1;
+	}
+	
+	err = snd_hctl_elem_read(elem, control);
+	if (err < 0) {
+		g_debug("%s", snd_strerror(err));
+		return -1;
+	}
+
+	return snd_ctl_elem_value_get_boolean(control, 0);
+}
+
+int
+phoneui_utils_sound_volume_mute_set(enum SoundControlType type, int mute)
+{
+	int err;
+
+	snd_hctl_elem_t *elem;
+	snd_ctl_elem_value_t *control;
+	
+	elem = controls[sound_state][type].mute_element;
+	if (!elem) {
+		return -1;
+	}
+	snd_ctl_elem_value_alloca(&control);
+	
+	snd_ctl_elem_value_set_boolean(control, 0, !mute);
+	
+	err = snd_hctl_elem_write(elem, control);
+	if (err) {
+		g_debug("%s", snd_strerror(err));
+		return -1;
+	}
+	g_debug("Set control %d to %d", type, mute);
+
+	return 0;
+}
+
+int
 phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 {
 	long min, max, value;
@@ -197,17 +249,26 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 	return 0;
 }
 
+static snd_hctl_elem_t *
+_phoneui_utils_sound_init_get_control_by_name(const char *ctl_name)
+{
+	snd_ctl_elem_id_t *id;
+
+	snd_ctl_elem_id_alloca(&id);
+	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
+	snd_ctl_elem_id_set_name(id, ctl_name);
+	
+	return snd_hctl_find_elem(hctl, id);	
+}
+
 static void
 _phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundControlType type)
 {
 	const char *ctl_name = controls[sound_state][type].name;
-	snd_ctl_elem_id_t *id;
 	snd_hctl_elem_t *elem;
 
-	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
-	snd_ctl_elem_id_set_name(id, controls[state][type].name);
-	elem = controls[state][type].element = snd_hctl_find_elem(hctl, id);
+	elem = controls[state][type].element =
+		_phoneui_utils_sound_init_get_control_by_name(ctl_name);
 	if (elem) {
 		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_element_cb);
 	}
@@ -217,6 +278,8 @@ _phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundCont
 	}
 	
 }
+
+
 static void
 _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 				enum SoundState state)
@@ -224,7 +287,10 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	char *field;
 	const char *speaker = NULL;
 	const char *microphone = NULL;
+	const char *speaker_mute = NULL;
+	const char *microphone_mute = NULL;
 
+	/*FIXME: split to a generic function for both speaker and microphone */
 	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
 	if (field) {
 		/* init for now and for the next if */
@@ -233,6 +299,8 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		
 		speaker = g_key_file_get_string(keyfile, field, "speaker", NULL);
 		microphone = g_key_file_get_string(keyfile, field, "microphone", NULL);
+		speaker_mute = g_key_file_get_string(keyfile, field, "speaker_mute", NULL);
+		microphone_mute = g_key_file_get_string(keyfile, field, "microphone_mute", NULL);
 
 		/* does not yet free field because of the next if */
 	}
@@ -243,6 +311,16 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	if (!microphone) {
 		g_debug("No microphone value for %s found, using none", _field);
 		microphone = "";
+	}
+	controls[state][CONTROL_SPEAKER].mute_element = NULL;
+	controls[state][CONTROL_MICROPHONE].mute_element = NULL;
+	if (speaker_mute) {
+		controls[state][CONTROL_SPEAKER].mute_element = 
+			_phoneui_utils_sound_init_get_control_by_name(speaker_mute);
+	}
+	if (microphone_mute) {
+		controls[state][CONTROL_MICROPHONE].mute_element =
+			_phoneui_utils_sound_init_get_control_by_name(microphone_mute);
 	}
 	
 	controls[state][CONTROL_SPEAKER].name = strdup(speaker);

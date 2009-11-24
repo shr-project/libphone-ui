@@ -23,6 +23,9 @@ long phoneui_utils_sound_volume_raw_get(enum SoundControlType type);
 int phoneui_utils_sound_volume_set(enum SoundControlType type, int percent);
 int phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value);
 
+int phoneui_utils_sound_volume_mute_get(enum SoundControlType type);
+int phoneui_utils_sound_volume_mute_set(enum SoundControlType type, int mute);
+
 int phoneui_utils_sound_volume_change_callback_set(void (*cb)(enum SoundControlType, long));
 int phoneui_utils_sound_volume_save(enum SoundControlType type);
 
