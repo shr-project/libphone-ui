@@ -109,8 +109,10 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	max = controls[sound_state][type].max;
 
 	value = phoneui_utils_sound_volume_raw_get(type);
-
-	return ((double) (value - min) / (max - min)) * 100.0;
+	value = ((double) (value - min) / (max - min)) * 100.0;
+	g_debug("Probing volume of control '%s' returned %d",
+		controls[sound_state][type].name, (int) value);
+	return value;
 }
 
 int
@@ -139,7 +141,7 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 		g_debug("%s", snd_strerror(err));
 		return -1;
 	}
-	g_debug("set raw volume for type %d to %d", type, (int) value);
+
 	/* FIXME put it somewhere else, this is not the correct place! */
 	phoneui_utils_sound_volume_save(type);
 
@@ -215,6 +217,8 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	
 	value = min + ((max - min) * percent) / 100;
 	phoneui_utils_sound_volume_raw_set(type, value);
+	g_debug("Setting volume for control %s to %d",
+			controls[sound_state][type].name, percent);
 	return 0;
 }
 
@@ -271,7 +275,7 @@ _phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundCont
 	snd_hctl_elem_t *elem;
 
 	/*if an empty string, return */
-	if (*ctl_name == "\0") {
+	if (*ctl_name == '\0') {
 		controls[state][type].element = NULL;
 		return;
 	}
