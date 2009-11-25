@@ -27,6 +27,7 @@ int phoneui_utils_sound_volume_mute_get(enum SoundControlType type);
 int phoneui_utils_sound_volume_mute_set(enum SoundControlType type, int mute);
 
 int phoneui_utils_sound_volume_change_callback_set(void (*cb)(enum SoundControlType, long));
+int phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControlType, int));
 int phoneui_utils_sound_volume_save(enum SoundControlType type);
 
 int phoneui_utils_sound_init(GKeyFile *keyfile);

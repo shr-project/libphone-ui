@@ -26,6 +26,7 @@ static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
 static void (*_phoneui_utils_sound_volume_changed_callback) (enum SoundControlType type, long volume);
+static void (*_phoneui_utils_sound_volume_mute_changed_callback) (enum SoundControlType type, int mute);
 
 static int poll_fd_count = 0;
 static struct pollfd *poll_fds = NULL;
@@ -593,6 +594,13 @@ int
 phoneui_utils_sound_volume_change_callback_set(void (*cb)(enum SoundControlType, long))
 {
 	_phoneui_utils_sound_volume_changed_callback = cb;
+	return 0;
+}
+
+int
+phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControlType, int))
+{
+	_phoneui_utils_sound_volume_mute_changed_callback = cb;
 	return 0;
 }
 
