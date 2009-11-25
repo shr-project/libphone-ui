@@ -25,8 +25,10 @@ static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
-static void (*_phoneui_utils_sound_volume_changed_callback) (enum SoundControlType type, long volume);
-static void (*_phoneui_utils_sound_volume_mute_changed_callback) (enum SoundControlType type, int mute);
+static void (*_phoneui_utils_sound_volume_changed_callback) (enum SoundControlType type, long volume, void *userdata);
+static void *_phoneui_utils_sound_volume_changed_userdata = NULL;
+static void (*_phoneui_utils_sound_volume_mute_changed_callback) (enum SoundControlType type, int mute, void *userdata);
+static void *_phoneui_utils_sound_volume_mute_changed_userdata = NULL;
 
 static int poll_fd_count = 0;
 static struct pollfd *poll_fds = NULL;
@@ -583,7 +585,7 @@ _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask)
 			g_debug("Got alsa volume change for control '%s', new value: %d%%",
 				controls[sound_state][type].name, volume);
 			if (_phoneui_utils_sound_volume_changed_callback) {
-				_phoneui_utils_sound_volume_changed_callback(type, volume);
+				_phoneui_utils_sound_volume_changed_callback(type, volume, _phoneui_utils_sound_volume_changed_userdata);
 			}
 		}
         }
@@ -591,16 +593,18 @@ _phoneui_utils_sound_element_cb(snd_hctl_elem_t *elem, unsigned int mask)
 }
 
 int
-phoneui_utils_sound_volume_change_callback_set(void (*cb)(enum SoundControlType, long))
+phoneui_utils_sound_volume_change_callback_set(void (*cb)(enum SoundControlType, long, void *), void *userdata)
 {
 	_phoneui_utils_sound_volume_changed_callback = cb;
+	_phoneui_utils_sound_volume_changed_userdata = userdata;
 	return 0;
 }
 
 int
-phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControlType, int))
+phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControlType, int, void *), void *userdata)
 {
 	_phoneui_utils_sound_volume_mute_changed_callback = cb;
+	_phoneui_utils_sound_volume_mute_changed_userdata = userdata;
 	return 0;
 }
 
