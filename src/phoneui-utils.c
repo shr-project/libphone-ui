@@ -91,11 +91,11 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 	struct _contact_lookup_pack *data =
 		(struct _contact_lookup_pack *)userdata;
 	if (!error && path && *path) {
-		g_message("Found contact name: %s", path);
+		g_debug("Found contact name: %s", path);
 		phoneui_utils_contact_get(path, data->callback, data->data);
 	}
 	else {
-		g_message("No contact name found.");
+		g_debug("No contact name found.");
 		data->callback(NULL, data->data);
 	}
 }
@@ -121,7 +121,7 @@ phoneui_utils_contact_lookup(const char *_number,
 		return 1;
 	}
 
-	g_message("Attempting to resolve name for: \"%s\"", number);
+	g_debug("Attempting to resolve name for: \"%s\"", number);
 
 
 	GValue *value = _new_gvalue_string(number);	/*  we prefer using number */
