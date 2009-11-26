@@ -264,7 +264,7 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 	}
 	sprintf(script, "/bin/sh /usr/share/libphone-ui/scripts/modify_state.sh \"%s\" \"%s\" %d", scenario, controls[sound_state][type].name, (int) phoneui_utils_sound_volume_raw_get(type));
 	g_debug("saving state, issued '%s'", script);
-	system(script);
+	(void) system(script);
 	/* END OF HACK */
 	return 0;
 }
