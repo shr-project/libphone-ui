@@ -529,7 +529,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	
 	switch (state) {
 	case SOUND_STATE_SPEAKER:
-		scenario = "gsmspeakerout";
+		scenario = "gsmspeaker";
 		break;
 	case SOUND_STATE_HEADSET:
 		scenario = "gsmheadset";
