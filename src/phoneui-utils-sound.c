@@ -80,7 +80,7 @@ phoneui_utils_sound_volume_raw_get(enum SoundControlType type)
 
 	count = controls[sound_state][type].count;	
 	elem = controls[sound_state][type].element;
-	if (!elem) {
+	if (!elem || !count) {
 		return 0;
 	}
 	
