@@ -275,7 +275,7 @@ _phoneui_utils_sound_init_get_control_by_name(const char *ctl_name)
 static void
 _phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundControlType type)
 {
-	const char *ctl_name = controls[sound_state][type].name;
+	const char *ctl_name = controls[state][type].name;
 	snd_hctl_elem_t *elem;
 
 	/*if an empty string, return */
