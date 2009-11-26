@@ -113,7 +113,15 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	max = controls[sound_state][type].max;
 
 	value = phoneui_utils_sound_volume_raw_get(type);
-	value = ((double) (value - min) / (max - min)) * 100.0;
+	if (value <= min) {
+		value = 0;
+	}
+	else if (value >= max) {
+		value = 100;
+	}
+	else {
+		value = ((double) (value - min) / (max - min)) * 100.0;
+	}
 	g_debug("Probing volume of control '%s' returned %d",
 		controls[sound_state][type].name, (int) value);
 	return value;
