@@ -91,11 +91,11 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 	struct _contact_lookup_pack *data =
 		(struct _contact_lookup_pack *)userdata;
 	if (!error && path && *path) {
-		g_debug("found contact %s", path);
+		g_message("Found contact name: %s", path);
 		phoneui_utils_contact_get(path, data->callback, data->data);
 	}
 	else {
-		g_debug("no contact found...");
+		g_message("No contact name found.");
 		data->callback(NULL, data->data);
 	}
 }
@@ -121,7 +121,7 @@ phoneui_utils_contact_lookup(const char *_number,
 		return 1;
 	}
 
-	g_debug("Attempting to resolve name for: \"%s\"", number);
+	g_message("Attempting to resolve name for: \"%s\"", number);
 
 
 	GValue *value = _new_gvalue_string(number);	/*  we prefer using number */
@@ -255,7 +255,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		goto clean_messages;
 	}
 
-	g_debug("Sending %d parts with total length of %d", csm_num, len);
+	g_message("Sending %d parts with total length of %d to:", csm_num, len);
 
 	/* cycle through all the recipients */
 	for (i = 0; i < recipients->len; i++) {
@@ -263,8 +263,10 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 			(GHashTable *) g_ptr_array_index(recipients, i);
 		char *number =
 			(char *) g_hash_table_lookup(properties, "number");
-		assert(number != NULL);
-
+		if (!number) {
+			continue;
+		}
+		g_message("%d.\t%s", i + 1, number);
 		if (csm_num > 1) {
 			for (csm_seq = 1; csm_seq <= csm_num; csm_seq++) {
 				val_csm_seq = _new_gvalue_int(csm_seq);
@@ -357,7 +359,8 @@ phoneui_utils_dial(const char *number,
 	struct _phoneui_utils_dial_pack *pack;
 	pack = malloc(sizeof(*pack));
 	if (!pack) {
-		g_debug("Failed to allocate memory");
+		g_critical("Failed to allocate memory %s:%d", __FUNCTION__,
+				__LINE__);
 		return 1;
 	}
 	pack->data = userdata;
@@ -376,7 +379,7 @@ phoneui_utils_ussd_initiate(const char *request,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
-	g_debug("Inititating a USSD request %s\n", request);
+	g_message("Inititating a USSD request %s\n", request);
 	/*FIXME: fix this (char *) cast when it's fixed in libframewrokd-glib */
 	ogsmd_network_send_ussd_request((char *) request, callback, data);
 	return 0;
@@ -387,7 +390,7 @@ phoneui_utils_call_initiate(const char *number,
 			void (*callback)(GError *, int id_call, gpointer),
 			gpointer userdata)
 {
-	g_debug("Inititating a call to %s\n", number);
+	g_message("Inititating a call to %s\n", number);
 	ogsmd_call_initiate(number, "voice", callback, userdata);
 	return 0;
 }
@@ -610,7 +613,7 @@ phoneui_utils_contact_get(const char *contact_path,
 		g_slice_alloc0(sizeof(struct _contact_get_pack));
 	_pack->data = data;
 	_pack->callback = callback;
-	g_debug("getting data of contact %s", contact_path);
+	g_debug("Getting data of contact with path: %s", contact_path);
 	opimd_contact_get_content(contact_path, _contact_get_callback, _pack);
 	return (0);
 }
@@ -665,12 +668,11 @@ _contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
 {
 	/*FIXME: should we check the value of error? */
 	(void) error;
-	g_debug("_contact_list_result_callback()");
+	g_debug("Got to %s", __FUNCTION__);
 	struct _contact_list_pack *data =
 		(struct _contact_list_pack *)_data;
 
 	if (error || !_contacts) {
-		g_debug("got no contacts from query!!!");
 		return;
 	}
 
@@ -688,9 +690,8 @@ _contact_list_count_callback(GError *error, const int count, gpointer _data)
 	(void) error;
 	struct _contact_list_pack *data =
 		(struct _contact_list_pack *)_data;
-	g_debug("result gave %d entries", count);
+	g_message("Contact query result gave %d entries", count);
 	*data->count = count;
-	g_debug("getting first entry...");
 	opimd_contact_query_get_multiple_results(data->query,
 			count, _contact_list_result_callback, data);
 }
@@ -700,7 +701,6 @@ static void
 _contact_query_callback(GError *error, char *query_path, gpointer _data)
 {
 	if (error == NULL) {
-		g_debug("query succeeded... get count of result");
 		struct _contact_list_pack *data =
 			(struct _contact_list_pack *)_data;
 		data->query = (DBusGProxy *)
@@ -715,7 +715,7 @@ phoneui_utils_contacts_get(int *count,
 		void (*callback)(gpointer, gpointer),
 		gpointer userdata)
 {
-	g_debug("phoneui_utils_contacts_get()");
+	g_message("Probing for contacts");
 	struct _contact_list_pack *data =
 		malloc(sizeof(struct _contact_list_pack));
 	data->data = userdata;
@@ -774,7 +774,7 @@ void
 phoneui_utils_sim_pin_send(const char *pin,
 		void (*callback)(int, gpointer), gpointer userdata)
 {
-	g_debug("phoneui_sim_pin_send()");
+	g_message("Trying PIN");
 	struct _auth_pack *data = malloc(sizeof(struct _auth_pack));
 	data->data = userdata;
 	data->callback = callback;
@@ -785,7 +785,7 @@ void
 phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 		void (*callback)(int, gpointer), gpointer userdata)
 {
-	g_debug("phoneui_sim_puk_send()");
+	g_debug("Trying PUK");
 	struct _auth_pack *data = malloc(sizeof(struct _auth_pack));
 	data->data = userdata;
 	data->callback = callback;
@@ -804,7 +804,7 @@ _result_callback(GError * error, int count, void *_data)
 {
 	struct _messages_pack *data = (struct _messages_pack *) _data;
 	if (error == NULL) {
-		g_debug("result gave %d entries --> retrieving", count);
+		g_message("Found %d messages, retrieving", count);
 		opimd_message_query_get_multiple_results(GQuery, count,
 							 data->callback,
 							 data->data);
@@ -815,7 +815,7 @@ static void
 _query_callback(GError * error, char *query_path, void *data)
 {
 	if (error == NULL) {
-		g_debug("query path is %s", query_path);
+		g_debug("Message query path is %s", query_path);
 		GQuery = dbus_connect_to_opimd_message_query(query_path);
 		opimd_message_query_get_result_count(GQuery, _result_callback,
 						     data);
@@ -827,7 +827,7 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 		      void *_data)
 {
 	struct _messages_pack *data;
-	g_debug("retrieving messagebook");
+	g_debug("Retrieving messages");
 	/*FIXME: I need to free, I allocate and don't free */
 	data = malloc(sizeof(struct _messages_pack *));
 	data->callback = callback;

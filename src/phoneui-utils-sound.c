@@ -52,7 +52,7 @@ _phoneui_utils_sound_volume_load_stats(struct SoundControl *control)
 	
 	err = snd_hctl_elem_info(elem, info);
 	if (err < 0) {
-		g_debug("%s", snd_strerror(err));
+		g_warning("%s", snd_strerror(err));
 		return -1;
 	}
 
@@ -80,12 +80,12 @@ phoneui_utils_sound_volume_raw_get(enum SoundControlType type)
 	count = controls[sound_state][type].count;	
 	elem = controls[sound_state][type].element;
 	if (!elem) {
-		return -1;
+		return 0;
 	}
 	
 	err = snd_hctl_elem_read(elem, control);
 	if (err < 0) {
-		g_debug("%s", snd_strerror(err));
+		g_warning("%s", snd_strerror(err));
 		return -1;
 	}
 	
@@ -104,7 +104,11 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 {
 	long value;
 	long min, max;
-
+	
+	if (!controls[sound_state][type].element) {
+		return 0;
+	}
+	
 	min = controls[sound_state][type].min;
 	max = controls[sound_state][type].max;
 
@@ -138,7 +142,7 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 	
 	err = snd_hctl_elem_write(elem, control);
 	if (err) {
-		g_debug("%s", snd_strerror(err));
+		g_warning("%s", snd_strerror(err));
 		return -1;
 	}
 
@@ -166,7 +170,7 @@ phoneui_utils_sound_volume_mute_get(enum SoundControlType type)
 	
 	err = snd_hctl_elem_read(elem, control);
 	if (err < 0) {
-		g_debug("%s", snd_strerror(err));
+		g_warning("%s", snd_strerror(err));
 		return -1;
 	}
 
@@ -191,7 +195,7 @@ phoneui_utils_sound_volume_mute_set(enum SoundControlType type, int mute)
 	
 	err = snd_hctl_elem_write(elem, control);
 	if (err) {
-		g_debug("%s", snd_strerror(err));
+		g_warning("%s", snd_strerror(err));
 		return -1;
 	}
 	g_debug("Set control %d to %d", type, mute);
@@ -246,7 +250,7 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 		scenario = "gsmbluetooth";
 		break;
 	default:
-		g_debug("Unknown sound state, not saving");
+		g_critical("Unknown sound state (%d), not saving. Please inform developers.\n", (int) sound_state);
 		break;
 	}
 	sprintf(script, "/bin/sh /usr/share/libphone-ui/scripts/modify_state.sh \"%s\" \"%s\" %d", scenario, controls[sound_state][type].name, (int) phoneui_utils_sound_volume_raw_get(type));
@@ -285,7 +289,7 @@ _phoneui_utils_sound_init_set_alsa_control(enum SoundState state, enum SoundCont
 		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_element_cb);
 	}
 	else {
-		g_debug("ALSA: No control named '%s' found - "
+		g_critical("ALSA: No control named '%s' found - "
 			"Sound state: %d type: %d", ctl_name, state, type);
 	}
 	
@@ -317,11 +321,11 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		/* does not yet free field because of the next if */
 	}
 	if (!speaker) {
-		g_debug("No speaker value for %s found, using none", _field);
+		g_message("No speaker value for %s found, using none", _field);
 		speaker = "";
 	}
 	if (!microphone) {
-		g_debug("No microphone value for %s found, using none", _field);
+		g_message("No microphone value for %s found, using none", _field);
 		microphone = "";
 	}
 	controls[state][CONTROL_SPEAKER].mute_element = NULL;
@@ -445,7 +449,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	sound_state = SOUND_STATE_IDLE;
 	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
 	if (!device_name) {
-		g_debug("No hw control found, using default");
+		g_message("No hw control found, using default");
 		device_name = "hw:0";
 	}
 
@@ -454,13 +458,13 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	}
 	err = snd_hctl_open(&hctl, device_name, 0);
 	if (err) {
-		g_debug("%s", snd_strerror(err));
+		g_critical("%s", snd_strerror(err));
 		return err;
 	}
 	
 	err = snd_hctl_load(hctl);
 	if (err) {
-		g_debug("%s", snd_strerror(err));
+		g_critical("%s", snd_strerror(err));
 	}
 
 	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE);

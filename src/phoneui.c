@@ -131,7 +131,7 @@ phoneui_load_backend(GKeyFile *keyfile, enum BackendType type)
 void
 phoneui_load(const char *application_name)
 {
-	g_debug("Loading %s", application_name);	
+	g_message("Loading %s", application_name);	
 	int i;
 	GKeyFile *keyfile;
 	GKeyFileFlags flags;
@@ -169,7 +169,7 @@ phoneui_get_function(const char *name, void *phoneui_library)
 	void *pointer = dlsym(phoneui_library, name);
 	char *error;
 	if ((error = dlerror()) != NULL) {
-		g_debug("Symbol not found: %s", error);
+		g_warning("Symbol not found: %s", error);
 	}
 	return pointer;
 }
@@ -251,7 +251,7 @@ _phoneui_backend_init(int argc, char **argv, void (*exit_cb) (),
 	if (_phoneui_init)
 		_phoneui_init(argc, argv, exit_cb);
 	else
-		g_debug("can't find function %s", __FUNCTION__);	
+		g_warning("can't find function %s", __FUNCTION__);	
 }
 
 static void
@@ -262,7 +262,7 @@ _phoneui_backend_loop(enum BackendType type)
 	if (_phoneui_loop)
 		_phoneui_loop();
 	else
-		g_debug("can't find function %s", __FUNCTION__);	
+		g_warning("can't find function %s", __FUNCTION__);	
 }
 
 /* Implementation prototypes */
@@ -308,7 +308,7 @@ phoneui_incoming_call_show(const int id, const int status, const char *number)
 	if (_phoneui_incoming_call_show)
 		_phoneui_incoming_call_show(id, status, number);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -317,7 +317,7 @@ phoneui_incoming_call_hide(const int id)
 	if (_phoneui_incoming_call_hide)
 		_phoneui_incoming_call_hide(id);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -326,7 +326,7 @@ phoneui_outgoing_call_show(const int id, const int status, const char *number)
 	if (_phoneui_outgoing_call_show)
 		_phoneui_outgoing_call_show(id, status, number);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -335,7 +335,7 @@ phoneui_outgoing_call_hide(const int id)
 	if (_phoneui_outgoing_call_hide)
 		_phoneui_outgoing_call_hide(id);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 /* Contacts */
@@ -345,7 +345,7 @@ phoneui_contacts_show()
 	if (_phoneui_contacts_show)
 		_phoneui_contacts_show();
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -354,7 +354,7 @@ phoneui_contacts_refresh()
 	if (_phoneui_contacts_refresh)
 		_phoneui_contacts_refresh();
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -362,7 +362,7 @@ phoneui_contacts_contact_show(const char *contact_path)
 {	if (_phoneui_contacts_contact_show)
 		_phoneui_contacts_contact_show(contact_path);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -371,7 +371,7 @@ phoneui_contacts_contact_new(GHashTable *values)
 	if (_phoneui_contacts_contact_new)
 		_phoneui_contacts_contact_new(values);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -380,7 +380,7 @@ phoneui_contacts_contact_edit(const char *contact_path)
 	if (_phoneui_contacts_contact_edit)
 		_phoneui_contacts_contact_edit(contact_path);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 /* Messages */
@@ -390,7 +390,7 @@ phoneui_messages_show()
 	if (_phoneui_messages_show)
 		_phoneui_messages_show();
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -399,7 +399,7 @@ phoneui_messages_message_show(const int id)
 	if (_phoneui_messages_message_show)
 		_phoneui_messages_message_show(id);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 /* Dialer */
@@ -409,7 +409,7 @@ phoneui_dialer_show()
 	if (_phoneui_dialer_show)
 		_phoneui_dialer_show();
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 /* Notifications */
@@ -419,7 +419,7 @@ phoneui_dialog_show(const int type)
 	if (_phoneui_dialog_show)
 		_phoneui_dialog_show(type);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -428,7 +428,7 @@ phoneui_sim_auth_show(const int status)
 	if (_phoneui_sim_auth_show)
 		_phoneui_sim_auth_show(status);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -437,7 +437,7 @@ phoneui_sim_auth_hide(const int status)
 	if (_phoneui_sim_auth_hide)
 		_phoneui_sim_auth_hide(status);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -446,7 +446,7 @@ phoneui_ussd_show(int mode, const char *message)
 	if (_phoneui_ussd_show)
 		_phoneui_ussd_show(mode, message);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 /* Idle Screen */
@@ -456,7 +456,7 @@ phoneui_idle_screen_show()
 	if (_phoneui_idle_screen_show)
 		_phoneui_idle_screen_show();
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -465,7 +465,7 @@ phoneui_idle_screen_hide()
 	if (_phoneui_idle_screen_hide)
 		_phoneui_idle_screen_hide();
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 void
@@ -474,5 +474,5 @@ phoneui_idle_screen_update(enum PhoneuiIdleScreenRefresh type)
 	if (_phoneui_idle_screen_update)
 		_phoneui_idle_screen_update(type);
 	else
-		g_debug("can't find function %s", __FUNCTION__);
+		g_warning("can't find function %s", __FUNCTION__);
 }
