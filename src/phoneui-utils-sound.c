@@ -183,7 +183,7 @@ phoneui_utils_sound_volume_mute_get(enum SoundControlType type)
 		return -1;
 	}
 
-	return snd_ctl_elem_value_get_boolean(control, 0);
+	return !snd_ctl_elem_value_get_boolean(control, 0);
 }
 
 int
@@ -597,12 +597,25 @@ phoneui_utils_sound_state_get()
 }
 
 static enum SoundControlType
-_phoneui_utils_sound_element_to_type(snd_hctl_elem_t *elem)
+_phoneui_utils_sound_volume_element_to_type(snd_hctl_elem_t *elem)
 {
 	int i;
 	
 	for (i = 0 ; i < CONTROL_END ; i++) {
 		if (controls[sound_state][i].element == elem) {
+			return i;
+		}
+	}
+	return CONTROL_END;
+}
+
+static enum SoundControlType
+_phoneui_utils_sound_volume_mute_element_to_type(snd_hctl_elem_t *elem)
+{
+	int i;
+	
+	for (i = 0 ; i < CONTROL_END ; i++) {
+		if (controls[sound_state][i].mute_element == elem) {
 			return i;
 		}
 	}
@@ -622,18 +635,15 @@ _phoneui_utils_sound_volume_changed_cb(snd_hctl_elem_t *elem, unsigned int mask)
         if (mask & SND_CTL_EVENT_MASK_VALUE) {
                 snd_ctl_elem_value_alloca(&control);
                 snd_hctl_elem_read(elem, control);
-                type = _phoneui_utils_sound_element_to_type(elem);
+                type = _phoneui_utils_sound_volume_element_to_type(elem);
                 if (type != CONTROL_END) {
 			volume = phoneui_utils_sound_volume_get(type);
-		}
-		else {
-			volume = 0;
-		}
-		g_debug("Got alsa volume change for control '%s', new value: %d%%",
-			controls[sound_state][type].name, volume);
-		if (_phoneui_utils_sound_volume_changed_callback) {
-			_phoneui_utils_sound_volume_changed_callback(type, volume, _phoneui_utils_sound_volume_changed_userdata);
-		}
+			g_debug("Got alsa volume change for control '%s', new value: %d%%",
+				controls[sound_state][type].name, volume);
+			if (_phoneui_utils_sound_volume_changed_callback) {
+				_phoneui_utils_sound_volume_changed_callback(type, volume, _phoneui_utils_sound_volume_changed_userdata);
+			}
+		}		
         }
 	return 0;
 }
@@ -651,18 +661,15 @@ _phoneui_utils_sound_volume_mute_changed_cb(snd_hctl_elem_t *elem, unsigned int 
         if (mask & SND_CTL_EVENT_MASK_VALUE) {
                 snd_ctl_elem_value_alloca(&control);
                 snd_hctl_elem_read(elem, control);
-                type = _phoneui_utils_sound_element_to_type(elem);
+                type = _phoneui_utils_sound_volume_mute_element_to_type(elem);
                 if (type != CONTROL_END) {
-			mute = phoneui_utils_sound_volume_mute_get(type);	
-		}
-		else {
-			mute = 0;
-		}
-		g_debug("Got alsa mute change for control type '%d', new value: %d",
+			mute = phoneui_utils_sound_volume_mute_get(type);
+			g_debug("Got alsa mute change for control type '%d', new value: %d",
 				type, mute);
-		if (_phoneui_utils_sound_volume_mute_changed_callback) {
-			_phoneui_utils_sound_volume_mute_changed_callback(type, mute, _phoneui_utils_sound_volume_mute_changed_userdata);
-		}
+			if (_phoneui_utils_sound_volume_mute_changed_callback) {
+				_phoneui_utils_sound_volume_mute_changed_callback(type, mute, _phoneui_utils_sound_volume_mute_changed_userdata);
+			}	
+		}		
         }
 	return 0;
 }
