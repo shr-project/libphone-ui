@@ -76,6 +76,10 @@ void phoneui_sim_auth_show(const int status);
 void phoneui_sim_auth_hide(const int status);
 void phoneui_ussd_show(int mode, const char *message);
 
+/* Quick settings */
+void phoneui_quick_settings_show();
+void phoneui_quick_settings_hide();
+
 /* Idle screen */
 void phoneui_idle_screen_show();
 void phoneui_idle_screen_hide();

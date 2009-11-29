@@ -57,6 +57,10 @@ static void (*_phoneui_sim_auth_show) (const int status) = NULL;
 static void (*_phoneui_sim_auth_hide) (const int status) = NULL;
 static void (*_phoneui_ussd_show) (int mode, const char *message) = NULL;
 
+/* Quick Settings */
+static void (*_phoneui_quick_settings_show) () = NULL;
+static void (*_phoneui_quick_settings_hide) () = NULL;
+
 /* Idle screen */
 static void (*_phoneui_idle_screen_show) () = NULL;
 static void (*_phoneui_idle_screen_hide) () = NULL;
@@ -230,6 +234,13 @@ phoneui_connect()
 	_phoneui_ussd_show =
 		phoneui_get_function("phoneui_backend_ussd_show",
 					backends[BACKEND_NOTIFICATION].library);
+
+	_phoneui_quick_settings_show =
+		phoneui_get_function("phoneui_backend_quick_settings_show",
+					backends[BACKEND_SETTINGS].library);
+	_phoneui_quick_settings_hide =
+		phoneui_get_function("phoneui_backend_quick_settings_hide",
+					backends[BACKEND_SETTINGS].library);
 
 	_phoneui_idle_screen_show =
 		phoneui_get_function("phoneui_backend_idle_screen_show",
@@ -445,6 +456,26 @@ phoneui_ussd_show(int mode, const char *message)
 {
 	if (_phoneui_ussd_show)
 		_phoneui_ussd_show(mode, message);
+	else
+		g_warning("can't find function %s", __FUNCTION__);
+}
+
+/* Quick Settings */
+
+void
+phoneui_quick_settings_show()
+{
+	if (_phoneui_quick_settings_show)
+		_phoneui_quick_settings_show();
+	else
+		g_warning("can't find function %s", __FUNCTION__);
+}
+
+void
+phoneui_quick_settings_hide()
+{
+	if (_phoneui_quick_settings_hide)
+		_phoneui_quick_settings_hide();
 	else
 		g_warning("can't find function %s", __FUNCTION__);
 }
