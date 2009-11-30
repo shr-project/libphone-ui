@@ -18,6 +18,8 @@
 
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
+#include "phoneui-utils-device.h"
+#include "phoneui-utils-feedback.h"
 
 /*FIXME: fix this hackish var, drop it */
 static DBusGProxy *GQuery = NULL;
@@ -105,6 +107,8 @@ phoneui_utils_init(GKeyFile *keyfile)
 {
 	int ret;
 	ret = phoneui_utils_sound_init(keyfile);
+	ret = phoneui_utils_device_init(keyfile);
+	ret = phoneui_utils_feedback_init(keyfile);
 	
 	return 0;
 }
