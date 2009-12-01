@@ -277,6 +277,9 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 				g_debug("ogsmd_sms_send_message(number,\
 						       messages[csm_seq - 1],\
 						       options, callback, userdata)");
+				/* suppress the unused var warning */
+				(void) callback;
+				(void) userdata;
 
 			}
 		}
@@ -376,6 +379,9 @@ phoneui_utils_ussd_initiate(const char *request,
 				void *data)
 {
 	g_debug("Inititating a USSD request %s\n", request);
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
 	return 0;
 }
 
@@ -385,6 +391,9 @@ phoneui_utils_call_initiate(const char *number,
 			gpointer userdata)
 {
 	g_debug("Inititating a call to %s\n", number);
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) userdata;
 	return 0;
 }
 
@@ -394,6 +403,10 @@ phoneui_utils_call_release(int call_id,
 			gpointer userdata)
 {
 	g_debug("ogsmd_call_release(call_id, callback, userdata)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) userdata;
+	(void) call_id;
 	return 0;
 }
 
@@ -403,6 +416,10 @@ phoneui_utils_call_activate(int call_id,
 			gpointer userdata)
 {
 	g_debug("ogsmd_call_activate(call_id, callback, userdata)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) userdata;
+	(void) call_id;
 	return 0;
 }
 
@@ -412,6 +429,10 @@ phoneui_utils_contact_delete(const char *path,
 				void *data)
 {
 	g_debug("opimd_contact_delete(path, callback, data)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
+	(void) path;
 	return 0;
 }
 
@@ -421,6 +442,10 @@ phoneui_utils_call_send_dtmf(const char *tones,
 				void *data)
 {
 	g_debug("ogsmd_call_send_dtmf(tones, callback, data)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
+	(void) tones;
 	return 0;
 }
 
@@ -432,6 +457,10 @@ phoneui_utils_message_delete(const char *path,
 				void *data)
 {
 	g_debug("opimd_message_delete(path, callback, data)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
+	(void) path;
 	return 0;
 }
 
@@ -445,6 +474,10 @@ phoneui_utils_message_set_read_status(const char *path, int read,
 {
 	GValue *message_read;
 	GHashTable *options = g_hash_table_new(g_str_hash, g_str_equal);
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
+	(void) path;
 	if (!options)
 		return 1;
 	message_read = _new_gvalue_boolean(read);
@@ -468,6 +501,11 @@ phoneui_utils_contact_update(const char *path,
 				void* data)
 {
 	g_debug("opimd_contact_update(path, contact_data, callback, data)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
+	(void) path;
+	(void) contact_data;
 	return 0;
 }
 
@@ -477,6 +515,10 @@ phoneui_utils_contact_add(const GHashTable *contact_data,
 			void* data)
 {
 	g_debug("opimd_contacts_add(contact_data, callback, data)");
+	/* suppress the unused var warning */
+	(void) callback;
+	(void) data;
+	(void) contact_data;
 	return 0;
 }
 
@@ -604,6 +646,8 @@ phoneui_utils_contact_get(const char *contact_path,
 {
 	struct _contact_get_pack *_pack =
 		g_slice_alloc0(sizeof(struct _contact_get_pack));
+	/* suppress the unused var warning */
+	(void) contact_path;	
 	_pack->data = data;
 	_pack->callback = callback;
 	g_debug("Getting data of contact with path: %s", contact_path);
@@ -695,6 +739,9 @@ _contact_query_callback(GError *error, char *query_path, gpointer _data)
 	if (error == NULL) {
 		struct _contact_list_pack *data =
 			(struct _contact_list_pack *)_data;
+		/* suppress the unused var warning */
+		(void) query_path;
+		(void) data;
 		g_debug("data->query = (DBusGProxy *) dbus_connect_to_opimd_contact_query(query_path);");
 		g_debug("opimd_contact_query_get_result_count(data->query,_contact_list_count_callback, data);");
 	}
@@ -716,6 +763,8 @@ phoneui_utils_contacts_get(int *count,
 		(g_str_hash, g_str_equal, NULL, free);
 	//g_hash_table_insert(qry, "_sortby", _new_gvalue_string("Name"));
 	g_debug("opimd_contacts_query(qry, _contact_query_callback, data)");
+	/* suppress the unused var warning */
+	(void) data;
 	g_hash_table_destroy(qry);
 }
 
@@ -758,6 +807,8 @@ _auth_send_callback(GError *error, gpointer _data)
 	 * from PIN to PUK and if auth worked we
 	 * have to hide the sim auth dialog */
 	g_debug("ogsmd_sim_get_auth_status(_auth_get_status_callback, data)");
+	/* suppress the unused var warning */
+	(void) data;
 }
 
 void
@@ -769,6 +820,8 @@ phoneui_utils_sim_pin_send(const char *pin,
 	data->data = userdata;
 	data->callback = callback;
 	g_debug("ogsmd_sim_send_auth_code(pin, _auth_send_callback, data)");
+	/* suppress the unused var warning */
+	(void) pin;
 }
 
 void
@@ -780,6 +833,9 @@ phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 	data->data = userdata;
 	data->callback = callback;
 	g_debug("ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, data);");
+	/* suppress the unused var warning */
+	(void) puk;
+	(void) new_pin;
 }
 
 /*FIXME: make this less ugly, do like I did in conacts */
@@ -796,6 +852,8 @@ _result_callback(GError * error, int count, void *_data)
 	if (error == NULL) {
 		g_message("Found %d messages, retrieving", count);
 		g_debug("opimd_message_query_get_multiple_results(GQuery, count, data->callback, data->data);");
+		/* suppress the unused var warning */
+		(void) data;
 	}
 }
 
@@ -804,8 +862,11 @@ _query_callback(GError * error, char *query_path, void *data)
 {
 	if (error == NULL) {
 		g_debug("Message query path is %s", query_path);
-		GQuery = dbus_connect_to_opimd_message_query(query_path);
+		g_debug("GQuery = dbus_connect_to_opimd_message_query(query_path);");
 		g_debug("opimd_message_query_get_result_count(GQuery, _result_callback, data);");
+		/* suppress the unused var warning */
+		(void) query_path;
+		(void) data;
 	}
 }
 
@@ -833,5 +894,29 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 
 	g_debug("opimd_messages_query(query, _query_callback, data);");
 	g_hash_table_destroy(query);
+}
+
+
+/* ugliest thing ever, though this is a devel env, so it's bearable. */
+static void HACK_FOR_GCC_WARNS2();
+static void
+HACK_FOR_GCC_WARNS()
+{
+	(void) GQuery;
+	(void) _contact_lookup_callback;
+	(void) _contact_get_callback;
+	(void) _contact_list_result_callback;
+	(void) _contact_list_count_callback;
+	(void) _contact_query_callback;
+	(void) _auth_get_status_callback;
+	(void) _auth_send_callback;
+	(void) _result_callback;
+	(void) _query_callback;
+	(void) HACK_FOR_GCC_WARNS2;
+}
+static void
+HACK_FOR_GCC_WARNS2()
+{
+	(void) HACK_FOR_GCC_WARNS;
 }
 
