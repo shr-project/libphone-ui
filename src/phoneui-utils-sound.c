@@ -3,8 +3,6 @@
 #include <glib.h>
 #include <alsa/asoundlib.h>
 
-#include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-audio.h>
-
 #include "phoneui-utils-sound.h"
 
 /* The sound state */
@@ -565,7 +563,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	case SOUND_STATE_IDLE:
 		/* return to the last active scenario */
 		g_debug("Pulled last phoneuid controlled scenario");
-		odeviced_audio_pull_scenario(NULL, NULL);
+		g_debug("odeviced_audio_pull_scenario(NULL, NULL)");
 		goto end;
 		break;
 	default:
@@ -578,10 +576,10 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	 * is broken there */
 
 	if (sound_state == SOUND_STATE_IDLE) {
-		odeviced_audio_push_scenario((char *) scenario, NULL, NULL);
+		g_debug("odeviced_audio_push_scenario((char *) scenario, NULL, NULL)");
 	}
 	else {
-		odeviced_audio_set_scenario((char *) scenario, NULL, NULL);	
+		g_debug("odeviced_audio_set_scenario((char *) scenario, NULL, NULL)");	
 	}
 
 end:

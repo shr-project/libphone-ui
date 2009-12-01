@@ -7,14 +7,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-bindings.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-dbus.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-sim.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-sms.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-call.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-dbus.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
 
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
@@ -140,8 +132,8 @@ phoneui_utils_contact_lookup(const char *_number,
 	data->data = _data;
 	data->callback = _callback;
 
-	opimd_contacts_get_single_entry_single_field
-		(query, "Path", _contact_lookup_callback, data);
+	g_debug("opimd_contacts_get_single_entry_single_field\
+		(query, \"Path\", _contact_lookup_callback, data)");
 
 	free(number);
 	g_hash_table_destroy(query);
@@ -181,7 +173,7 @@ _add_opimd_message(const char *number, const char *message)
 	tmp = _new_gvalue_int(time(NULL));
 	g_hash_table_insert(message_opimd, "Timestamp", tmp);
 
-	opimd_messages_add(message_opimd, NULL, NULL);
+	g_debug("opimd_messages_add(message_opimd, NULL, NULL)");
 
 	g_hash_table_destroy(message_opimd);
 }
@@ -282,15 +274,15 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 				g_debug("sending sms number %d", csm_seq);
 				g_hash_table_replace(options, "csm_seq",
 						     val_csm_seq);
-				ogsmd_sms_send_message(number,
-						       messages[csm_seq - 1],
-						       options, callback, userdata);
+				g_debug("ogsmd_sms_send_message(number,\
+						       messages[csm_seq - 1],\
+						       options, callback, userdata)");
 
 			}
 		}
 		else {
-			ogsmd_sms_send_message(number, messages[0], options,
-					       callback, userdata);
+			g_debug("ogsmd_sms_send_message(number, messages[0], options,\
+					       callback, userdata)");
 		}
 		_add_opimd_message(number, message);
 	}
@@ -383,9 +375,7 @@ phoneui_utils_ussd_initiate(const char *request,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
-	g_message("Inititating a USSD request %s\n", request);
-	/*FIXME: fix this (char *) cast when it's fixed in libframewrokd-glib */
-	ogsmd_network_send_ussd_request((char *) request, callback, data);
+	g_debug("Inititating a USSD request %s\n", request);
 	return 0;
 }
 
@@ -394,8 +384,7 @@ phoneui_utils_call_initiate(const char *number,
 			void (*callback)(GError *, int id_call, gpointer),
 			gpointer userdata)
 {
-	g_message("Inititating a call to %s\n", number);
-	ogsmd_call_initiate(number, "voice", callback, userdata);
+	g_debug("Inititating a call to %s\n", number);
 	return 0;
 }
 
@@ -404,7 +393,7 @@ phoneui_utils_call_release(int call_id,
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
-	ogsmd_call_release(call_id, callback, userdata);
+	g_debug("ogsmd_call_release(call_id, callback, userdata)");
 	return 0;
 }
 
@@ -413,7 +402,7 @@ phoneui_utils_call_activate(int call_id,
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
-	ogsmd_call_activate(call_id, callback, userdata);
+	g_debug("ogsmd_call_activate(call_id, callback, userdata)");
 	return 0;
 }
 
@@ -422,7 +411,7 @@ phoneui_utils_contact_delete(const char *path,
 				void (*callback) (GError *, gpointer),
 				void *data)
 {
-	opimd_contact_delete(path, callback, data);
+	g_debug("opimd_contact_delete(path, callback, data)");
 	return 0;
 }
 
@@ -431,7 +420,7 @@ phoneui_utils_call_send_dtmf(const char *tones,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
-	ogsmd_call_send_dtmf(tones, callback, data);
+	g_debug("ogsmd_call_send_dtmf(tones, callback, data)");
 	return 0;
 }
 
@@ -442,7 +431,7 @@ phoneui_utils_message_delete(const char *path,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
-	opimd_message_delete(path, callback, data);
+	g_debug("opimd_message_delete(path, callback, data)");
 	return 0;
 }
 
@@ -464,7 +453,7 @@ phoneui_utils_message_set_read_status(const char *path, int read,
 		return 1;
 	}
 	g_hash_table_insert(options, "MessageRead", message_read);
-	opimd_message_update(path, options, callback, data);
+	g_debug("opimd_message_update(path, options, callback, data)");
 	free(message_read);
 	g_hash_table_destroy(options);
 
@@ -478,7 +467,7 @@ phoneui_utils_contact_update(const char *path,
 				void (*callback)(GError *, gpointer),
 				void* data)
 {
-	opimd_contact_update(path, contact_data, callback, data);
+	g_debug("opimd_contact_update(path, contact_data, callback, data)");
 	return 0;
 }
 
@@ -487,7 +476,7 @@ phoneui_utils_contact_add(const GHashTable *contact_data,
 			void (*callback)(GError*, char *, gpointer),
 			void* data)
 {
-	opimd_contacts_add(contact_data, callback, data);
+	g_debug("opimd_contacts_add(contact_data, callback, data)");
 	return 0;
 }
 
@@ -618,7 +607,7 @@ phoneui_utils_contact_get(const char *contact_path,
 	_pack->data = data;
 	_pack->callback = callback;
 	g_debug("Getting data of contact with path: %s", contact_path);
-	opimd_contact_get_content(contact_path, _contact_get_callback, _pack);
+	g_debug("opimd_contact_get_content(contact_path, _contact_get_callback, _pack);");
 	return (0);
 }
 
@@ -684,7 +673,7 @@ _contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
 	g_ptr_array_foreach(_contacts, _clone_and_sanitize_contacts, contacts);
 	g_ptr_array_sort(contacts, _compare_contacts);
 	g_ptr_array_foreach(contacts, data->callback, data->data);
-	opimd_contact_query_dispose(data->query, NULL, NULL);
+	g_debug("opimd_contact_query_dispose(data->query, NULL, NULL)");
 }
 
 static void
@@ -696,8 +685,7 @@ _contact_list_count_callback(GError *error, const int count, gpointer _data)
 		(struct _contact_list_pack *)_data;
 	g_message("Contact query result gave %d entries", count);
 	*data->count = count;
-	opimd_contact_query_get_multiple_results(data->query,
-			count, _contact_list_result_callback, data);
+	g_debug("opimd_contact_query_get_multiple_results(data->query,count, _contact_list_result_callback, data);");
 }
 
 
@@ -707,10 +695,8 @@ _contact_query_callback(GError *error, char *query_path, gpointer _data)
 	if (error == NULL) {
 		struct _contact_list_pack *data =
 			(struct _contact_list_pack *)_data;
-		data->query = (DBusGProxy *)
-			dbus_connect_to_opimd_contact_query(query_path);
-		opimd_contact_query_get_result_count(data->query,
-				_contact_list_count_callback, data);
+		g_debug("data->query = (DBusGProxy *) dbus_connect_to_opimd_contact_query(query_path);");
+		g_debug("opimd_contact_query_get_result_count(data->query,_contact_list_count_callback, data);");
 	}
 }
 
@@ -729,7 +715,7 @@ phoneui_utils_contacts_get(int *count,
 	GHashTable *qry = g_hash_table_new_full
 		(g_str_hash, g_str_equal, NULL, free);
 	//g_hash_table_insert(qry, "_sortby", _new_gvalue_string("Name"));
-	opimd_contacts_query(qry, _contact_query_callback, data);
+	g_debug("opimd_contacts_query(qry, _contact_query_callback, data)");
 	g_hash_table_destroy(qry);
 }
 
@@ -771,7 +757,7 @@ _auth_send_callback(GError *error, gpointer _data)
 	 * needed sim auth, because it might change
 	 * from PIN to PUK and if auth worked we
 	 * have to hide the sim auth dialog */
-	ogsmd_sim_get_auth_status(_auth_get_status_callback, data);
+	g_debug("ogsmd_sim_get_auth_status(_auth_get_status_callback, data)");
 }
 
 void
@@ -782,7 +768,7 @@ phoneui_utils_sim_pin_send(const char *pin,
 	struct _auth_pack *data = malloc(sizeof(struct _auth_pack));
 	data->data = userdata;
 	data->callback = callback;
-	ogsmd_sim_send_auth_code(pin, _auth_send_callback, data);
+	g_debug("ogsmd_sim_send_auth_code(pin, _auth_send_callback, data)");
 }
 
 void
@@ -793,7 +779,7 @@ phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 	struct _auth_pack *data = malloc(sizeof(struct _auth_pack));
 	data->data = userdata;
 	data->callback = callback;
-	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, data);
+	g_debug("ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, data);");
 }
 
 /*FIXME: make this less ugly, do like I did in conacts */
@@ -809,9 +795,7 @@ _result_callback(GError * error, int count, void *_data)
 	struct _messages_pack *data = (struct _messages_pack *) _data;
 	if (error == NULL) {
 		g_message("Found %d messages, retrieving", count);
-		opimd_message_query_get_multiple_results(GQuery, count,
-							 data->callback,
-							 data->data);
+		g_debug("opimd_message_query_get_multiple_results(GQuery, count, data->callback, data->data);");
 	}
 }
 
@@ -821,8 +805,7 @@ _query_callback(GError * error, char *query_path, void *data)
 	if (error == NULL) {
 		g_debug("Message query path is %s", query_path);
 		GQuery = dbus_connect_to_opimd_message_query(query_path);
-		opimd_message_query_get_result_count(GQuery, _result_callback,
-						     data);
+		g_debug("opimd_message_query_get_result_count(GQuery, _result_callback, data);");
 	}
 }
 
@@ -848,7 +831,7 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	g_value_set_boolean(sortdesc, 1);
 	g_hash_table_insert(query, "_sortdesc", sortdesc);
 
-	opimd_messages_query(query, _query_callback, data);
+	g_debug("opimd_messages_query(query, _query_callback, data);");
 	g_hash_table_destroy(query);
 }
 

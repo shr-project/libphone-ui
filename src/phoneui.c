@@ -24,7 +24,6 @@
 #include <glib.h>
 #include <stdlib.h>
 
-#include <frameworkd-glib/frameworkd-glib-dbus.h>
 #include <phone-utils.h>
 
 #include "phoneui-utils-sound.h"
@@ -285,7 +284,7 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 	GHashTable *inits;
 	inits = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL);
 
-	frameworkd_handler_connect(frameworkd_handler_new());
+	g_debug("frameworkd_handler_connect(frameworkd_handler_new())");
 
 	for (i = 0 ; i < BACKEND_NO ; i++) {
 		if (!g_hash_table_lookup(inits, backends[i].library)) {
