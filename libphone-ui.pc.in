@@ -6,7 +6,7 @@ includedir=@includedir@
 Name: libphone-ui
 Description: phoneui library
 Version: @VERSION@
-Requires: dbus-glib-1 glib-2.0 gobject-2.0 libframeworkd-glib
+Requires: dbus-glib-1 glib-2.0 gobject-2.0 
 Libs: -L${libdir} -lphone-ui
 Cflags: -I${includedir}/phoneui
 
