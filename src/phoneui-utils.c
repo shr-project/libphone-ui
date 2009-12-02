@@ -606,7 +606,7 @@ _contact_get_callback(GError *error, GHashTable *_content, gpointer userdata)
 	if (!error) {
 		struct _contact_get_pack *data =
 			(struct _contact_get_pack *)userdata;
-		data->callback(phoneui_utils_contact_sanitize_content(_content), data->data);
+		data->callback(_content, data->data);
 	}
 }
 
@@ -659,18 +659,7 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 }
 
 static void
-_clone_and_sanitize_contacts(gpointer _entry, gpointer _target)
-{
-	GPtrArray *target = (GPtrArray *)_target;
-	GHashTable *entry = (GHashTable *)_entry;
-
-	GHashTable *sani = phoneui_utils_contact_sanitize_content(entry);
-
-	g_ptr_array_add(target, sani);
-}
-
-static void
-_contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
+_contact_list_result_callback(GError *error, GPtrArray *contacts, void *_data)
 {
 	/*FIXME: should we check the value of error? */
 	(void) error;
@@ -678,12 +667,10 @@ _contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
 	struct _contact_list_pack *data =
 		(struct _contact_list_pack *)_data;
 
-	if (error || !_contacts) {
+	if (error || !contacts) {
 		return;
 	}
 
-	GPtrArray *contacts = g_ptr_array_new();
-	g_ptr_array_foreach(_contacts, _clone_and_sanitize_contacts, contacts);
 	g_ptr_array_sort(contacts, _compare_contacts);
 	g_ptr_array_foreach(contacts, data->callback, data->data);
 	opimd_contact_query_dispose(data->query, NULL, NULL);
