@@ -638,8 +638,8 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 	GHashTable **b = (GHashTable **) _b;
 	gpointer p;
 	const char *name_a, *name_b;
-
-	p = g_hash_table_lookup(*a, "_Name");
+/* Probably not best (sorting by just Name) but will have to do ATM */
+	p = g_hash_table_lookup(*a, "Name");
 	if (!p) {
 		name_a = "";
 		g_debug("name a not found!!!!");
@@ -647,7 +647,7 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 	else
 		name_a = g_value_get_string(p);
 
-	p = g_hash_table_lookup(*b, "_Name");
+	p = g_hash_table_lookup(*b, "Name");
 	if (!p) {
 		name_b = "";
 		g_debug("name b not found!!!!");
