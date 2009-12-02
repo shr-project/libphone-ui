@@ -46,6 +46,7 @@ static void (*_phoneui_contacts_contact_edit) (const char *path) = NULL;
 /* Messages */
 static void (*_phoneui_messages_show) () = NULL;
 static void (*_phoneui_messages_message_show) (const int id) = NULL;
+static void (*_phoneui_messages_message_new) (GHashTable *options) = NULL;
 
 /* Dialer */
 static void (*_phoneui_dialer_show) () = NULL;
@@ -217,11 +218,14 @@ phoneui_connect()
 		phoneui_get_function("phoneui_backend_dialog_show",
 					backends[BACKEND_NOTIFICATION].library);
 
+	_phoneui_messages_show =
+		phoneui_get_function("phoneui_backend_messages_show",
+					backends[BACKEND_MESSAGES].library);
 	_phoneui_messages_message_show =
 		phoneui_get_function("phoneui_backend_messages_message_show",
 					backends[BACKEND_MESSAGES].library);
-	_phoneui_messages_show =
-		phoneui_get_function("phoneui_backend_messages_show",
+	_phoneui_messages_message_new =
+		phoneui_get_function("phoneui_backend_messages_message_new",
 					backends[BACKEND_MESSAGES].library);
 
 	_phoneui_sim_auth_show =
@@ -411,6 +415,16 @@ phoneui_messages_message_show(const int id)
 	else
 		g_warning("can't find function %s", __FUNCTION__);
 }
+
+void
+phoneui_messages_message_new(GHashTable *options)
+{
+	if (_phoneui_messages_message_new)
+		_phoneui_messages_message_new(options);
+	else
+		g_warning("can't find function %s", __FUNCTION__);
+}
+
 
 /* Dialer */
 void
