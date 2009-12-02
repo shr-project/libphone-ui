@@ -67,9 +67,6 @@ static void (*_phoneui_idle_screen_show) () = NULL;
 static void (*_phoneui_idle_screen_hide) () = NULL;
 static void (*_phoneui_idle_screen_update) (enum PhoneuiIdleScreenRefresh type) = NULL;
 
-typedef const char * BackendType;
-
-
 /* got to be in the same order as in the backends array */
 enum BackendType {
 	BACKEND_DIALER = 0,
