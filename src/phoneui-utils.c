@@ -626,108 +626,6 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 	return displayname;
 }
 
-GHashTable *
-phoneui_utils_contact_sanitize_content(GHashTable *source)
-{
-	g_debug("sanitizing a contact content...");
-	gpointer _key, _val;
-	const char *name = NULL, *surname = NULL;
-	const char *middlename = NULL, *nickname = NULL;
-	const char *displayname = NULL;
-	const char *phone = NULL;
-	GHashTableIter iter;
-	GHashTable *sani = g_hash_table_new_full
-		(g_str_hash, g_str_equal, free, free);
-
-	g_hash_table_iter_init(&iter, source);
-	while (g_hash_table_iter_next(&iter, &_key, &_val)) {
-		char *key = (char *)_key;
-		GValue *val = (GValue *)_val;
-
-		g_debug("  sanitizing field '%s'", key);
-		if (!val) {
-			g_debug("  hmm... field has no value?");
-			continue;
-		}
-
-		const char *s_val = g_value_get_string(val);
-
-		/* sanitize phone numbers */
-		if (strstr(key, "Phone") || strstr(key, "phone")) {
-			/* for phonenumbers we have to strip the tel: prefix */
-			if (g_str_has_prefix(s_val, "tel:"))
-				s_val += 4;
-
-			/* if key is exactly 'Phone' we want that is default
-			 * phone number for this contact */
-			if (strcmp(key, "Phone")) {
-				phone = s_val;
-			}
-			/* otherwise we take it as default if it is the
-			 * first phone number we see ... */
-			else if (!phone) {
-				phone = s_val;
-			}
-		}
-		else if (!strcmp(key, "Name")) {
-			g_debug("   Name found (%s)", s_val);
-			name = s_val;
-		}
-		else if (!strcmp(key, "Surname")) {
-			g_debug("   Surname found (%s)", s_val);
-			surname = s_val;
-		}
-		else if (!strcmp(key, "Middlename")) {
-			g_debug("   Middlename found (%s)", s_val);
-			middlename = s_val;
-		}
-		else if (!strcmp(key, "Nickname")) {
-			g_debug("   Nickname found (%s)", s_val);
-			nickname = s_val;
-		}
-
-		g_hash_table_insert(sani, g_strdup(key),
-				_new_gvalue_string(s_val));
-	}
-
-	/* insert special field "_Phone" for the default phone number */
-	if (phone) {
-		g_debug("   setting _Phone to '%s'", phone);
-		g_hash_table_insert(sani, g_strdup("_Phone"),
-				_new_gvalue_string(phone));
-	}
-
-	/* construct some sane display name from the fields */
-	if (name && nickname && surname) {
-		displayname = g_strdup_printf("%s '%s' %s",
-				name, nickname, surname);
-	}
-	else if (name && middlename && surname) {
-		displayname = g_strdup_printf("%s %s %s",
-				name, middlename, surname);
-	}
-	else if (name && surname) {
-		displayname = g_strdup_printf("%s %s",
-				name, surname);
-	}
-	else if (nickname) {
-		displayname = g_strdup(nickname);
-	}
-	else if (name) {
-		displayname = g_strdup(name);
-	}
-
-	/* insert special field "_Name" as display name */
-	if (displayname) {
-		g_debug("   setting _Name to '%s'", displayname);
-		g_hash_table_insert(sani, g_strdup("_Name"),
-				_new_gvalue_string(displayname));
-	}
-
-	return (sani);
-}
-
-
 struct _contact_get_pack {
 	gpointer data;
 	void (*callback)(GHashTable *, gpointer);
@@ -739,7 +637,7 @@ _contact_get_callback(GError *error, GHashTable *_content, gpointer userdata)
 	if (!error) {
 		struct _contact_get_pack *data =
 			(struct _contact_get_pack *)userdata;
-		data->callback(phoneui_utils_contact_sanitize_content(_content), data->data);
+		data->callback(_content, data->data);
 	}
 }
 
@@ -794,18 +692,7 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 }
 
 static void
-_clone_and_sanitize_contacts(gpointer _entry, gpointer _target)
-{
-	GPtrArray *target = (GPtrArray *)_target;
-	GHashTable *entry = (GHashTable *)_entry;
-
-	GHashTable *sani = phoneui_utils_contact_sanitize_content(entry);
-
-	g_ptr_array_add(target, sani);
-}
-
-static void
-_contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
+_contact_list_result_callback(GError *error, GPtrArray *contacts, void *_data)
 {
 	/*FIXME: should we check the value of error? */
 	(void) error;
@@ -813,12 +700,10 @@ _contact_list_result_callback(GError *error, GPtrArray *_contacts, void *_data)
 	struct _contact_list_pack *data =
 		(struct _contact_list_pack *)_data;
 
-	if (error || !_contacts) {
+	if (error || !contacts) {
 		return;
 	}
 
-	GPtrArray *contacts = g_ptr_array_new();
-	g_ptr_array_foreach(_contacts, _clone_and_sanitize_contacts, contacts);
 	g_ptr_array_sort(contacts, _compare_contacts);
 	g_ptr_array_foreach(contacts, data->callback, data->data);
 	g_debug("opimd_contact_query_dispose(data->query, NULL, NULL)");
