@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <phone-utils.h>
-#include <assert.h>
 #include <time.h>
 
 #include <dbus/dbus-glib.h>
@@ -520,6 +519,111 @@ phoneui_utils_contact_add(const GHashTable *contact_data,
 	(void) data;
 	(void) contact_data;
 	return 0;
+}
+
+char *
+phoneui_utils_contact_display_phone_get(GHashTable *properties)
+{
+	const char *phone = NULL;
+	gpointer _key, _val;
+	GHashTableIter iter;
+
+	g_hash_table_iter_init(&iter, properties);
+	while (g_hash_table_iter_next(&iter, &_key, &_val)) {
+		const char *key = (const char *)_key;
+		const GValue *val = (const GValue *) _val;
+
+		if (!val) {
+			g_debug("  hmm... field has no value?");
+			continue;
+		}
+
+		const char *s_val = g_value_get_string(val);
+
+		/* sanitize phone numbers */
+		if (strstr(key, "Phone") || strstr(key, "phone")) {
+			/* for phonenumbers we have to strip the tel: prefix */
+			if (g_str_has_prefix(s_val, "tel:")) {
+				s_val += 4;
+			}
+
+			/* if key is exactly 'Phone' we want that is default
+			 * phone number for this contact */
+			if (strcmp(key, "Phone")) {
+				phone = s_val;
+			}
+			/* otherwise we take it as default if it is the
+			 * first phone number we see ... */
+			else if (!phone) {
+				phone = s_val;
+			}
+		}
+	}
+
+	return strdup(phone);
+}
+
+char *
+phoneui_utils_contact_display_name_get(GHashTable *properties)
+{
+	g_debug("sanitizing a contact content...");
+	gpointer _key, _val;
+	const char *name = NULL, *surname = NULL;
+	const char *middlename = NULL, *nickname = NULL;
+	char *displayname = NULL;
+	GHashTableIter iter;
+
+	g_hash_table_iter_init(&iter, properties);
+	while (g_hash_table_iter_next(&iter, &_key, &_val)) {
+		const char *key = (const char *)_key;
+		const GValue *val = (const GValue *) _val;
+
+		if (!val) {
+			g_debug("  hmm... field has no value?");
+			continue;
+		}
+
+		const char *s_val = g_value_get_string(val);
+
+		if (!strcmp(key, "Name")) {
+			g_debug("   Name found (%s)", s_val);
+			name = s_val;
+		}
+		else if (!strcmp(key, "Surname")) {
+			g_debug("   Surname found (%s)", s_val);
+			surname = s_val;
+		}
+		else if (!strcmp(key, "Middlename")) {
+			g_debug("   Middlename found (%s)", s_val);
+			middlename = s_val;
+		}
+		else if (!strcmp(key, "Nickname")) {
+			g_debug("   Nickname found (%s)", s_val);
+			nickname = s_val;
+		}
+	}
+
+	/* construct some sane display name from the fields */
+	if (name && nickname && surname) {
+		displayname = g_strdup_printf("%s '%s' %s",
+				name, nickname, surname);
+	}
+	else if (name && middlename && surname) {
+		displayname = g_strdup_printf("%s %s %s",
+				name, middlename, surname);
+	}
+	else if (name && surname) {
+		displayname = g_strdup_printf("%s %s",
+				name, surname);
+	}
+	else if (nickname) {
+		displayname = g_strdup(nickname);
+	}
+	else if (name) {
+		displayname = g_strdup(name);
+	}
+
+	return displayname;
 }
 
 GHashTable *
