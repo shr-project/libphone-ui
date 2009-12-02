@@ -43,8 +43,10 @@ int phoneui_utils_contact_get(const char *contact_path,
 void phoneui_utils_contacts_get(int *count,
 		void (*callback)(gpointer , gpointer),
 		gpointer userdata);
-GHashTable *
-phoneui_utils_contact_sanitize_content(GHashTable *source);
+
+char *phoneui_utils_contact_display_phone_get(GHashTable *properties);
+
+char *phoneui_utils_contact_display_name_get(GHashTable *properties);
 
 int phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),
