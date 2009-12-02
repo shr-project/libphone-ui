@@ -219,14 +219,14 @@ phoneui_connect()
 		phoneui_get_function("phoneui_backend_dialog_show",
 					backends[BACKEND_NOTIFICATION].library);
 
-	_phoneui_messages_message_show =
-		phoneui_get_function("phoneui_backend_messages_message_show",
-					backends[BACKEND_MESSAGES].library);
 	_phoneui_messages_show =
 		phoneui_get_function("phoneui_backend_messages_show",
 					backends[BACKEND_MESSAGES].library);
-	_phoneui_messages_new =
-		phoneui_get_function("phoneui_backend_messages_new",
+	_phoneui_messages_message_show =
+		phoneui_get_function("phoneui_backend_messages_message_show",
+					backends[BACKEND_MESSAGES].library);
+	_phoneui_messages_message_new =
+		phoneui_get_function("phoneui_backend_messages_message_new",
 					backends[BACKEND_MESSAGES].library);
 
 	_phoneui_sim_auth_show =
