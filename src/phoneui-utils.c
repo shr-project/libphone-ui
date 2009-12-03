@@ -20,6 +20,18 @@
 #include "phoneui-utils-device.h"
 #include "phoneui-utils-feedback.h"
 
+/* HACK, DROP THIS AND ALL THE CALLS */
+static const char *
+skip_tel (const char *num)
+{
+	if (!strncmp(num, "tel:", 4)) {
+		return num + 4;
+	}
+	return num;
+}
+/* END OF HACK */
+
+
 /*FIXME: fix this hackish var, drop it */
 static DBusGProxy *GQuery = NULL;
 
@@ -266,6 +278,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 			(GHashTable *) g_ptr_array_index(recipients, i);
 		char *number =
 			(char *) g_hash_table_lookup(properties, "number");
+		number += skip_tel(number); /* HACK */
 		if (!number) {
 			continue;
 		}
@@ -368,6 +381,7 @@ phoneui_utils_dial(const char *number,
 	}
 	pack->data = userdata;
 	pack->callback = callback;
+	number += skip_tel(number); /* HACK */
 	if (phone_utils_gsm_number_is_ussd(number)) {
 		phoneui_utils_ussd_initiate(number, _phoneui_utils_dial_ussd_cb, pack);
 	}
