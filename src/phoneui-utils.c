@@ -278,7 +278,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 			(GHashTable *) g_ptr_array_index(recipients, i);
 		char *number =
 			(char *) g_hash_table_lookup(properties, "number");
-		number += skip_tel(number); /* HACK */
+		number = (char *) skip_tel(number); /* HACK */
 		if (!number) {
 			continue;
 		}
@@ -381,7 +381,7 @@ phoneui_utils_dial(const char *number,
 	}
 	pack->data = userdata;
 	pack->callback = callback;
-	number += skip_tel(number); /* HACK */
+	number = (char *) skip_tel(number); /* HACK */
 	if (phone_utils_gsm_number_is_ussd(number)) {
 		phoneui_utils_ussd_initiate(number, _phoneui_utils_dial_ussd_cb, pack);
 	}
