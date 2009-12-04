@@ -277,8 +277,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		GHashTable *properties =
 			(GHashTable *) g_ptr_array_index(recipients, i);
 		char *number =
-			(char *) g_hash_table_lookup(properties, "Phone");
-		number = (char *) skip_tel(number); /* HACK */
+			phoneui_utils_contact_display_phone_get(properties);
 		if (!number) {
 			continue;
 		}
@@ -287,6 +286,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 			for (csm_seq = 1; csm_seq <= csm_num; csm_seq++) {
 				val_csm_seq = _new_gvalue_int(csm_seq);
 				if (!val_csm_seq) {
+					free(number);
 					ret_val = 1;
 					goto clean_messages;
 				}
@@ -305,6 +305,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 					       callback, userdata);
 		}
 		_add_opimd_message(number, message);
+		free(number);
 	}
 
       clean_messages:
