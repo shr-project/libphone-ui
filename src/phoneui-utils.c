@@ -277,7 +277,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		GHashTable *properties =
 			(GHashTable *) g_ptr_array_index(recipients, i);
 		char *number =
-			(char *) g_hash_table_lookup(properties, "number");
+			(char *) g_hash_table_lookup(properties, "Phone");
 		number = (char *) skip_tel(number); /* HACK */
 		if (!number) {
 			continue;
