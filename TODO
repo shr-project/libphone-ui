@@ -2,3 +2,5 @@
 * consider lodaing utilityl functions from modules as well (an opimd module and an alsa module to start with)
 * drop all the g_slice0
 * typedef all the callback functions we provide 
+* add phoneui_deinit
+* move the screens init to libphone-ui instead of the phoneui-*.c in backends and then make screen caching configurable
