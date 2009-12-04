@@ -2,6 +2,7 @@
  *  Copyright (C) 2008
  *      Authors (alphabetical) :
  *              Julien "Ainulindalë" Cassignol
+ * 		Tom "TAsn" Hacohen <tom@stosb.com>
  *              quickdev
  * 
  *
@@ -27,6 +28,15 @@
 #include <phone-utils.h>
 
 #include "phoneui-utils-sound.h"
+
+#define CONNECT_HELPER(name, type) _phoneui_ ## name = \
+		phoneui_get_function("phoneui_backend_" #name, \
+					backends[type].library)
+#define PHONEUI_FUNCTION_CONTENT(name, ...) 				\
+	if (_phoneui_ ## name)						\
+		_phoneui_ ## name (__VA_ARGS__);			\
+	else 								\
+		g_warning("can't find function %s", __FUNCTION__);
 
 /* Calls */
 static void (*_phoneui_incoming_call_show) (const int id, const int status,
@@ -65,9 +75,6 @@ static void (*_phoneui_quick_settings_hide) () = NULL;
 static void (*_phoneui_idle_screen_show) () = NULL;
 static void (*_phoneui_idle_screen_hide) () = NULL;
 static void (*_phoneui_idle_screen_update) (enum PhoneuiIdleScreenRefresh type) = NULL;
-
-typedef const char * BackendType;
-
 
 /* got to be in the same order as in the backends array */
 enum BackendType {
@@ -181,79 +188,35 @@ phoneui_get_function(const char *name, void *phoneui_library)
 static void
 phoneui_connect()
 {
-	_phoneui_incoming_call_show =
-		phoneui_get_function("phoneui_backend_incoming_call_show",
-					backends[BACKEND_CALLS].library);
-	_phoneui_incoming_call_hide =
-		phoneui_get_function("phoneui_backend_incoming_call_hide",
-					backends[BACKEND_CALLS].library);
-	_phoneui_outgoing_call_show =
-		phoneui_get_function("phoneui_backend_outgoing_call_show",
-					backends[BACKEND_CALLS].library);
-	_phoneui_outgoing_call_hide =
-		phoneui_get_function("phoneui_backend_outgoing_call_hide",
-					backends[BACKEND_CALLS].library);
-
-	_phoneui_contacts_show =
-		phoneui_get_function("phoneui_backend_contacts_show",
-					backends[BACKEND_CONTACTS].library);
-	_phoneui_contacts_refresh =
-		phoneui_get_function("phoneui_backend_contacts_refresh",
-					backends[BACKEND_CONTACTS].library);
-	_phoneui_contacts_contact_show =
-		phoneui_get_function("phoneui_backend_contacts_contact_show",
-					backends[BACKEND_CONTACTS].library);
-	_phoneui_contacts_contact_new =
-		phoneui_get_function("phoneui_backend_contacts_contact_new",
-					backends[BACKEND_CONTACTS].library);
-	_phoneui_contacts_contact_edit =
-		phoneui_get_function("phoneui_backend_contacts_contact_edit",
-					backends[BACKEND_CONTACTS].library);
-
-	_phoneui_dialer_show =
-		phoneui_get_function("phoneui_backend_dialer_show",
-					backends[BACKEND_DIALER].library);
-
-	_phoneui_dialog_show =
-		phoneui_get_function("phoneui_backend_dialog_show",
-					backends[BACKEND_NOTIFICATION].library);
-
-	_phoneui_messages_show =
-		phoneui_get_function("phoneui_backend_messages_show",
-					backends[BACKEND_MESSAGES].library);
-	_phoneui_messages_message_show =
-		phoneui_get_function("phoneui_backend_messages_message_show",
-					backends[BACKEND_MESSAGES].library);
-	_phoneui_messages_message_new =
-		phoneui_get_function("phoneui_backend_messages_message_new",
-					backends[BACKEND_MESSAGES].library);
-
-	_phoneui_sim_auth_show =
-		phoneui_get_function("phoneui_backend_sim_auth_show",
-					backends[BACKEND_NOTIFICATION].library);
-	_phoneui_sim_auth_hide =
-		phoneui_get_function("phoneui_backend_sim_auth_hide",
-					backends[BACKEND_NOTIFICATION].library);
-	_phoneui_ussd_show =
-		phoneui_get_function("phoneui_backend_ussd_show",
-					backends[BACKEND_NOTIFICATION].library);
-
-	_phoneui_quick_settings_show =
-		phoneui_get_function("phoneui_backend_quick_settings_show",
-					backends[BACKEND_SETTINGS].library);
-	_phoneui_quick_settings_hide =
-		phoneui_get_function("phoneui_backend_quick_settings_hide",
-					backends[BACKEND_SETTINGS].library);
-
-	_phoneui_idle_screen_show =
-		phoneui_get_function("phoneui_backend_idle_screen_show",
-					backends[BACKEND_IDLE_SCREEN].library);
-	_phoneui_idle_screen_hide =
-		phoneui_get_function("phoneui_backend_idle_screen_hide",
-					backends[BACKEND_IDLE_SCREEN].library);
-	_phoneui_idle_screen_update =
-		phoneui_get_function("phoneui_backend_idle_screen_update",
-					backends[BACKEND_IDLE_SCREEN].library);
+	CONNECT_HELPER(incoming_call_show, BACKEND_CALLS);
+	CONNECT_HELPER(incoming_call_hide, BACKEND_CALLS);
+	CONNECT_HELPER(outgoing_call_show, BACKEND_CALLS);
+	CONNECT_HELPER(outgoing_call_hide, BACKEND_CALLS);
+	
+	CONNECT_HELPER(contacts_show, BACKEND_CONTACTS);
+	CONNECT_HELPER(contacts_refresh, BACKEND_CONTACTS);
+	CONNECT_HELPER(contacts_contact_show, BACKEND_CONTACTS);
+	CONNECT_HELPER(contacts_contact_new, BACKEND_CONTACTS);
+	CONNECT_HELPER(contacts_contact_edit, BACKEND_CONTACTS);
+	
+	CONNECT_HELPER(dialer_show, BACKEND_DIALER);
+	
+	CONNECT_HELPER(dialog_show, BACKEND_NOTIFICATION);
+	
+	CONNECT_HELPER(messages_show, BACKEND_MESSAGES);
+	CONNECT_HELPER(messages_message_show, BACKEND_MESSAGES);
+	CONNECT_HELPER(messages_message_new, BACKEND_MESSAGES);
+	
+	CONNECT_HELPER(sim_auth_show, BACKEND_NOTIFICATION);
+	CONNECT_HELPER(sim_auth_hide, BACKEND_NOTIFICATION);
+	CONNECT_HELPER(ussd_show, BACKEND_NOTIFICATION);
+	
+	CONNECT_HELPER(quick_settings_show, BACKEND_SETTINGS);
+	CONNECT_HELPER(quick_settings_hide, BACKEND_SETTINGS);
+	
+	CONNECT_HELPER(idle_screen_show, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_hide, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update, BACKEND_IDLE_SCREEN);
 }
 
 static void
@@ -319,204 +282,122 @@ phoneui_loop()
 void
 phoneui_incoming_call_show(const int id, const int status, const char *number)
 {
-	if (_phoneui_incoming_call_show)
-		_phoneui_incoming_call_show(id, status, number);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(incoming_call_show, id, status, number);
 }
-
 void
 phoneui_incoming_call_hide(const int id)
 {
-	if (_phoneui_incoming_call_hide)
-		_phoneui_incoming_call_hide(id);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(incoming_call_hide, id);
 }
-
 void
 phoneui_outgoing_call_show(const int id, const int status, const char *number)
 {
-	if (_phoneui_outgoing_call_show)
-		_phoneui_outgoing_call_show(id, status, number);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(outgoing_call_show, id, status, number);
 }
-
 void
 phoneui_outgoing_call_hide(const int id)
 {
-	if (_phoneui_outgoing_call_hide)
-		_phoneui_outgoing_call_hide(id);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(outgoing_call_hide, id);
 }
 
 /* Contacts */
 void
 phoneui_contacts_show()
 {
-	if (_phoneui_contacts_show)
-		_phoneui_contacts_show();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(contacts_show);
 }
-
 void
 phoneui_contacts_refresh()
 {
-	if (_phoneui_contacts_refresh)
-		_phoneui_contacts_refresh();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(contacts_refresh);
 }
-
 void
 phoneui_contacts_contact_show(const char *contact_path)
-{	if (_phoneui_contacts_contact_show)
-		_phoneui_contacts_contact_show(contact_path);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+{
+	PHONEUI_FUNCTION_CONTENT(contacts_contact_show, contact_path);
 }
-
 void
 phoneui_contacts_contact_new(GHashTable *values)
 {
-	if (_phoneui_contacts_contact_new)
-		_phoneui_contacts_contact_new(values);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(contacts_contact_new, values);
 }
-
 void
 phoneui_contacts_contact_edit(const char *contact_path)
 {
-	if (_phoneui_contacts_contact_edit)
-		_phoneui_contacts_contact_edit(contact_path);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(contacts_contact_edit, contact_path);
 }
 
 /* Messages */
 void
 phoneui_messages_show()
 {
-	if (_phoneui_messages_show)
-		_phoneui_messages_show();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(messages_show);
 }
-
 void
 phoneui_messages_message_show(const int id)
 {
-	if (_phoneui_messages_message_show)
-		_phoneui_messages_message_show(id);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(messages_message_show, id);
 }
-
 void
 phoneui_messages_message_new(GHashTable *options)
 {
-	if (_phoneui_messages_message_new)
-		_phoneui_messages_message_new(options);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(messages_message_new, options);
 }
-
 
 /* Dialer */
 void
 phoneui_dialer_show()
 {
-	if (_phoneui_dialer_show)
-		_phoneui_dialer_show();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(dialer_show);
 }
 
 /* Notifications */
 void
 phoneui_dialog_show(const int type)
 {
-	if (_phoneui_dialog_show)
-		_phoneui_dialog_show(type);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(dialog_show, type);
 }
-
 void
 phoneui_sim_auth_show(const int status)
 {
-	if (_phoneui_sim_auth_show)
-		_phoneui_sim_auth_show(status);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(sim_auth_show, status);
 }
-
 void
 phoneui_sim_auth_hide(const int status)
 {
-	if (_phoneui_sim_auth_hide)
-		_phoneui_sim_auth_hide(status);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(sim_auth_hide, status);
 }
-
 void
 phoneui_ussd_show(int mode, const char *message)
 {
-	if (_phoneui_ussd_show)
-		_phoneui_ussd_show(mode, message);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(ussd_show, mode, message);
 }
 
 /* Quick Settings */
-
 void
 phoneui_quick_settings_show()
 {
-	if (_phoneui_quick_settings_show)
-		_phoneui_quick_settings_show();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(quick_settings_show);
 }
-
 void
 phoneui_quick_settings_hide()
 {
-	if (_phoneui_quick_settings_hide)
-		_phoneui_quick_settings_hide();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(quick_settings_hide);
 }
 
 /* Idle Screen */
 void
 phoneui_idle_screen_show()
 {
-	if (_phoneui_idle_screen_show)
-		_phoneui_idle_screen_show();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(idle_screen_show);
 }
-
 void
 phoneui_idle_screen_hide()
 {
-	if (_phoneui_idle_screen_hide)
-		_phoneui_idle_screen_hide();
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(idle_screen_hide);
 }
-
 void
 phoneui_idle_screen_update(enum PhoneuiIdleScreenRefresh type)
 {
-	if (_phoneui_idle_screen_update)
-		_phoneui_idle_screen_update(type);
-	else
-		g_warning("can't find function %s", __FUNCTION__);
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update, type);
 }
