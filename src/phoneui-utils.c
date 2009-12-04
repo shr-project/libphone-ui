@@ -560,7 +560,7 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 		}
 	}
 
-	return strdup(phone);
+	return (phone) ? strdup(phone) : NULL;
 }
 
 char *
