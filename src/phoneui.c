@@ -16,8 +16,6 @@
  *  GNU Lesser Public License for more details.
  */
 
-#include "phoneui.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -27,11 +25,19 @@
 
 #include <phone-utils.h>
 
+#include "phoneui.h"
 #include "phoneui-utils-sound.h"
 
-#define CONNECT_HELPER(name, type) _phoneui_ ## name = \
-		phoneui_get_function("phoneui_backend_" #name, \
+/* How to add another function:
+ * add a CONNECT_HELPER line to phoneui_connect
+ * add a declaration just below this comment
+ * add a function wrapper at the end of this file (using PHONEUI_FUNCTION_CONTENT)
+ */
+
+#define CONNECT_HELPER(name, type) _phoneui_ ## name = 			\
+		phoneui_get_function("phoneui_backend_" #name, 		\
 					backends[type].library)
+
 #define PHONEUI_FUNCTION_CONTENT(name, ...) 				\
 	if (_phoneui_ ## name)						\
 		_phoneui_ ## name (__VA_ARGS__);			\

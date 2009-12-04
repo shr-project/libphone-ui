@@ -12,6 +12,18 @@
 #include "phoneui-utils-device.h"
 #include "phoneui-utils-feedback.h"
 
+/* HACK, DROP THIS AND ALL THE CALLS */
+static const char *
+skip_tel (const char *num)
+{
+	if (!strncmp(num, "tel:", 4)) {
+		return num + 4;
+	}
+	return num;
+}
+/* END OF HACK */
+
+
 /*FIXME: fix this hackish var, drop it */
 static DBusGProxy *GQuery = NULL;
 
@@ -257,7 +269,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		GHashTable *properties =
 			(GHashTable *) g_ptr_array_index(recipients, i);
 		char *number =
-			(char *) g_hash_table_lookup(properties, "number");
+			phoneui_utils_contact_display_phone_get(properties);
 		if (!number) {
 			continue;
 		}
@@ -266,6 +278,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 			for (csm_seq = 1; csm_seq <= csm_num; csm_seq++) {
 				val_csm_seq = _new_gvalue_int(csm_seq);
 				if (!val_csm_seq) {
+					free(number);
 					ret_val = 1;
 					goto clean_messages;
 				}
@@ -287,6 +300,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 					       callback, userdata)");
 		}
 		_add_opimd_message(number, message);
+		free(number);
 	}
 
       clean_messages:
@@ -363,6 +377,7 @@ phoneui_utils_dial(const char *number,
 	}
 	pack->data = userdata;
 	pack->callback = callback;
+	number = (char *) skip_tel(number); /* HACK */
 	if (phone_utils_gsm_number_is_ussd(number)) {
 		phoneui_utils_ussd_initiate(number, _phoneui_utils_dial_ussd_cb, pack);
 	}
@@ -538,10 +553,9 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 			continue;
 		}
 
-		const char *s_val = g_value_get_string(val);
-
 		/* sanitize phone numbers */
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
+			const char *s_val = g_value_get_string(val);
 			/* for phonenumbers we have to strip the tel: prefix */
 			if (g_str_has_prefix(s_val, "tel:")) {
 				s_val += 4;
@@ -583,21 +597,23 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 			continue;
 		}
 
-		const char *s_val = g_value_get_string(val);
-
 		if (!strcmp(key, "Name")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Name found (%s)", s_val);
 			name = s_val;
 		}
 		else if (!strcmp(key, "Surname")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Surname found (%s)", s_val);
 			surname = s_val;
 		}
 		else if (!strcmp(key, "Middlename")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Middlename found (%s)", s_val);
 			middlename = s_val;
 		}
 		else if (!strcmp(key, "Nickname")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Nickname found (%s)", s_val);
 			nickname = s_val;
 		}
@@ -671,8 +687,8 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 	GHashTable **b = (GHashTable **) _b;
 	gpointer p;
 	const char *name_a, *name_b;
-
-	p = g_hash_table_lookup(*a, "_Name");
+/* Probably not best (sorting by just Name) but will have to do ATM */
+	p = g_hash_table_lookup(*a, "Name");
 	if (!p) {
 		name_a = "";
 		g_debug("name a not found!!!!");
@@ -680,7 +696,7 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 	else
 		name_a = g_value_get_string(p);
 
-	p = g_hash_table_lookup(*b, "_Name");
+	p = g_hash_table_lookup(*b, "Name");
 	if (!p) {
 		name_b = "";
 		g_debug("name b not found!!!!");
