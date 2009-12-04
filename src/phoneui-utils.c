@@ -522,10 +522,9 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 			continue;
 		}
 
-		const char *s_val = g_value_get_string(val);
-
 		/* sanitize phone numbers */
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
+			const char *s_val = g_value_get_string(val);
 			/* for phonenumbers we have to strip the tel: prefix */
 			if (g_str_has_prefix(s_val, "tel:")) {
 				s_val += 4;
@@ -567,21 +566,23 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 			continue;
 		}
 
-		const char *s_val = g_value_get_string(val);
-
 		if (!strcmp(key, "Name")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Name found (%s)", s_val);
 			name = s_val;
 		}
 		else if (!strcmp(key, "Surname")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Surname found (%s)", s_val);
 			surname = s_val;
 		}
 		else if (!strcmp(key, "Middlename")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Middlename found (%s)", s_val);
 			middlename = s_val;
 		}
 		else if (!strcmp(key, "Nickname")) {
+			const char *s_val = g_value_get_string(val);
 			g_debug("   Nickname found (%s)", s_val);
 			nickname = s_val;
 		}
