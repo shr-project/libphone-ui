@@ -4,3 +4,4 @@
 * typedef all the callback functions we provide 
 * add phoneui_deinit
 * move the screens init to libphone-ui instead of the phoneui-*.c in backends and then make screen caching configurable
+	* Should probably be in phoneuid, and I should provide an option to pass to the init function whether to hide or destroy the screen when closed
