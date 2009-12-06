@@ -1,18 +1,17 @@
-#ifndef _phoneui_utils_UTILITY_H
-#define _phoneui_utils_UTILITY_H
+#ifndef _PHONEUI_UTILS_H
+#define _PHONEUI_UTILS_H
 #include <glib.h>
 #include "phoneui-utils-sound.h"
 
-/*FIXME: rename to PhoneuiDialogType*/
-typedef enum {
-	PHONEGUI_DIALOG_ERROR_DO_NOT_USE,
+enum PhoneUiDialogType {
+	PHONEUI_DIALOG_ERROR_DO_NOT_USE = 0,
 	// This value is used for checking if we get a wrong pointer out of a HashTable. 
 	// So do not use it, and leave it first in this enum. ( because 0 == NULL )
-	PHONEGUI_DIALOG_MESSAGE_STORAGE_FULL,
-	PHONEGUI_DIALOG_SIM_NOT_PRESENT
-} PhoneguiDialogType;
+	PHONEUI_DIALOG_MESSAGE_STORAGE_FULL,
+	PHONEUI_DIALOG_SIM_NOT_PRESENT
+};
 
-enum PhoneuiSimStatus{
+enum PhoneuiSimStatus {
         PHONEUI_SIM_UNKNOWN,
         PHONEUI_SIM_READY,
         PHONEUI_SIM_PIN_REQUIRED,
