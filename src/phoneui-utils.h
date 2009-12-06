@@ -20,6 +20,22 @@ enum PhoneuiSimStatus {
         PHONEUI_SIM_PUK2_REQUIRED
 };
 
+enum PhoneUiResource {
+	PHONEUI_RESOURCE_GSM,
+	PHONEUI_RESOURCE_BLUETOOTH,
+	PHONEUI_RESOURCE_WIFI,
+	PHONEUI_RESOURCE_DISPLAY,
+	PHONEUI_RESOURCE_CPU,
+	PHONEUI_RESOURCE_END /* must be last */
+};
+
+enum PhoneUiResourcePolicy {
+	PHONEUI_RESOURCE_POLICY_ERROR,
+	PHONEUI_RESOURCE_POLICY_DISABLED,
+	PHONEUI_RESOURCE_POLICY_ENABLED,
+	PHONEUI_RESOURCE_POLICY_AUTO
+};
+
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
 
