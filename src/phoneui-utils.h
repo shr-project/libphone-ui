@@ -1,24 +1,39 @@
-#ifndef _phoneui_utils_UTILITY_H
-#define _phoneui_utils_UTILITY_H
+#ifndef _PHONEUI_UTILS_H
+#define _PHONEUI_UTILS_H
 #include <glib.h>
 #include "phoneui-utils-sound.h"
 
-/*FIXME: rename to PhoneuiDialogType*/
-typedef enum {
-	PHONEGUI_DIALOG_ERROR_DO_NOT_USE,
+enum PhoneUiDialogType {
+	PHONEUI_DIALOG_ERROR_DO_NOT_USE = 0,
 	// This value is used for checking if we get a wrong pointer out of a HashTable. 
 	// So do not use it, and leave it first in this enum. ( because 0 == NULL )
-	PHONEGUI_DIALOG_MESSAGE_STORAGE_FULL,
-	PHONEGUI_DIALOG_SIM_NOT_PRESENT
-} PhoneguiDialogType;
+	PHONEUI_DIALOG_MESSAGE_STORAGE_FULL,
+	PHONEUI_DIALOG_SIM_NOT_PRESENT
+};
 
-enum PhoneuiSimStatus{
+enum PhoneuiSimStatus {
         PHONEUI_SIM_UNKNOWN,
         PHONEUI_SIM_READY,
         PHONEUI_SIM_PIN_REQUIRED,
         PHONEUI_SIM_PUK_REQUIRED,
         PHONEUI_SIM_PIN2_REQUIRED,
         PHONEUI_SIM_PUK2_REQUIRED
+};
+
+enum PhoneUiResource {
+	PHONEUI_RESOURCE_GSM,
+	PHONEUI_RESOURCE_BLUETOOTH,
+	PHONEUI_RESOURCE_WIFI,
+	PHONEUI_RESOURCE_DISPLAY,
+	PHONEUI_RESOURCE_CPU,
+	PHONEUI_RESOURCE_END /* must be last */
+};
+
+enum PhoneUiResourcePolicy {
+	PHONEUI_RESOURCE_POLICY_ERROR,
+	PHONEUI_RESOURCE_POLICY_DISABLED,
+	PHONEUI_RESOURCE_POLICY_ENABLED,
+	PHONEUI_RESOURCE_POLICY_AUTO
 };
 
 gchar *phoneui_utils_get_user_home_prefix();

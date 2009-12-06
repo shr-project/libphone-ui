@@ -901,7 +901,6 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	g_hash_table_destroy(query);
 }
 
-
 /* ugliest thing ever, though this is a devel env, so it's bearable. */
 static void HACK_FOR_GCC_WARNS2();
 static void
@@ -923,5 +922,49 @@ static void
 HACK_FOR_GCC_WARNS2()
 {
 	(void) HACK_FOR_GCC_WARNS;
+}
+
+int
+phoneui_utils_resource_policy_set(enum PhoneUiResource resource,
+					enum PhoneUiResourcePolicy policy)
+{
+	switch (resource) {
+	case PHONEUI_RESOURCE_GSM:
+		break;
+	case PHONEUI_RESOURCE_BLUETOOTH:
+		break;
+	case PHONEUI_RESOURCE_WIFI:
+		break;
+	case PHONEUI_RESOURCE_DISPLAY:
+		break;
+	case PHONEUI_RESOURCE_CPU:
+		break;
+	default:
+		return 1;
+		break;
+	}
+	
+	return 0;
+}
+
+enum PhoneUiResourcePolicy
+phoneui_utils_resource_policy_get(enum PhoneUiResource resource)
+{
+	switch (resource) {
+	case PHONEUI_RESOURCE_GSM:
+		break;
+	case PHONEUI_RESOURCE_BLUETOOTH:
+		break;
+	case PHONEUI_RESOURCE_WIFI:
+		break;
+	case PHONEUI_RESOURCE_DISPLAY:
+		break;
+	case PHONEUI_RESOURCE_CPU:
+		break;
+	default:
+		break;
+	}
+	
+	return PHONEUI_RESOURCE_POLICY_ERROR;
 }
 
