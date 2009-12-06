@@ -861,6 +861,7 @@ int
 phoneui_utils_resource_policy_set(enum PhoneUiResource resource,
 					enum PhoneUiResourcePolicy policy)
 {
+	(void) policy;
 	switch (resource) {
 	case PHONEUI_RESOURCE_GSM:
 		break;
