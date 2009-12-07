@@ -27,6 +27,7 @@
 #include <phone-utils.h>
 
 #include "phoneui.h"
+#include "phoneui-info.h"
 #include "phoneui-utils-sound.h"
 
 /* How to add another function:
@@ -258,8 +259,6 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 	GHashTable *inits;
 	inits = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL);
 
-	frameworkd_handler_connect(frameworkd_handler_new());
-
 	for (i = 0 ; i < BACKEND_NO ; i++) {
 		if (!g_hash_table_lookup(inits, backends[i].library)) {
 			/* FIXME: the char * is a cast hack, since we won't change the content anyway */
@@ -267,6 +266,8 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 			_phoneui_backend_init(argc, argv, exit_cb, i);
 		}
 	}
+
+	phoneui_info_init();
 
 	g_hash_table_destroy(inits);
 }
