@@ -34,6 +34,7 @@
  * add a CONNECT_HELPER line to phoneui_connect
  * add a declaration just below this comment
  * add a function wrapper at the end of this file (using PHONEUI_FUNCTION_CONTENT)
+ * add the function declaration to phoneui.h(.in)
  */
 
 #define CONNECT_HELPER(name, type) _phoneui_ ## name = 			\
