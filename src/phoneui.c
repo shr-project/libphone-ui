@@ -26,12 +26,14 @@
 #include <phone-utils.h>
 
 #include "phoneui.h"
+#include "phoneui-info.h"
 #include "phoneui-utils-sound.h"
 
 /* How to add another function:
  * add a CONNECT_HELPER line to phoneui_connect
  * add a declaration just below this comment
  * add a function wrapper at the end of this file (using PHONEUI_FUNCTION_CONTENT)
+ * add the function declaration to phoneui.h(.in)
  */
 
 #define CONNECT_HELPER(name, type) _phoneui_ ## name = 			\
@@ -80,7 +82,17 @@ static void (*_phoneui_quick_settings_hide) () = NULL;
 /* Idle screen */
 static void (*_phoneui_idle_screen_show) () = NULL;
 static void (*_phoneui_idle_screen_hide) () = NULL;
-static void (*_phoneui_idle_screen_update) (enum PhoneuiIdleScreenRefresh type) = NULL;
+static void (*_phoneui_idle_screen_update_missed_calls) (const int amount) = NULL;
+static void (*_phoneui_idle_screen_update_unfinished_tasks) (const int amount) = NULL;
+static void (*_phoneui_idle_screen_update_unread_messages) (const int amount) = NULL;
+static void (*_phoneui_idle_screen_update_power) (const int capacity) = NULL;
+static void (*_phoneui_idle_screen_update_call)
+	(enum PhoneuiCallState state, const char *name, const char *number) = NULL;
+static void (*_phoneui_idle_screen_update_signal_strength) (const int signal) = NULL;
+static void (*_phoneui_idle_screen_update_provider) (const char *provider) = NULL;
+static void (*_phoneui_idle_screen_update_resource) (const char *resource, const int state) = NULL;
+static void (*_phoneui_idle_screen_update_alarm) (const int alarm) = NULL;
+static void (*_phoneui_idle_screen_update_profile) (const char *profile) = NULL;
 
 /* got to be in the same order as in the backends array */
 enum BackendType {
@@ -222,7 +234,16 @@ phoneui_connect()
 	
 	CONNECT_HELPER(idle_screen_show, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_hide, BACKEND_IDLE_SCREEN);
-	CONNECT_HELPER(idle_screen_update, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_missed_calls, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_unfinished_tasks, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_unread_messages, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_power, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_call, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_signal_strength, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_provider, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_resource, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_alarm, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_update_profile, BACKEND_IDLE_SCREEN);
 }
 
 static void
@@ -266,6 +287,8 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 			_phoneui_backend_init(argc, argv, exit_cb, i);
 		}
 	}
+
+	phoneui_info_init();
 
 	g_hash_table_destroy(inits);
 }
@@ -403,7 +426,54 @@ phoneui_idle_screen_hide()
 	PHONEUI_FUNCTION_CONTENT(idle_screen_hide);
 }
 void
-phoneui_idle_screen_update(enum PhoneuiIdleScreenRefresh type)
+phoneui_idle_screen_update_missed_calls(const int amount)
 {
-	PHONEUI_FUNCTION_CONTENT(idle_screen_update, type);
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_missed_calls, amount);
 }
+void
+phoneui_idle_screen_update_unfinished_tasks(const int amount)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_unfinished_tasks, amount);
+}
+void
+phoneui_idle_screen_update_unread_messages(const int amount)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_unread_messages, amount);
+}
+void
+phoneui_idle_screen_update_power(const int capacity)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_power, capacity);
+}
+void
+phoneui_idle_screen_update_call(enum PhoneuiCallState state,
+		const char *name, const char *number)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_call, state, name, number);
+}
+void
+phoneui_idle_screen_update_signal_strength(const int signal)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_signal_strength, signal);
+}
+void
+phoneui_idle_screen_update_provider(const char *provider)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_provider, provider);
+}
+void
+phoneui_idle_screen_update_resource(const char *resource, const int state)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_resource, resource, state);
+}
+void
+phoneui_idle_screen_update_alarm(const int alarm)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_alarm, alarm);
+}
+void
+phoneui_idle_screen_update_profile(const char *profile)
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_update_profile, profile);
+}
+

@@ -12,18 +12,6 @@
 #include "phoneui-utils-device.h"
 #include "phoneui-utils-feedback.h"
 
-/* HACK, DROP THIS AND ALL THE CALLS */
-static const char *
-skip_tel (const char *num)
-{
-	if (!strncmp(num, "tel:", 4)) {
-		return num + 4;
-	}
-	return num;
-}
-/* END OF HACK */
-
-
 /*FIXME: fix this hackish var, drop it */
 static DBusGProxy *GQuery = NULL;
 
@@ -66,25 +54,6 @@ _new_gvalue_boolean(int value)
 	return val;
 }
 
-static char *
-_lookup_add_prefix(const char *_number)
-{
-	char *number = NULL;
-	if (strncmp(_number, "tel:", 4)) {
-		number = malloc(strlen(_number) + 5);	/* 5 is for "tel:" and the null */
-		if (!number) {
-			return NULL;
-		}
-		strcpy(number, "tel:");
-		strcat(number, _number);
-	}
-	else
-		number = g_strdup(_number);
-
-
-	return number;
-}
-
 struct _contact_lookup_pack {
 	gpointer *data;
 	void (*callback)(GHashTable *, gpointer);
@@ -103,6 +72,7 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 		g_debug("No contact name found.");
 		data->callback(NULL, data->data);
 	}
+	free(data);
 }
 
 int
@@ -117,36 +87,30 @@ phoneui_utils_init(GKeyFile *keyfile)
 }
 
 int
-phoneui_utils_contact_lookup(const char *_number,
+phoneui_utils_contact_lookup(const char *number,
 			void (*_callback) (GHashTable *, gpointer),
 			void *_data)
 {
 	GHashTable *query =
 		g_hash_table_new(g_str_hash, g_str_equal);
-	char *number = _lookup_add_prefix(_number);
-	if (!number) {
-		return 1;
-	}
 
 	g_debug("Attempting to resolve name for: \"%s\"", number);
 
 
 	GValue *value = _new_gvalue_string(number);	/*  we prefer using number */
 	if (!value) {
-		free(number);
 		return 1;
 	}
 	g_hash_table_insert(query, "Phone", value);
 
 	struct _contact_lookup_pack *data =
-		g_slice_alloc0(sizeof(struct _contact_lookup_pack));
+		calloc(1, sizeof(struct _contact_lookup_pack));
 	data->data = _data;
 	data->callback = _callback;
 
 	g_debug("opimd_contacts_get_single_entry_single_field\
 		(query, \"Path\", _contact_lookup_callback, data)");
 
-	free(number);
 	g_hash_table_destroy(query);
 
 	return 0;
@@ -377,7 +341,7 @@ phoneui_utils_dial(const char *number,
 	}
 	pack->data = userdata;
 	pack->callback = callback;
-	number = (char *) skip_tel(number); /* HACK */
+
 	if (phone_utils_gsm_number_is_ussd(number)) {
 		phoneui_utils_ussd_initiate(number, _phoneui_utils_dial_ussd_cb, pack);
 	}
@@ -553,13 +517,10 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 			continue;
 		}
 
+		/* Use the types mechanism */
 		/* sanitize phone numbers */
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
 			const char *s_val = g_value_get_string(val);
-			/* for phonenumbers we have to strip the tel: prefix */
-			if (g_str_has_prefix(s_val, "tel:")) {
-				s_val += 4;
-			}
 
 			/* if key is exactly 'Phone' we want that is default
 			 * phone number for this contact */
@@ -885,14 +846,14 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	data = malloc(sizeof(struct _messages_pack *));
 	data->callback = callback;
 	data->data = _data;
-	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);	/*g_slice_alloc0 needs freeing */
+	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, free);	
 
-	GValue *sortby = g_slice_alloc0(sizeof(GValue));
+	GValue *sortby = calloc(1, sizeof(GValue));
 	g_value_init(sortby, G_TYPE_STRING);
 	g_value_set_string(sortby, "Timestamp");
 	g_hash_table_insert(query, "_sortby", sortby);
 
-	GValue *sortdesc = g_slice_alloc0(sizeof(GValue));
+	GValue *sortdesc = calloc(1, sizeof(GValue));
 	g_value_init(sortdesc, G_TYPE_BOOLEAN);
 	g_value_set_boolean(sortdesc, 1);
 	g_hash_table_insert(query, "_sortdesc", sortdesc);
@@ -968,4 +929,5 @@ phoneui_utils_resource_policy_get(enum PhoneUiResource resource)
 	
 	return PHONEUI_RESOURCE_POLICY_ERROR;
 }
+
 

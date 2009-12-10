@@ -687,3 +687,31 @@ phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControl
 	return 0;
 }
 
+void
+phoneui_utils_sound_profile_list(void (*callback)(GError *, GPtrArray *, gpointer),
+				void *userdata)
+{
+	(void) callback;
+	(void) userdata;
+	g_debug("opreferencesd_get_profiles(callback, userdata);");
+}
+
+void
+phoneui_utils_sound_profile_set(const char *profile,
+				void (*callback)(GError *, gpointer),
+				void *userdata)
+{
+	(void) callback;
+	(void) userdata;
+	(void) profile;
+	g_debug("opreferencesd_set_profile(profile, callback, userdata);");
+}
+
+void
+phoneui_utils_sound_profile_get(void (*callback)(GError *, const char *, gpointer),
+				void *userdata)
+{
+	(void) callback;
+	(void) userdata;
+	g_debug("opreferencesd_get_profile(callback, userdata);");
+}
