@@ -52,6 +52,7 @@ phoneui_info_trigger()
 {
 	/* manually feed initial data to the idle screen... further
 	 * updates will be handled by the signal handlers registered above */
+	g_debug("%s", __FUNCTION__);
 #if 0
 	opimd_calls_get_new_missed_calls(_missed_calls_callback, NULL);
 	opimd_messages_get_unread_messages(_unread_messages_callback, NULL);
