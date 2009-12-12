@@ -288,14 +288,15 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 		}
 	}
 
-	phoneui_info_init();
-
 	g_hash_table_destroy(inits);
+
+	phoneui_info_init();
 }
 
 void
 phoneui_loop()
 {
+
 #if 0
 	int i;
 	for (i = 0 ; i < BACKEND_NO ; i++) {
