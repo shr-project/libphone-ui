@@ -83,6 +83,7 @@ static void (*_phoneui_quick_settings_hide) () = NULL;
 /* Idle screen */
 static void (*_phoneui_idle_screen_show) () = NULL;
 static void (*_phoneui_idle_screen_hide) () = NULL;
+static void (*_phoneui_idle_screen_toggle) () = NULL;
 static void (*_phoneui_idle_screen_update_missed_calls) (const int amount) = NULL;
 static void (*_phoneui_idle_screen_update_unfinished_tasks) (const int amount) = NULL;
 static void (*_phoneui_idle_screen_update_unread_messages) (const int amount) = NULL;
@@ -235,6 +236,7 @@ phoneui_connect()
 	
 	CONNECT_HELPER(idle_screen_show, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_hide, BACKEND_IDLE_SCREEN);
+	CONNECT_HELPER(idle_screen_toggle, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_update_missed_calls, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_update_unfinished_tasks, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_update_unread_messages, BACKEND_IDLE_SCREEN);
@@ -424,6 +426,11 @@ void
 phoneui_idle_screen_hide()
 {
 	PHONEUI_FUNCTION_CONTENT(idle_screen_hide);
+}
+void
+phoneui_idle_screen_toggle()
+{
+	PHONEUI_FUNCTION_CONTENT(idle_screen_toggle);
 }
 void
 phoneui_idle_screen_update_missed_calls(const int amount)
