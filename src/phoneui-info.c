@@ -10,37 +10,37 @@
 
 #include "phoneui.h"
 
-static void _missed_calls_handler(const int amount);
-static void _unread_messages_handler(const int amount);
+static void _missed_calls_handler(int amount);
+static void _unread_messages_handler(int amount);
 //static void _unfinished_tasks_handler(const int amount);
 static void _resource_changed_handler(const char *resource,
 		gboolean state, GHashTable *properties);
-static void _call_status_handler(const int, const int, GHashTable *);
+static void _call_status_handler(int, int, GHashTable *);
 static void _profile_changed_handler(const char *profile);
-//static void _alarm_changed_handler(const int time);
-static void _capacity_changed_handler(const int energy);
+//static void _alarm_changed_handler(int time);
+static void _capacity_changed_handler(int energy);
 static void _network_status_handler(GHashTable *properties);
-static void _signal_strength_handler(const int signal);
-static void _idle_notifier_handler(const int state);
+static void _signal_strength_handler(int signal);
+static void _idle_notifier_handler(int state);
 
 static void _missed_calls_callback(GError *error,
-		const int amount, gpointer userdata);
+		int amount, gpointer userdata);
 static void _unread_messages_callback(GError *error,
-		const int amount, gpointer userdata);
+		int amount, gpointer userdata);
 static void _list_resources_callback(GError *error,
 		char **resources, gpointer userdata);
 static void _resource_state_callback(GError *error,
 		gboolean state, gpointer userdata);
 static void _get_profile_callback(GError *error,
-		const char *profile, gpointer userdata);
+		char *profile, gpointer userdata);
 static void _get_capacity_callback(GError *error,
-		const int energy, gpointer userdata);
+		int energy, gpointer userdata);
 static void _get_network_status_callback(GError *error,
 		GHashTable *properties, gpointer userdata);
 static void _get_signal_strength_callback(GError *error,
-		const int signal, gpointer userdata);
+		int signal, gpointer userdata);
 //static void _get_alarm_callback(GError *error,
-//		const int time, gpointer userdata);
+//		int time, gpointer userdata);
 
 static void _handle_network_status(GHashTable *properties);
 
@@ -83,7 +83,7 @@ phoneui_info_trigger()
 
 /* --- signal handlers --- */
 
-static void _missed_calls_handler(const int amount)
+static void _missed_calls_handler(int amount)
 {
 	g_debug("_missed_calls_handler: %d missed calls", amount);
 	phoneui_idle_screen_update_missed_calls(amount);
@@ -110,7 +110,7 @@ static void _resource_changed_handler(const char *resource,
 	phoneui_idle_screen_update_resource(resource, state);
 }
 
-static void _call_status_handler(const int callid, const int state,
+static void _call_status_handler(int callid, int state,
 		GHashTable *properties)
 {
 	(void)properties;
@@ -150,7 +150,7 @@ static void _profile_changed_handler(const char *profile)
 //	phoneui_idle_screen_update_alarm(time);
 //}
 
-static void _capacity_changed_handler(const int energy)
+static void _capacity_changed_handler(int energy)
 {
 	g_debug("_capacity_changed_handler: capacity is %d", energy);
 	phoneui_idle_screen_update_power(energy);
@@ -161,13 +161,13 @@ static void _network_status_handler(GHashTable *properties)
 	_handle_network_status(properties);
 }
 
-static void _signal_strength_handler(const int signal)
+static void _signal_strength_handler(int signal)
 {
 	g_debug("_signal_strength_handler: %d", signal);
 	phoneui_idle_screen_update_signal_strength(signal);
 }
 
-static void _idle_notifier_handler(const int state)
+static void _idle_notifier_handler(int state)
 {
 	g_debug("_idle_notifier_handler: idle state now %d", state);
 }
@@ -176,7 +176,7 @@ static void _idle_notifier_handler(const int state)
 /* callbacks for initial feeding of data */
 
 static void _missed_calls_callback(GError *error,
-		const int amount, gpointer userdata)
+		int amount, gpointer userdata)
 {
 	(void)userdata;
 
@@ -189,7 +189,7 @@ static void _missed_calls_callback(GError *error,
 }
 
 static void _unread_messages_callback(GError *error,
-		const int amount, gpointer userdata)
+		int amount, gpointer userdata)
 {
 	(void)userdata;
 
@@ -235,7 +235,7 @@ static void _resource_state_callback(GError *error,
 }
 
 static void _get_profile_callback(GError *error,
-		const char *profile, gpointer userdata)
+		char *profile, gpointer userdata)
 {
 	(void)userdata;
 
@@ -248,7 +248,7 @@ static void _get_profile_callback(GError *error,
 }
 
 static void _get_capacity_callback(GError *error,
-		const int energy, gpointer userdata)
+		int energy, gpointer userdata)
 {
 	(void)userdata;
 
@@ -274,7 +274,7 @@ static void _get_network_status_callback(GError *error,
 }
 
 static void _get_signal_strength_callback(GError *error,
-		const int signal, gpointer userdata)
+		int signal, gpointer userdata)
 {
 	(void)userdata;
 
