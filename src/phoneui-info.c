@@ -311,6 +311,11 @@ static void _handle_network_status(GHashTable *properties)
 		g_debug("provider is '%s'", g_value_get_string(v));
 		phoneui_idle_screen_update_provider(g_value_get_string(v));
 	}
+	v = g_hash_table_lookup(properties, "strength");
+	if (v) {
+		g_debug("signal strength is %d", g_value_get_int(v));
+		phoneui_idle_screen_update_signal_strength(g_value_get_int(v));
+	}
 	g_hash_table_destroy(properties);
 }
 
