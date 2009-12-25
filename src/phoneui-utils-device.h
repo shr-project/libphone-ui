@@ -15,5 +15,11 @@ phoneui_utils_device_flash(int duration, int intensity, int repeat, int pause);
 void
 phoneui_utils_device_sound(const char *sound);
 
+void
+phoneui_utils_device_activate_screensaver(void);
+
+void
+phoneui_utils_device_deactivate_screensaver(void);
+
 #endif
 

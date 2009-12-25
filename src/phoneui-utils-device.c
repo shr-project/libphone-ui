@@ -109,3 +109,19 @@ phoneui_utils_device_sound(const char *sound)
 	// TODO
 }
 
+
+void
+phoneui_utils_device_activate_screensaver(void)
+{
+	// FIXME: do this in a sane way!!!
+	system("xset -display localhost:0 s blank");
+	system("xset -display localhost:0 s activate");
+}
+
+void
+phoneui_utils_device_deactivate_screensaver(void)
+{
+	// FIXME: do this in a sane way!!!
+	system("xset -display localhost:0 s reset");
+}
+
