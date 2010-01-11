@@ -354,11 +354,11 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		/* does not yet free field because of the next if */
 	}
 	if (!speaker) {
-		g_message("No speaker value for %s found, using none", _field);
+		g_debug("No speaker value for %s found, using none", _field);
 		speaker = "";
 	}
 	if (!microphone) {
-		g_message("No microphone value for %s found, using none", _field);
+		g_debug("No microphone value for %s found, using none", _field);
 		microphone = "";
 	}
 	controls[state][CONTROL_SPEAKER].mute_element = NULL;
