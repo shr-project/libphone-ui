@@ -45,7 +45,7 @@ _vibration_on(gpointer data)
 {
 	struct VibrationData *vdata = (struct VibrationData *)data;
 	ssize_t len = write(vdata->fd, vdata->systring, strlen(vdata->systring));
-	g_assert(len != -1);
+	g_return_val_if_fail(len != -1, 1);
 	g_timeout_add(vdata->duration, _vibration_off, vdata);
 	return 0;
 }
@@ -55,7 +55,7 @@ _vibration_off(gpointer data)
 {
 	struct VibrationData *vdata = (struct VibrationData *)data;
 	ssize_t len = write(vdata->fd, "0\n", 2);
-	g_assert(len != -1);
+	g_return_val_if_fail(len != -1, 1);
 	if (vdata->repeat > 0) {
 		vdata->repeat--;
 		g_timeout_add(vdata->pause, _vibration_on, vdata);
@@ -88,7 +88,7 @@ phoneui_utils_device_vibrate(int duration, int intensity, int repeat, int pause)
 	vdata->pause = pause;
 	snprintf(vdata->systring, 4, "%d\n", intensity);
 	ssize_t len = write(fd, vdata->systring, strlen(vdata->systring));
-	g_assert(len != -1);
+	g_return_if_fail(len != -1);
 	g_timeout_add(duration, _vibration_off, vdata);
 }
 
@@ -119,7 +119,7 @@ phoneui_utils_device_activate_screensaver(void)
 	// FIXME: do this in a sane way!!!
 	int rc1 = system("xset -display localhost:0 s blank");
 	int rc2 = system("xset -display localhost:0 s activate");
-	g_assert(rc1 == 0 && rc2 ==0);
+	g_return_if_fail(rc1 == 0 && rc2 ==0);
 }
 
 void
@@ -127,6 +127,6 @@ phoneui_utils_device_deactivate_screensaver(void)
 {
 	// FIXME: do this in a sane way!!!
 	int rc = system("xset -display localhost:0 s reset");
-	g_assert(rc == 0);
+	g_return_if_fail(rc == 0);
 }
 
