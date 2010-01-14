@@ -88,7 +88,7 @@ phoneui_utils_device_vibrate(int duration, int intensity, int repeat, int pause)
 	vdata->pause = pause;
 	snprintf(vdata->systring, 4, "%d\n", intensity);
 	ssize_t len = write(fd, vdata->systring, strlen(vdata->systring));
-	assert(len != -1);
+	g_assert(len != -1);
 	g_timeout_add(duration, _vibration_off, vdata);
 }
 
