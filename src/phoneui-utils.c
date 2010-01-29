@@ -699,16 +699,24 @@ phoneui_utils_contacts_get(int *count,
 	g_hash_table_destroy(qry);
 }
 
-void phoneui_utils_contacts_fields_get(void *callback, void *userdata)
+void
+phoneui_utils_contacts_fields_get(void *callback, void *userdata)
 {
 	/*stub*/
+	(void) callback;
+	(void) userdata;
 	return;
 }
 
-void phoneui_utils_contacts_field_add(const char *name, const char *type,
+void
+phoneui_utils_contacts_field_add(const char *name, const char *type,
 					void *callback, void *userdata)
 {
 	/*stub*/
+	(void) callback;
+	(void) userdata;
+	(void) name;
+	(void) type;
 	return;
 }
 
@@ -717,6 +725,9 @@ phoneui_utils_contacts_field_remove(const char *name,
 					void *callback, void *userdata)
 {
 	/*stub*/
+	(void) callback;
+	(void) userdata;
+	(void) name;
 	return;
 }
 
