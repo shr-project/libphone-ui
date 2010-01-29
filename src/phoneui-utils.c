@@ -699,6 +699,28 @@ phoneui_utils_contacts_get(int *count,
 	g_hash_table_destroy(qry);
 }
 
+void phoneui_utils_contacts_fields_get(void *callback, void *userdata)
+{
+	/*stub*/
+	return;
+}
+
+void phoneui_utils_contacts_field_add(const char *name, const char *type,
+					void *callback, void *userdata)
+{
+	/*stub*/
+	return;
+}
+
+void
+phoneui_utils_contacts_field_remove(const char *name,
+					void *callback, void *userdata)
+{
+	/*stub*/
+	return;
+}
+
+
 /* --- SIM Auth handling --- */
 struct _auth_pack {
 	gpointer data;
