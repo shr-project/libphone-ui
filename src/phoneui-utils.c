@@ -702,7 +702,7 @@ phoneui_utils_contacts_get(int *count,
 void
 phoneui_utils_contacts_fields_get(void *callback, void *userdata)
 {
-	/*stub*/
+	/*FIXME stub*/
 	(void) callback;
 	(void) userdata;
 	return;
@@ -712,7 +712,7 @@ void
 phoneui_utils_contacts_field_add(const char *name, const char *type,
 					void *callback, void *userdata)
 {
-	/*stub*/
+	/*FIXME stub*/
 	(void) callback;
 	(void) userdata;
 	(void) name;
@@ -724,7 +724,7 @@ void
 phoneui_utils_contacts_field_remove(const char *name,
 					void *callback, void *userdata)
 {
-	/*stub*/
+	/*FIXME stub*/
 	(void) callback;
 	(void) userdata;
 	(void) name;
@@ -894,4 +894,13 @@ phoneui_utils_resource_policy_get(enum PhoneUiResource resource)
 	}
 	
 	return PHONEUI_RESOURCE_POLICY_ERROR;
+}
+
+void
+phoneui_utils_fields_types_get(void *callback, void *userdata)
+{
+	/*FIXME stub*/
+	(void) callback;
+	(void) userdata;
+	return;
 }
