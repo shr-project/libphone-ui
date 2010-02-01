@@ -14,6 +14,7 @@
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-dbus.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-fields.h>
 
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
@@ -699,13 +700,35 @@ phoneui_utils_contacts_get(int *count,
 	g_hash_table_destroy(qry);
 }
 
-void
-phoneui_utils_contacts_fields_get(void *callback, void *userdata)
+struct _fields_pack {
+	gpointer data;
+	void (*callback)(GHashTable *, gpointer);
+};
+
+static void
+_fields_get_cb(GError *error, GHashTable *fields, gpointer _pack)
 {
-	/*FIXME stub*/
-	(void) callback;
-	(void) userdata;
-	return;
+	struct _fields_pack *pack = (struct _fields_pack *)_pack;
+	if (error) {
+		g_warning("Failed to aquire contact fields");
+		if (pack->callback) {
+			pack->callback(NULL, pack->data);
+		}
+	}
+	else if (pack->callback) {
+		pack->callback(fields, pack->data);
+	}
+	free(pack);
+}
+
+void
+phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer), 
+		gpointer userdata)
+{
+	struct _fields_pack *pack = malloc(sizeof(struct _fields_pack));
+	pack->data = userdata;
+	pack->callback = callback;
+	opimd_contacts_fields_list(_fields_get_cb, pack);
 }
 
 void
