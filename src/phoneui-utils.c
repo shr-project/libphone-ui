@@ -770,7 +770,7 @@ phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer),
 	struct _fields_pack *pack = malloc(sizeof(struct _fields_pack));
 	pack->data = userdata;
 	pack->callback = callback;
-	opimd_contacts_fields_list(_fields_get_cb, pack);
+	g_debug("opimd_contacts_fields_list(_fields_get_cb, pack);");
 }
 
 void
@@ -940,6 +940,7 @@ HACK_FOR_GCC_WARNS()
 	(void) _auth_send_callback;
 	(void) _result_callback;
 	(void) _query_callback;
+	(void) _fields_get_cb;
 	(void) HACK_FOR_GCC_WARNS2;
 }
 static void

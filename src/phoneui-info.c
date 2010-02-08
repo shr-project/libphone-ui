@@ -346,6 +346,9 @@ _get_profile_callback(NULL, NULL, NULL);
 _get_capacity_callback(NULL, 0, NULL);
 _get_network_status_callback(NULL, NULL, NULL);
 _get_signal_strength_callback(NULL, 0, NULL);
+_pim_contact_new_handler(NULL);
+_pim_contact_updated_handler(NULL, NULL);
+_pim_contact_deleted_handler(NULL);
 	hack2();
 }
 static void hack2()
