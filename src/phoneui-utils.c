@@ -698,6 +698,13 @@ phoneui_utils_contacts_get(int *count,
 	g_hash_table_destroy(qry);
 }
 
+static void
+_fields_strip_system_fields(GHashTable *fields)
+{
+	/* Remove the system fields */
+	g_hash_table_remove(fields, "Path");
+}
+
 struct _fields_pack {
 	gpointer data;
 	void (*callback)(GHashTable *, gpointer);
@@ -707,6 +714,9 @@ static void
 _fields_get_cb(GError *error, GHashTable *fields, gpointer _pack)
 {
 	struct _fields_pack *pack = (struct _fields_pack *)_pack;
+
+	_fields_strip_system_fields(fields);
+
 	if (error) {
 		g_warning("Failed to aquire contact fields");
 		if (pack->callback) {
