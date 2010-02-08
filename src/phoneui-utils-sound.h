@@ -37,14 +37,14 @@ int phoneui_utils_sound_deinit();
 int phoneui_utils_sound_state_set(enum SoundState state);
 enum SoundState phoneui_utils_sound_state_get();
 
-void phoneui_utils_sound_profile_list(void (*callback)(GError *, GPtrArray *, gpointer),
+void phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, gpointer),
 				void *userdata);
 
 void phoneui_utils_sound_profile_set(const char *profile,
 				void (*callback)(GError *, gpointer),
 				void *userdata);
 
-void phoneui_utils_sound_profile_get(void (*callback)(GError *, const char *, gpointer),
+void phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 					void *userdata);
 				
 #endif

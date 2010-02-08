@@ -82,7 +82,7 @@ phoneui_utils_init(GKeyFile *keyfile)
 	ret = phoneui_utils_sound_init(keyfile);
 	ret = phoneui_utils_device_init(keyfile);
 	ret = phoneui_utils_feedback_init(keyfile);
-	
+
 	return 0;
 }
 
@@ -376,7 +376,7 @@ phoneui_utils_call_initiate(const char *number,
 }
 
 int
-phoneui_utils_call_release(int call_id, 
+phoneui_utils_call_release(int call_id,
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
@@ -389,7 +389,7 @@ phoneui_utils_call_release(int call_id,
 }
 
 int
-phoneui_utils_call_activate(int call_id, 
+phoneui_utils_call_activate(int call_id,
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
@@ -603,6 +603,24 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 	return displayname;
 }
 
+int
+phoneui_utils_contact_compare(GHashTable *contact1, GHashTable *contact2)
+{
+	int ret;
+	char *name1 = phoneui_utils_contact_display_name_get(contact1);
+	if (!name1)
+		return -1;
+	char *name2 = phoneui_utils_contact_display_name_get(contact2);
+	if (!name2) {
+		free (name1);
+		return 1;
+	}
+	ret = strcoll(name1, name2);
+	free(name1);
+	free(name2);
+	return ret;
+}
+
 struct _contact_get_pack {
 	gpointer data;
 	void (*callback)(GHashTable *, gpointer);
@@ -644,28 +662,8 @@ struct _contact_list_pack {
 static gint
 _compare_contacts(gconstpointer _a, gconstpointer _b)
 {
-	GHashTable **a = (GHashTable **) _a;
-	GHashTable **b = (GHashTable **) _b;
-	gpointer p;
-	const char *name_a, *name_b;
-/* Probably not best (sorting by just Name) but will have to do ATM */
-	p = g_hash_table_lookup(*a, "Name");
-	if (!p) {
-		name_a = "";
-		g_debug("name a not found!!!!");
-	}
-	else
-		name_a = g_value_get_string(p);
-
-	p = g_hash_table_lookup(*b, "Name");
-	if (!p) {
-		name_b = "";
-		g_debug("name b not found!!!!");
-	}
-	else
-		name_b = g_value_get_string(p);
-
-	return (strcasecmp(name_a, name_b));
+	return phoneui_utils_contact_compare(*((GHashTable **)_a),
+					     *((GHashTable**)_b));
 }
 
 static void
@@ -733,6 +731,71 @@ phoneui_utils_contacts_get(int *count,
 	(void) data;
 	g_hash_table_destroy(qry);
 }
+
+static void
+_fields_strip_system_fields(GHashTable *fields)
+{
+	/* Remove the system fields */
+	g_hash_table_remove(fields, "Path");
+}
+
+struct _fields_pack {
+	gpointer data;
+	void (*callback)(GHashTable *, gpointer);
+};
+
+static void
+_fields_get_cb(GError *error, GHashTable *fields, gpointer _pack)
+{
+	struct _fields_pack *pack = (struct _fields_pack *)_pack;
+
+	_fields_strip_system_fields(fields);
+
+	if (error) {
+		g_warning("Failed to aquire contact fields");
+		if (pack->callback) {
+			pack->callback(NULL, pack->data);
+		}
+	}
+	else if (pack->callback) {
+		pack->callback(fields, pack->data);
+	}
+	free(pack);
+}
+
+void
+phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer),
+		gpointer userdata)
+{
+	struct _fields_pack *pack = malloc(sizeof(struct _fields_pack));
+	pack->data = userdata;
+	pack->callback = callback;
+	opimd_contacts_fields_list(_fields_get_cb, pack);
+}
+
+void
+phoneui_utils_contacts_field_add(const char *name, const char *type,
+					void *callback, void *userdata)
+{
+	/*FIXME stub*/
+	(void) callback;
+	(void) userdata;
+	(void) name;
+	(void) type;
+	return;
+}
+
+void
+phoneui_utils_contacts_field_remove(const char *name,
+					void *callback, void *userdata)
+{
+	/*FIXME stub*/
+	(void) callback;
+	(void) userdata;
+	(void) name;
+	return;
+}
+
 
 /* --- SIM Auth handling --- */
 struct _auth_pack {
@@ -846,7 +909,7 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	data = malloc(sizeof(struct _messages_pack *));
 	data->callback = callback;
 	data->data = _data;
-	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, free);	
+	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, free);
 
 	GValue *sortby = calloc(1, sizeof(GValue));
 	g_value_init(sortby, G_TYPE_STRING);
@@ -905,7 +968,7 @@ phoneui_utils_resource_policy_set(enum PhoneUiResource resource,
 		return 1;
 		break;
 	}
-	
+
 	return 0;
 }
 
@@ -926,8 +989,16 @@ phoneui_utils_resource_policy_get(enum PhoneUiResource resource)
 	default:
 		break;
 	}
-	
+
 	return PHONEUI_RESOURCE_POLICY_ERROR;
 }
 
+void
+phoneui_utils_fields_types_get(void *callback, void *userdata)
+{
+	/*FIXME stub*/
+	(void) callback;
+	(void) userdata;
+	return;
+}
 
