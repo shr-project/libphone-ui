@@ -1,4 +1,6 @@
 
+#include <stdlib.h>
+
 #include <frameworkd-glib/frameworkd-glib-dbus.h>
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-call.h>
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
@@ -8,13 +10,15 @@
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
 #include <frameworkd-glib/opreferencesd/frameworkd-glib-opreferencesd-preferences.h>
 
+static GList *callbacks_contact_changes = NULL;
+
 #include "phoneui.h"
+#include "phoneui-info.h"
 
 static void _missed_calls_handler(int amount);
 static void _unread_messages_handler(int amount);
 //static void _unfinished_tasks_handler(const int amount);
-static void _resource_changed_handler(const char *resource,
-		gboolean state, GHashTable *properties);
+static void _resource_changed_handler(const char *resource, gboolean state, GHashTable *properties);
 static void _call_status_handler(int, int, GHashTable *);
 static void _profile_changed_handler(const char *profile);
 //static void _alarm_changed_handler(int time);
@@ -22,27 +26,24 @@ static void _capacity_changed_handler(int energy);
 static void _network_status_handler(GHashTable *properties);
 static void _signal_strength_handler(int signal);
 static void _idle_notifier_handler(int state);
+static void _pim_contact_new_handler(const char *path);
+static void _pim_contact_updated_handler(const char *path, GHashTable *content);
+static void _pim_contact_deleted_handler(const char *path);
 
-static void _missed_calls_callback(GError *error,
-		int amount, gpointer userdata);
-static void _unread_messages_callback(GError *error,
-		int amount, gpointer userdata);
-static void _list_resources_callback(GError *error,
-		char **resources, gpointer userdata);
-static void _resource_state_callback(GError *error,
-		gboolean state, gpointer userdata);
-static void _get_profile_callback(GError *error,
-		char *profile, gpointer userdata);
-static void _get_capacity_callback(GError *error,
-		int energy, gpointer userdata);
-static void _get_network_status_callback(GError *error,
-		GHashTable *properties, gpointer userdata);
-static void _get_signal_strength_callback(GError *error,
-		int signal, gpointer userdata);
+static void _missed_calls_callback(GError *error, int amount, gpointer userdata);
+static void _unread_messages_callback(GError *error, int amount, gpointer userdata);
+static void _list_resources_callback(GError *error, char **resources, gpointer userdata);
+static void _resource_state_callback(GError *error, gboolean state, gpointer userdata);
+static void _get_profile_callback(GError *error, char *profile, gpointer userdata);
+static void _get_capacity_callback(GError *error, int energy, gpointer userdata);
+static void _get_network_status_callback(GError *error, GHashTable *properties, gpointer userdata);
+static void _get_signal_strength_callback(GError *error, int signal, gpointer userdata);
 //static void _get_alarm_callback(GError *error,
 //		int time, gpointer userdata);
 
 static void _handle_network_status(GHashTable *properties);
+
+static void _execute_contact_callbacks(const char *path, enum PhoneuiInfoChangeType type);
 
 int
 phoneui_info_init()
@@ -59,6 +60,9 @@ phoneui_info_init()
 	fw->devicePowerSupplyCapacity = _capacity_changed_handler;
 	fw->networkStatus = _network_status_handler;
 	fw->networkSignalStrength = _signal_strength_handler;
+	fw->pimNewContact = _pim_contact_new_handler;
+	fw->pimUpdatedContact = _pim_contact_updated_handler;
+	fw->pimDeletedContact = _pim_contact_deleted_handler;
 
 	frameworkd_handler_connect(fw);
 
@@ -79,6 +83,41 @@ phoneui_info_trigger()
 	odeviced_power_supply_get_capacity(_get_capacity_callback, NULL);
 	ogsmd_network_get_status(_get_network_status_callback, NULL);
 	ogsmd_network_get_signal_strength(_get_signal_strength_callback, NULL);
+}
+
+struct _cb_contact_changes_pack {
+	void (*callback)(void *, const char *, enum PhoneuiInfoChangeType);
+	void *data;
+};
+
+void
+phoneui_info_register_contact_changes(void (*callback)(void *, const char*,
+				enum PhoneuiInfoChangeType), void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback - fix your code");
+		return;
+	}
+	struct _cb_contact_changes_pack *pack =
+			malloc(sizeof(struct _cb_contact_changes_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack - not registering");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_contact_changes, pack);
+	if (!l) {
+		g_warning("Failed to register callback for contact changes");
+	}
+	else {
+		if (!callbacks_contact_changes) {
+			callbacks_contact_changes = l;
+			g_debug("Registered a callback for contact changes");
+		}
+	}
 }
 
 /* --- signal handlers --- */
@@ -172,6 +211,24 @@ static void _idle_notifier_handler(int state)
 	g_debug("_idle_notifier_handler: idle state now %d", state);
 }
 
+static void _pim_contact_new_handler(const char *path)
+{
+	g_debug("New contact %s got added", path);
+	_execute_contact_callbacks(path, PHONEUI_INFO_CHANGE_NEW);
+}
+
+static void _pim_contact_updated_handler(const char *path, GHashTable *content)
+{
+	(void)content;
+	g_debug("Contact %s got updated", path);
+	_execute_contact_callbacks(path, PHONEUI_INFO_CHANGE_UPDATE);
+}
+
+static void _pim_contact_deleted_handler(const char *path)
+{
+	g_debug("Contact %s got deleted", path);
+	_execute_contact_callbacks(path, PHONEUI_INFO_CHANGE_DELETE);
+}
 
 /* callbacks for initial feeding of data */
 
@@ -319,3 +376,21 @@ static void _handle_network_status(GHashTable *properties)
 	g_hash_table_destroy(properties);
 }
 
+static void _execute_contact_callbacks(const char *path,
+				       enum PhoneuiInfoChangeType type)
+{
+	GList *cb;
+
+	if (!callbacks_contact_changes) {
+		g_debug("No callbacks registered for contact changes");
+		return;
+	}
+
+	g_debug("Running all contact changed callbacks");
+	for (cb = g_list_first(callbacks_contact_changes); cb;
+					cb = g_list_next(cb)) {
+		struct _cb_contact_changes_pack *pack =
+			(struct _cb_contact_changes_pack *)cb->data;
+		pack->callback(pack->data, path, type);
+	}
+}
