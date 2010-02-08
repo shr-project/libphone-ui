@@ -48,7 +48,6 @@ void phoneui_outgoing_call_hide(const int id);
 
 /* Contacts */
 void phoneui_contacts_show();
-void phoneui_contacts_refresh();
 void phoneui_contacts_contact_show(const char *contact_path);
 void phoneui_contacts_contact_new(GHashTable *values);
 void phoneui_contacts_contact_edit(const char *contact_path);
