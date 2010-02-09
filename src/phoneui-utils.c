@@ -54,27 +54,6 @@ _new_gvalue_boolean(int value)
 	return val;
 }
 
-struct _contact_lookup_pack {
-	gpointer *data;
-	void (*callback)(GHashTable *, gpointer);
-};
-
-static void
-_contact_lookup_callback(GError *error, char *path, gpointer userdata)
-{
-	struct _contact_lookup_pack *data =
-		(struct _contact_lookup_pack *)userdata;
-	if (!error && path && *path) {
-		g_debug("Found contact name: %s", path);
-		phoneui_utils_contact_get(path, data->callback, data->data);
-	}
-	else {
-		g_debug("No contact name found.");
-		data->callback(NULL, data->data);
-	}
-	free(data);
-}
-
 int
 phoneui_utils_init(GKeyFile *keyfile)
 {
@@ -86,32 +65,84 @@ phoneui_utils_init(GKeyFile *keyfile)
 	return 0;
 }
 
+struct _contact_lookup_pack {
+	gpointer *data;
+	void (*callback)(GHashTable *, gpointer);
+	char *number;
+};
+
+static void
+_contact_lookup_callback(GError *error, char *path, gpointer userdata)
+{
+	struct _contact_lookup_pack *data =
+		(struct _contact_lookup_pack *)userdata;
+	if (!error && path && *path) {
+		g_debug("Found contact: %s", path);
+		phoneui_utils_contact_get(path, data->callback, data->data);
+	}
+	else {
+		g_debug("No contact found.");
+		data->callback(NULL, data->data);
+	}
+	free(data->number);
+	free(data);
+}
+
+static void
+_contact_lookup_type_callback(char **fields, gpointer _pack)
+{
+	/*FIXME: should I clean fields? */
+	GHashTable *query;
+	struct _contact_lookup_pack *data =
+		(struct _contact_lookup_pack *)_pack;
+	if (!fields || !*fields) {
+		/* Fake a call to the callabkc with no path found */
+		_contact_lookup_callback(NULL, NULL, _pack); 
+	}
+	query = g_hash_table_new(g_str_hash, g_str_equal);
+
+	g_debug("Attempting to resolve name for: \"%s\"", data->number);
+
+
+	GValue *value = _new_gvalue_string(data->number);
+	if (!value) {
+		g_hash_table_destroy(query);
+		/* Fake a call to the callback with no path found */
+		_contact_lookup_callback(NULL, NULL, _pack); 
+	}
+	GValue *tmp = _new_gvalue_string("True");
+	if (!tmp) {
+		free(value);
+		g_hash_table_destroy(query);
+		/* Fake a call to the callback with no path found */
+		_contact_lookup_callback(NULL, NULL, _pack); 
+	}
+	
+	g_hash_table_insert(query, "_at_least_one", tmp);
+
+	for ( ; *fields ; fields++) {
+		g_debug("\tTrying field: \"%s\"", *fields);
+		g_hash_table_insert(query, *fields, value);
+	}
+
+	g_debug("opimd_contacts_get_single_entry_single_field(query, 'Path', _contact_lookup_callback, data);");
+
+	g_hash_table_destroy(query);
+}
+
 int
 phoneui_utils_contact_lookup(const char *number,
 			void (*_callback) (GHashTable *, gpointer),
 			void *_data)
 {
-	GHashTable *query =
-		g_hash_table_new(g_str_hash, g_str_equal);
-
-	g_debug("Attempting to resolve name for: \"%s\"", number);
-
-
-	GValue *value = _new_gvalue_string(number);	/*  we prefer using number */
-	if (!value) {
-		return 1;
-	}
-	g_hash_table_insert(query, "Phone", value);
-
 	struct _contact_lookup_pack *data =
 		calloc(1, sizeof(struct _contact_lookup_pack));
 	data->data = _data;
 	data->callback = _callback;
+	data->number = strdup(number);
 
 	g_debug("opimd_contacts_get_single_entry_single_field\
 		(query, \"Path\", _contact_lookup_callback, data)");
-
-	g_hash_table_destroy(query);
 
 	return 0;
 }
@@ -743,6 +774,10 @@ struct _fields_pack {
 	gpointer data;
 	void (*callback)(GHashTable *, gpointer);
 };
+struct _fields_with_type_pack {
+	gpointer data;
+	void (*callback)(char **, gpointer);
+};
 
 static void
 _fields_get_cb(GError *error, GHashTable *fields, gpointer _pack)
@@ -761,6 +796,35 @@ _fields_get_cb(GError *error, GHashTable *fields, gpointer _pack)
 		pack->callback(fields, pack->data);
 	}
 	free(pack);
+}
+
+static void
+_fields_get_with_type_cb(GError *error, char **fields, gpointer _pack)
+{
+	struct _fields_with_type_pack *pack = (struct _fields_with_type_pack *)_pack;
+
+	if (error) {
+		g_warning("Failed to aquire contact fields");
+		if (pack->callback) {
+			pack->callback(NULL, pack->data);
+		}
+	}
+	else if (pack->callback) {
+		pack->callback(fields, pack->data);
+	}
+	free(pack);
+}
+
+void
+phoneui_utils_contacts_fields_get_with_type(const char *type,
+		void (*callback)(char **, gpointer), gpointer userdata)
+{
+	struct _fields_with_type_pack *pack =
+			malloc(sizeof(struct _fields_with_type_pack));
+	(void) type;
+	pack->data = userdata;
+	pack->callback = callback;
+	g_debug("opimd_contacts_fields_list_fields_with_type(type, _fields_get_with_type_cb, pack);");
 }
 
 void
@@ -925,29 +989,6 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	g_hash_table_destroy(query);
 }
 
-/* ugliest thing ever, though this is a devel env, so it's bearable. */
-static void HACK_FOR_GCC_WARNS2();
-static void
-HACK_FOR_GCC_WARNS()
-{
-	(void) GQuery;
-	(void) _contact_lookup_callback;
-	(void) _contact_get_callback;
-	(void) _contact_list_result_callback;
-	(void) _contact_list_count_callback;
-	(void) _contact_query_callback;
-	(void) _auth_get_status_callback;
-	(void) _auth_send_callback;
-	(void) _result_callback;
-	(void) _query_callback;
-	(void) _fields_get_cb;
-	(void) HACK_FOR_GCC_WARNS2;
-}
-static void
-HACK_FOR_GCC_WARNS2()
-{
-	(void) HACK_FOR_GCC_WARNS;
-}
 
 int
 phoneui_utils_resource_policy_set(enum PhoneUiResource resource,
@@ -1001,5 +1042,32 @@ phoneui_utils_fields_types_get(void *callback, void *userdata)
 	(void) callback;
 	(void) userdata;
 	return;
+}
+
+/* ugliest thing ever, though this is a devel env, so it's bearable. */
+static void HACK_FOR_GCC_WARNS2();
+static void
+HACK_FOR_GCC_WARNS()
+{
+	(void) GQuery;
+	(void) _contact_lookup_callback;
+	(void) _contact_get_callback;
+	(void) _contact_list_result_callback;
+	(void) _contact_list_count_callback;
+	(void) _contact_query_callback;
+	(void) _auth_get_status_callback;
+	(void) _auth_send_callback;
+	(void) _result_callback;
+	(void) _query_callback;
+	(void) _fields_get_cb;
+	(void) HACK_FOR_GCC_WARNS2;
+	(void) _contact_lookup_type_callback;
+	(void) _fields_get_with_type_cb;
+
+}
+static void
+HACK_FOR_GCC_WARNS2()
+{
+	(void) HACK_FOR_GCC_WARNS;
 }
 

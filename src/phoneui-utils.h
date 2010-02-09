@@ -60,6 +60,7 @@ void phoneui_utils_contacts_get(int *count,
 		gpointer userdata);
 
 void phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer), gpointer userdata);
+void phoneui_utils_contacts_fields_get_with_type(const char *type, void (*callback)(char **, gpointer), gpointer userdata);
 void phoneui_utils_contacts_field_add(const char *name, const char *type, void *callback, void *userdata);
 void phoneui_utils_contacts_field_remove(const char *name, void *callback, void *userdata);
 
