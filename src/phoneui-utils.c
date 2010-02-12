@@ -630,11 +630,14 @@ struct _contact_get_pack {
 static void
 _contact_get_callback(GError *error, GHashTable *_content, gpointer userdata)
 {
+	struct _contact_get_pack *data = (struct _contact_get_pack *)userdata;
 	if (!error) {
-		struct _contact_get_pack *data =
-			(struct _contact_get_pack *)userdata;
 		data->callback(_content, data->data);
 	}
+	else {
+		data->callback(NULL, data->data);
+	}
+	free(data);
 }
 
 
