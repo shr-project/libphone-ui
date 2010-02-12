@@ -4,6 +4,7 @@
 #include <frameworkd-glib/frameworkd-glib-dbus.h>
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-call.h>
 #include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
+#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-pdp.h>
 #include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-powersupply.h>
 #include <frameworkd-glib/ousaged/frameworkd-glib-ousaged.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-calls.h>
@@ -11,6 +12,7 @@
 #include <frameworkd-glib/opreferencesd/frameworkd-glib-opreferencesd-preferences.h>
 
 static GList *callbacks_contact_changes = NULL;
+static GList *callbacks_pdp_network_status = NULL;
 
 #include "phoneui.h"
 #include "phoneui-info.h"
@@ -20,6 +22,7 @@ static void _unread_messages_handler(int amount);
 //static void _unfinished_tasks_handler(const int amount);
 static void _resource_changed_handler(const char *resource, gboolean state, GHashTable *properties);
 static void _call_status_handler(int, int, GHashTable *);
+static void _pdp_network_status_handler(GHashTable *);
 static void _profile_changed_handler(const char *profile);
 //static void _alarm_changed_handler(int time);
 static void _capacity_changed_handler(int energy);
@@ -54,6 +57,7 @@ phoneui_info_init()
 	//fw->pimUnfinishedTasks = _unfinished_tasks_handler;
 	fw->usageResourceChanged = _resource_changed_handler;
 	fw->callCallStatus = _call_status_handler;
+	fw->pdpNetworkStatus = _pdp_network_status_handler;
 	fw->preferencesNotify = _profile_changed_handler;
 	fw->deviceIdleNotifierState = _idle_notifier_handler;
 	//fw->deviceWakeupTimeChanged = _alarm_changed_handler;
@@ -120,6 +124,40 @@ phoneui_info_register_contact_changes(void (*callback)(void *, const char*,
 	}
 }
 
+struct _cb_pdp_network_status_pack {
+	void (*callback)(void *, GHashTable *);
+	void *data;
+};
+
+void phoneui_info_register_pdp_network_status(void (*callback)(void *,
+					      GHashTable *), void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback - fix your code");
+		return;
+	}
+	struct _cb_pdp_network_status_pack *pack =
+			malloc(sizeof(struct _cb_pdp_network_status_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack - not registering");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_pdp_network_status, pack);
+	if (!l) {
+		g_warning("Failed to register callback for pdp network status");
+	}
+	else {
+		if (!callbacks_pdp_network_status) {
+			callbacks_contact_changes = l;
+			g_debug("Registered a callback for pdp network status");
+		}
+	}
+}
+
 /* --- signal handlers --- */
 
 static void _missed_calls_handler(int amount)
@@ -175,6 +213,24 @@ static void _call_status_handler(int callid, int state,
 	}
 	g_debug("_call_status_handler: call %d: %d", callid, state);
 	// TODO: get name and number
+}
+
+static void _pdp_network_status_handler(GHashTable *status)
+{
+	GList *cb;
+
+	if (!callbacks_pdp_network_status) {
+		g_debug("No callbacks registered for pdp network status");
+		return;
+	}
+
+	g_debug("Running all pdp network status callbacks");
+	for (cb = g_list_first(callbacks_pdp_network_status); cb;
+					cb = g_list_next(cb)) {
+		struct _cb_pdp_network_status_pack *pack =
+			(struct _cb_pdp_network_status_pack *)cb->data;
+		pack->callback(pack->data, status);
+	}
 }
 
 static void _profile_changed_handler(const char *profile)

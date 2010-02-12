@@ -12,6 +12,7 @@ int phoneui_info_init();
 void phoneui_info_trigger();
 void phoneui_info_register_contact_changes(void (*_cb)(void *, const char *,
 				enum PhoneuiInfoChangeType), void *data);
-
+void phoneui_info_register_pdp_network_status(void (*_cb)(void *, GHashTable *),
+					      void *data);
 #endif
 
