@@ -63,7 +63,7 @@ static void (*_phoneui_contacts_contact_edit) (const char *path) = NULL;
 
 /* Messages */
 static void (*_phoneui_messages_show) () = NULL;
-static void (*_phoneui_messages_message_show) (const int id) = NULL;
+static void (*_phoneui_messages_message_show) (const char *path) = NULL;
 static void (*_phoneui_messages_message_new) (GHashTable *options) = NULL;
 
 /* Dialer */
@@ -358,9 +358,9 @@ phoneui_messages_show()
 	PHONEUI_FUNCTION_CONTENT(messages_show);
 }
 void
-phoneui_messages_message_show(const int id)
+phoneui_messages_message_show(const char *path)
 {
-	PHONEUI_FUNCTION_CONTENT(messages_message_show, id);
+	PHONEUI_FUNCTION_CONTENT(messages_message_show, path);
 }
 void
 phoneui_messages_message_new(GHashTable *options)

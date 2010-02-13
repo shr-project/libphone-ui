@@ -54,7 +54,7 @@ void phoneui_contacts_contact_edit(const char *contact_path);
 
 /* Messages */
 void phoneui_messages_show();
-void phoneui_messages_message_show(const int id);
+void phoneui_messages_message_show(const char *path);
 void phoneui_messages_message_new(GHashTable *options);
 
 /* Dialer */
