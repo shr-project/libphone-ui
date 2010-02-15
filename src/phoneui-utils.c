@@ -106,7 +106,7 @@ _contact_lookup_type_callback(char **fields, gpointer _pack)
 		(struct _contact_lookup_pack *)_pack;
 	if (!fields || !*fields) {
 		/* Fake a call to the callabkc with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack); 
+		_contact_lookup_callback(NULL, NULL, _pack);
 	}
 	query = g_hash_table_new(g_str_hash, g_str_equal);
 
@@ -117,16 +117,16 @@ _contact_lookup_type_callback(char **fields, gpointer _pack)
 	if (!value) {
 		g_hash_table_destroy(query);
 		/* Fake a call to the callback with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack); 
+		_contact_lookup_callback(NULL, NULL, _pack);
 	}
 	GValue *tmp = _new_gvalue_string("True");
 	if (!tmp) {
 		free(value);
 		g_hash_table_destroy(query);
 		/* Fake a call to the callback with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack); 
+		_contact_lookup_callback(NULL, NULL, _pack);
 	}
-	
+
 	g_hash_table_insert(query, "_at_least_one", tmp);
 
 	for ( ; *fields ; fields++) {
@@ -646,7 +646,7 @@ phoneui_utils_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data)
 {
 	struct _contact_get_pack *_pack =
-		g_slice_alloc0(sizeof(struct _contact_get_pack));
+		malloc(sizeof(struct _contact_get_pack));
 	_pack->data = data;
 	_pack->callback = callback;
 	g_debug("Getting data of contact with path: %s", contact_path);
