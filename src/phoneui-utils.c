@@ -1,3 +1,4 @@
+
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
@@ -521,7 +522,15 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 		/* Use the types mechanism */
 		/* sanitize phone numbers */
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
-			const char *s_val = g_value_get_string(val);
+			const char *s_val;
+			char **strv;
+			if (G_VALUE_HOLDS_BOXED(val)) {
+				strv = (char **)g_value_get_boxed(val);
+				s_val = strv[0];
+			}
+			else {
+				s_val = g_value_get_string(val);
+			}
 
 			/* if key is exactly 'Phone' we want that is default
 			 * phone number for this contact */
