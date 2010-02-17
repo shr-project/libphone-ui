@@ -4,7 +4,7 @@
  *              Julien "Ainulindalë" Cassignol
  * 		Tom "TAsn" Hacohen <tom@stosb.com>
  *              quickdev
- * 
+ *
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU Public License as published by
@@ -57,14 +57,13 @@ static void (*_phoneui_outgoing_call_hide) (const int id) = NULL;
 
 /* Contacts */
 static void (*_phoneui_contacts_show) () = NULL;
-static void (*_phoneui_contacts_refresh) () = NULL;
 static void (*_phoneui_contacts_contact_show) (const char *path) = NULL;
 static void (*_phoneui_contacts_contact_new) (GHashTable *values) = NULL;
 static void (*_phoneui_contacts_contact_edit) (const char *path) = NULL;
 
 /* Messages */
 static void (*_phoneui_messages_show) () = NULL;
-static void (*_phoneui_messages_message_show) (const int id) = NULL;
+static void (*_phoneui_messages_message_show) (const char *path) = NULL;
 static void (*_phoneui_messages_message_new) (GHashTable *options) = NULL;
 
 /* Dialer */
@@ -146,7 +145,7 @@ phoneui_load_backend(GKeyFile *keyfile, enum BackendType type)
 		strcpy(library_path, PHONEUI_MODULES_PATH);
 		strcat(library_path, library);
 		strcat(library_path, ".so");
-		backends[type].library = 
+		backends[type].library =
 			dlopen(library_path, RTLD_LOCAL | RTLD_LAZY);
 		if (!backends[type].library) {
 			g_error("Loading %s failed: %s", library_path, dlerror());
@@ -162,7 +161,7 @@ phoneui_load_backend(GKeyFile *keyfile, enum BackendType type)
 void
 phoneui_load(const char *application_name)
 {
-	g_message("Loading %s", application_name);	
+	g_message("Loading %s", application_name);
 	int i;
 	GKeyFile *keyfile;
 	GKeyFileFlags flags;
@@ -174,11 +173,11 @@ phoneui_load(const char *application_name)
 		g_error("%s", error->message);
 		return;
 	}
-	
+
 	for (i = 0 ; i < BACKEND_NO ; i++) {
 		phoneui_load_backend(keyfile, i);
 	}
-	
+
 	phoneui_connect();
 	/* init phone utils */
 	/* FIXME: should deinit somewhere! */
@@ -212,28 +211,27 @@ phoneui_connect()
 	CONNECT_HELPER(incoming_call_hide, BACKEND_CALLS);
 	CONNECT_HELPER(outgoing_call_show, BACKEND_CALLS);
 	CONNECT_HELPER(outgoing_call_hide, BACKEND_CALLS);
-	
+
 	CONNECT_HELPER(contacts_show, BACKEND_CONTACTS);
-	CONNECT_HELPER(contacts_refresh, BACKEND_CONTACTS);
 	CONNECT_HELPER(contacts_contact_show, BACKEND_CONTACTS);
 	CONNECT_HELPER(contacts_contact_new, BACKEND_CONTACTS);
 	CONNECT_HELPER(contacts_contact_edit, BACKEND_CONTACTS);
-	
+
 	CONNECT_HELPER(dialer_show, BACKEND_DIALER);
-	
+
 	CONNECT_HELPER(dialog_show, BACKEND_NOTIFICATION);
-	
+
 	CONNECT_HELPER(messages_show, BACKEND_MESSAGES);
 	CONNECT_HELPER(messages_message_show, BACKEND_MESSAGES);
 	CONNECT_HELPER(messages_message_new, BACKEND_MESSAGES);
-	
+
 	CONNECT_HELPER(sim_auth_show, BACKEND_NOTIFICATION);
 	CONNECT_HELPER(sim_auth_hide, BACKEND_NOTIFICATION);
 	CONNECT_HELPER(ussd_show, BACKEND_NOTIFICATION);
-	
+
 	CONNECT_HELPER(quick_settings_show, BACKEND_SETTINGS);
 	CONNECT_HELPER(quick_settings_hide, BACKEND_SETTINGS);
-	
+
 	CONNECT_HELPER(idle_screen_show, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_hide, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_toggle, BACKEND_IDLE_SCREEN);
@@ -258,7 +256,7 @@ _phoneui_backend_init(int argc, char **argv, void (*exit_cb) (),
 	if (_phoneui_init)
 		_phoneui_init(argc, argv, exit_cb);
 	else
-		g_warning("can't find function %s", __FUNCTION__);	
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 static void
@@ -269,7 +267,7 @@ _phoneui_backend_loop(enum BackendType type)
 	if (_phoneui_loop)
 		_phoneui_loop();
 	else
-		g_warning("can't find function %s", __FUNCTION__);	
+		g_warning("can't find function %s", __FUNCTION__);
 }
 
 /* Implementation prototypes */
@@ -338,11 +336,6 @@ phoneui_contacts_show()
 	PHONEUI_FUNCTION_CONTENT(contacts_show);
 }
 void
-phoneui_contacts_refresh()
-{
-	PHONEUI_FUNCTION_CONTENT(contacts_refresh);
-}
-void
 phoneui_contacts_contact_show(const char *contact_path)
 {
 	PHONEUI_FUNCTION_CONTENT(contacts_contact_show, contact_path);
@@ -365,9 +358,9 @@ phoneui_messages_show()
 	PHONEUI_FUNCTION_CONTENT(messages_show);
 }
 void
-phoneui_messages_message_show(const int id)
+phoneui_messages_message_show(const char *path)
 {
-	PHONEUI_FUNCTION_CONTENT(messages_message_show, id);
+	PHONEUI_FUNCTION_CONTENT(messages_message_show, path);
 }
 void
 phoneui_messages_message_new(GHashTable *options)
