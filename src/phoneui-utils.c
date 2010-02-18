@@ -98,49 +98,6 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 	free(data);
 }
 
-static void
-_contact_lookup_type_callback(char **fields, gpointer _pack)
-{
-	/*FIXME: should I clean fields? */
-	GHashTable *query;
-	struct _contact_lookup_pack *data =
-		(struct _contact_lookup_pack *)_pack;
-	if (!fields || !*fields) {
-		/* Fake a call to the callabkc with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack);
-	}
-	query = g_hash_table_new(g_str_hash, g_str_equal);
-
-	g_debug("Attempting to resolve name for: \"%s\"", data->number);
-
-
-	GValue *value = _new_gvalue_string(data->number);
-	if (!value) {
-		g_hash_table_destroy(query);
-		/* Fake a call to the callback with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack);
-	}
-	GValue *tmp = _new_gvalue_string("True");
-	if (!tmp) {
-		free(value);
-		g_hash_table_destroy(query);
-		/* Fake a call to the callback with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack);
-	}
-
-	g_hash_table_insert(query, "_at_least_one", tmp);
-
-	for ( ; *fields ; fields++) {
-		g_debug("\tTrying field: \"%s\"", *fields);
-		g_hash_table_insert(query, *fields, value);
-	}
-
-	opimd_contacts_get_single_entry_single_field
-		(query, "Path", _contact_lookup_callback, data);
-
-	g_hash_table_destroy(query);
-}
-
 int
 phoneui_utils_contact_lookup(const char *number,
 			void (*_callback) (GHashTable *, gpointer),
@@ -151,8 +108,25 @@ phoneui_utils_contact_lookup(const char *number,
 	data->data = _data;
 	data->callback = _callback;
 	data->number = strdup(number);
-	phoneui_utils_contacts_fields_get_with_type("phonenumber",
-					_contact_lookup_type_callback, data);
+	GHashTable *query;
+	query = g_hash_table_new(g_str_hash, g_str_equal);
+
+	g_debug("Attempting to resolve name for: \"%s\"", data->number);
+
+
+	GValue *value = _new_gvalue_string(data->number);
+	if (!value) {
+		g_hash_table_destroy(query);
+		/* Fake a call to the callback with no path found */
+		_contact_lookup_callback(NULL, NULL, data);
+	}
+	/*FIXME: make $phonenumber not hardcoded */
+	g_hash_table_insert(query, "$phonenumber", value);
+
+	opimd_contacts_get_single_entry_single_field
+		(query, "Path", _contact_lookup_callback, data);
+
+	g_hash_table_destroy(query);
 
 	return 0;
 }
