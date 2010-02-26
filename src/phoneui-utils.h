@@ -125,6 +125,9 @@ void phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), void *u
 void phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer), gpointer userdata);
 void phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*callback) (GError *, gpointer), gpointer userdata);
 
+void phoneui_utils_resources_get_resource_policy(const char *name, void (*callback) (GError *, char *, gpointer), gpointer userdata);
+void phoneui_utils_resources_set_resource_policy(const char *name,const char *policy, void (*callback) (GError *, gpointer),gpointer userdata);
+
 int phoneui_utils_init(GKeyFile *keyfile);
 
 #endif

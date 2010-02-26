@@ -1040,3 +1040,21 @@ phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*callback)
 	odeviced_idle_notifier_set_state(state, callback, userdata);
 }
 
+void
+phoneui_utils_resources_get_resource_policy(const char *name,
+                                 void (*callback) (GError *, char *, gpointer),
+                                 gpointer userdata)
+{
+	/*FIXME: Add error handling */
+	ousaged_get_resource_policy(name, callback, userdata);
+}
+
+void
+phoneui_utils_resources_set_resource_policy(const char *name, const char *policy,
+                                 void (*callback) (GError *, gpointer),
+                                 gpointer userdata)
+{
+	/*FIXME: Add error handling */
+	ousaged_set_resource_policy(name, policy, callback, userdata);
+}
+
