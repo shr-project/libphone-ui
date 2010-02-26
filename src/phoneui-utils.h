@@ -110,6 +110,11 @@ void phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 
 void phoneui_utils_fields_types_get(void *callback, void *userdata);
 
+void phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), void *userdata);
+void phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), void *userdata);
+
+void phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer), gpointer userdata);
+void phoneui_utils_idle_set_state(int state, void (*callback) (GError *, gpointer), gpointer userdata);
 
 int phoneui_utils_init(GKeyFile *keyfile);
 

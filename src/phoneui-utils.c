@@ -16,6 +16,8 @@
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-fields.h>
+#include <frameworkd-glib/ousaged/frameworkd-glib-ousaged.h>
+#include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-idlenotifier.h>
 
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
@@ -907,7 +909,7 @@ struct _messages_pack {
 	void *data;
 };
 
-
+/*FIXME: even when there's an error should return! */
 static void
 _result_callback(GError * error, int count, void *_data)
 {
@@ -1010,3 +1012,31 @@ phoneui_utils_fields_types_get(void *callback, void *userdata)
 	(void) userdata;
 	return;
 }
+
+void
+phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), void *userdata)
+{
+	ousaged_suspend(callback, userdata);
+}
+
+void
+phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), void *userdata)
+{
+	ousaged_shutdown(callback, userdata);
+}
+
+void
+phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer),
+                                 gpointer userdata)
+{
+	odeviced_idle_notifier_get_state(callback, userdata);
+}
+
+
+void
+phoneui_utils_idle_set_state(int state, void (*callback) (GError *, gpointer),
+                                      gpointer userdata)
+{
+	odeviced_idle_notifier_set_state(state, callback, userdata);
+}
+
