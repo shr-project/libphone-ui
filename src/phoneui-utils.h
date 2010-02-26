@@ -35,6 +35,15 @@ enum PhoneUiResourcePolicy {
 	PHONEUI_RESOURCE_POLICY_ENABLED,
 	PHONEUI_RESOURCE_POLICY_AUTO
 };
+enum PhoneUiDeviceIdleState {
+        PHONEUI_DEVICE_IDLE_STATE_BUSY,
+        PHONEUI_DEVICE_IDLE_STATE_IDLE,
+        PHONEUI_DEVICE_IDLE_STATE_IDLE_DIM,
+        PHONEUI_DEVICE_IDLE_STATE_PRELOCK,
+        PHONEUI_DEVICE_IDLE_STATE_LOCK,
+        PHONEUI_DEVICE_IDLE_STATE_SUSPEND,
+        PHONEUI_DEVICE_IDLE_STATE_AWAKE
+};
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
@@ -114,7 +123,7 @@ void phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), void *us
 void phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), void *userdata);
 
 void phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer), gpointer userdata);
-void phoneui_utils_idle_set_state(int state, void (*callback) (GError *, gpointer), gpointer userdata);
+void phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*callback) (GError *, gpointer), gpointer userdata);
 
 int phoneui_utils_init(GKeyFile *keyfile);
 

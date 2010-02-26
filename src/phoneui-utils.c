@@ -1034,7 +1034,7 @@ phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer),
 
 
 void
-phoneui_utils_idle_set_state(int state, void (*callback) (GError *, gpointer),
+phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*callback) (GError *, gpointer),
                                       gpointer userdata)
 {
 	odeviced_idle_notifier_set_state(state, callback, userdata);
