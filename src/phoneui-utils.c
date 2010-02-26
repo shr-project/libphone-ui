@@ -553,7 +553,6 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 char *
 phoneui_utils_contact_display_name_get(GHashTable *properties)
 {
-	g_debug("sanitizing a contact content...");
 	gpointer _key, _val;
 	const char *name = NULL, *surname = NULL;
 	const char *middlename = NULL, *nickname = NULL;
@@ -572,22 +571,18 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 
 		if (!strcmp(key, "Name")) {
 			const char *s_val = g_value_get_string(val);
-			g_debug("   Name found (%s)", s_val);
 			name = s_val;
 		}
 		else if (!strcmp(key, "Surname")) {
 			const char *s_val = g_value_get_string(val);
-			g_debug("   Surname found (%s)", s_val);
 			surname = s_val;
 		}
 		else if (!strcmp(key, "Middlename")) {
 			const char *s_val = g_value_get_string(val);
-			g_debug("   Middlename found (%s)", s_val);
 			middlename = s_val;
 		}
 		else if (!strcmp(key, "Nickname")) {
 			const char *s_val = g_value_get_string(val);
-			g_debug("   Nickname found (%s)", s_val);
 			nickname = s_val;
 		}
 	}
