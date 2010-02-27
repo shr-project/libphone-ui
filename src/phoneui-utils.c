@@ -1003,15 +1003,15 @@ _call_list_result_callback(GError *error, GPtrArray *calls, void *_data)
 	/*FIXME: should we check the value of error? */
 	(void) error;
 	g_debug("Got to %s", __FUNCTION__);
-	struct _query_list_pack *data =
-		(struct _query_list_pack *)_data;
+	struct _list_pack *data =
+		(struct _list_pack *)_data;
 
 	if (error || !calls) {
 		return;
 	}
 
 	//g_ptr_array_sort(contacts, _compare_contacts);
-	g_ptr_array_foreach(calls, data->callback, data->data);
+	g_ptr_array_foreach(calls, _list_feed_callback, data);
 	opimd_call_query_dispose(data->query, NULL, NULL);
 }
 
@@ -1020,8 +1020,8 @@ _calls_list_count_callback(GError *error, int count, gpointer _data)
 {
 	/*FIXME: should we use error? */
 	(void) error;
-	struct _query_list_pack *data =
-		(struct _query_list_pack *)_data;
+	struct _list_pack *data =
+		(struct _list_pack *)_data;
 	g_message("Call query result gave %d entries", count);
 	*data->count = count;
 	opimd_call_query_get_multiple_results(data->query,
@@ -1032,8 +1032,8 @@ static void
 _calls_query_callback(GError *error, char *query_path, gpointer _data)
 {
 	if (error == NULL) {
-		struct _query_list_pack *data =
-			(struct _query_list_pack *)_data;
+		struct _list_pack *data =
+			(struct _list_pack *)_data;
 		data->query = (DBusGProxy *)
 			dbus_connect_to_opimd_call_query(query_path);
 		opimd_call_query_get_result_count(data->query,
@@ -1042,11 +1042,11 @@ _calls_query_callback(GError *error, char *query_path, gpointer _data)
 }
 
 void
-phoneui_utils_calls_get(int *count, void (*callback) (gpointer, gpointer),
+phoneui_utils_calls_get(int *count, void (*callback) (GHashTable *, gpointer),
 		void *_data)
 {
-	struct _query_list_pack *data;
-	data = malloc(sizeof(struct _query_list_pack));
+	struct _list_pack *data;
+	data = malloc(sizeof(struct _list_pack));
 	data->callback = callback;
 	data->data = _data;
 	data->count = count;
