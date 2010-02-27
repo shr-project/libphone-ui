@@ -24,6 +24,7 @@ static GList *callbacks_unread_messages = NULL;
 static GList *callbacks_resource_changes = NULL;
 static GList *callbacks_network_status = NULL;
 static GList *callbacks_signal_strength = NULL;
+static GList *callbacks_input_events = NULL;
 
 
 static void _missed_calls_handler(int amount);
@@ -31,7 +32,8 @@ static void _unread_messages_handler(int amount);
 //static void _unfinished_tasks_handler(const int amount);
 static void _resource_changed_handler(const char *resource, gboolean state, GHashTable *properties);
 static void _call_status_handler(int, int, GHashTable *);
-static void _pdp_network_status_handler(GHashTable *);
+static void _pdp_network_status_handler(GHashTable *status);
+static void _pdp_network_status_callback(GError *error, GHashTable *status, gpointer _data);
 static void _profile_changed_handler(const char *profile);
 //static void _alarm_changed_handler(int time);
 static void _capacity_changed_handler(int energy);
@@ -53,6 +55,7 @@ static void _get_profile_callback(GError *error, char *profile, gpointer userdat
 static void _get_capacity_callback(GError *error, int energy, gpointer userdata);
 static void _get_network_status_callback(GError *error, GHashTable *properties, gpointer userdata);
 static void _get_signal_strength_callback(GError *error, int signal, gpointer userdata);
+static void _device_input_event_handler(int source, int action, int duration);
 //static void _get_alarm_callback(GError *error,
 //		int time, gpointer userdata);
 
@@ -60,6 +63,7 @@ static void _handle_network_status(GHashTable *properties);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
+static void _execute_3int_callbacks(GList *cbs, int value1, int value2, int value3);
 static void _execute_charp_callbacks(GList *cbs, const char *value);
 static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
@@ -86,6 +90,7 @@ phoneui_info_init()
 	fw->pimNewMessage = _pim_message_new_handler;
 	fw->pimUpdatedMessage = _pim_message_updated_handler;
 	fw->pimDeletedMessage = _pim_message_deleted_handler;
+	fw->deviceInputEvent = _device_input_event_handler;
 
 	frameworkd_handler_connect(fw);
 
@@ -126,6 +131,10 @@ struct _cb_charp_pack {
 };
 struct _cb_resource_changes_pack {
 	void (*callback)(void *, const char*, gboolean, GHashTable *);
+	void *data;
+};
+struct _cb_3int_pack {
+	void (*callback)(void *, int, int, int);
 	void *data;
 };
 
@@ -191,7 +200,8 @@ phoneui_info_register_message_changes(void (*callback)(void *, const char*,
 }
 
 
-void phoneui_info_register_pdp_network_status(void (*callback)(void *,
+void
+phoneui_info_register_pdp_network_status(void (*callback)(void *,
 					      GHashTable *), void *data)
 {
 	GList *l;
@@ -218,6 +228,26 @@ void phoneui_info_register_pdp_network_status(void (*callback)(void *,
 			g_debug("Registered a callback for pdp network status");
 		}
 	}
+}
+
+void
+phoneui_info_request_pdp_network_status(void (*callback)(void *, GHashTable *),
+					void *data)
+{
+	struct _cb_hashtable_pack *pack =
+			malloc(sizeof(struct _cb_hashtable_pack));
+	pack->callback = callback;
+	pack->data = data;
+	ogsmd_pdp_get_network_status(_pdp_network_status_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_pdp_network_status(void (*callback)(void *,
+								GHashTable *),
+						     void *data)
+{
+	phoneui_info_register_pdp_network_status(callback, data);
+	phoneui_info_request_pdp_network_status(callback, data);
 }
 
 void
@@ -251,6 +281,23 @@ phoneui_info_register_profile_changes(void (*callback)(void *, const char *),
 }
 
 void
+phoneui_info_request_profile(void (*callback)(void *, const char *), void *data)
+{
+	struct _cb_charp_pack *pack = malloc(sizeof(struct _cb_charp_pack));
+	pack->callback = callback;
+	pack->data = data;
+	opreferencesd_get_profile(_get_profile_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_profile(void (*callback)(void *, const char *),
+					  void *data)
+{
+	phoneui_info_register_profile_changes(callback, data);
+	phoneui_info_request_profile(callback, data);
+}
+
+void
 phoneui_info_register_capacity_changes(void (*callback)(void *, int),
 				       void *data)
 {
@@ -279,6 +326,24 @@ phoneui_info_register_capacity_changes(void (*callback)(void *, int),
 		}
 	}
 }
+
+void
+phoneui_info_request_capacity(void (*callback)(void *, int), void *data)
+{
+	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
+	pack->callback = callback;
+	pack->data = data;
+	odeviced_power_supply_get_capacity(_get_capacity_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_capacity_changes(void (*callback)(void *, int),
+						   void *data)
+{
+	phoneui_info_register_capacity_changes(callback, data);
+	phoneui_info_request_capacity(callback, data);
+}
+
 
 void
 phoneui_info_register_missed_calls(void (*callback)(void *, int),
@@ -311,6 +376,23 @@ phoneui_info_register_missed_calls(void (*callback)(void *, int),
 }
 
 void
+phoneui_info_request_missed_calls(void (*callback)(void *, int), void *data)
+{
+	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
+	pack->callback = callback;
+	pack->data = data;
+	opimd_calls_get_new_missed_calls(_missed_calls_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_missed_calls(void (*callback)(void *, int),
+					       void *data)
+{
+	phoneui_info_register_missed_calls(callback, data);
+	phoneui_info_request_missed_calls(callback, data);
+}
+
+void
 phoneui_info_register_unread_messages(void (*callback)(void *, int),
 				      void *data)
 {
@@ -338,6 +420,23 @@ phoneui_info_register_unread_messages(void (*callback)(void *, int),
 			g_debug("Registered a callback for unread messages");
 		}
 	}
+}
+
+void
+phoneui_info_request_unread_messages(void (*callback)(void *, int), void *data)
+{
+	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
+	pack->callback = callback;
+	pack->data = data;
+	opimd_messages_get_unread_messages(_unread_messages_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_unread_messages(void (*callback)(void *, int),
+						  void *data)
+{
+	phoneui_info_register_unread_messages(callback, data);
+	phoneui_info_request_unread_messages(callback, data);
 }
 
 void
@@ -402,6 +501,25 @@ phoneui_info_register_network_status(void (*callback)(void *, GHashTable *),
 }
 
 void
+phoneui_info_request_network_status(void (*callback)(void *, GHashTable *),
+				    void *data)
+{
+	struct _cb_hashtable_pack *pack =
+			malloc(sizeof(struct _cb_hashtable_pack));
+	pack->callback = callback;
+	pack->data = data;
+	ogsmd_network_get_status(_get_network_status_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_network_status(void (*callback)(void *,
+						 GHashTable *), void *data)
+{
+	phoneui_info_register_network_status(callback, data);
+	phoneui_info_request_network_status(callback, data);
+}
+
+void
 phoneui_info_register_signal_strength(void (*callback)(void *, int),
 				      void *data)
 {
@@ -431,7 +549,44 @@ phoneui_info_register_signal_strength(void (*callback)(void *, int),
 	}
 }
 
+void
+phoneui_info_request_signal_strength(void (*callback)(void *, int), void *data)
+{
+	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
+	pack->callback = callback;
+	pack->data = data;
+	ogsmd_network_get_signal_strength(_get_signal_strength_callback, pack);
+}
 
+void
+phoneui_info_register_input_events(void (*callback)(void *, int, int, int),
+				   void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (input events)");
+		return;
+	}
+	struct _cb_3int_pack *pack =
+			malloc(sizeof(struct _cb_3int_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (input events)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_input_events, pack);
+	if (!l) {
+		g_warning("Failed to register callback for input events");
+	}
+	else {
+		if (!callbacks_input_events) {
+			callbacks_input_events = l;
+			g_debug("Registered a callback for input events");
+		}
+	}
+}
 
 /* --- signal handlers --- */
 
@@ -500,6 +655,17 @@ static void _call_status_handler(int callid, int state,
 static void _pdp_network_status_handler(GHashTable *status)
 {
 	_execute_hashtable_callbacks(callbacks_pdp_network_status, status);
+}
+
+static void _pdp_network_status_callback(GError *error, GHashTable *status,
+					 gpointer _data)
+{
+	if (error) {
+		g_warning("PDP NetworkStatus: %s", error->message);
+		return;
+	}
+	struct _cb_hashtable_pack *data = (struct _cb_hashtable_pack *)_data;
+	data->callback(data->data, status);
 }
 
 static void _profile_changed_handler(const char *profile)
@@ -591,26 +757,38 @@ static void _pim_message_deleted_handler(const char *path)
 static void _missed_calls_callback(GError *error,
 		int amount, gpointer userdata)
 {
-	(void)userdata;
+	struct _cb_int_pack *pack;
 
 	if (error) {
 		g_message("_missed_calls_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
+	if (userdata) {
+		pack = (struct _cb_int_pack *)userdata;
+		pack->callback(pack->data, amount);
+		free(pack);
+	}
+	// FIXME: remove when idle screen is converted
 	phoneui_idle_screen_update_missed_calls(amount);
 }
 
 static void _unread_messages_callback(GError *error,
 		int amount, gpointer userdata)
 {
-	(void)userdata;
+	struct _cb_int_pack *pack;
 
 	if (error) {
 		g_message("_unread_messages_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
+	if (userdata) {
+		pack = (struct _cb_int_pack *)userdata;
+		pack->callback(pack->data, amount);
+		free(pack);
+	}
+	// FIXME: remove when idle screen is converted
 	phoneui_idle_screen_update_unread_messages(amount);
 }
 
@@ -650,53 +828,79 @@ static void _resource_state_callback(GError *error,
 static void _get_profile_callback(GError *error,
 		char *profile, gpointer userdata)
 {
-	(void)userdata;
-
+	struct _cb_charp_pack *pack;
 	if (error) {
 		g_message("_get_profile_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
 	phoneui_idle_screen_update_profile(profile);
+	if (userdata) {
+		pack = (struct _cb_charp_pack *)userdata;
+		pack->callback(pack->data, profile);
+		free(pack);
+	}
 }
 
 static void _get_capacity_callback(GError *error,
 		int energy, gpointer userdata)
 {
-	(void)userdata;
-
+	struct _cb_int_pack *pack;
 	if (error) {
 		g_message("_get_capacity_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
+	if (userdata) {
+		pack = (struct _cb_int_pack *)userdata;
+		pack->callback(pack->data, energy);
+		free(pack);
+	}
+	// FIXME: remove when idle screen is converted
 	phoneui_idle_screen_update_power(energy);
 }
 
 static void _get_network_status_callback(GError *error,
 		GHashTable *properties, gpointer userdata)
 {
-	(void)userdata;
-
+	struct _cb_hashtable_pack *pack;
 	if (error) {
 		g_message("_get_network_status_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
+	if (userdata) {
+		pack = (struct _cb_hashtable_pack *)userdata;
+		pack->callback(pack->data, properties);
+		free(pack);
+	}
+	// FIXME: remove when idle screen is converted
 	_handle_network_status(properties);
 }
 
 static void _get_signal_strength_callback(GError *error,
 		int signal, gpointer userdata)
 {
-	(void)userdata;
-
+	struct _cb_int_pack *pack;
 	if (error) {
 		g_message("_get_signal_strength_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
+	if (userdata) {
+		pack = (struct _cb_int_pack *)userdata;
+		pack->callback(pack->data, signal);
+		free(pack);
+	}
+	// FIXME: remove when idle screen is converted
 	phoneui_idle_screen_update_signal_strength(signal);
+}
+
+static void
+_device_input_event_handler(int source, int action, int duration)
+{
+	_execute_3int_callbacks(callbacks_input_events,
+				source, action, duration);
 }
 
 //static void _get_alarm_callback(GError *error,
@@ -761,6 +965,19 @@ _execute_int_callbacks(GList *cbs, int value)
 	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
 		struct _cb_int_pack *pack = (struct _cb_int_pack *)cb->data;
 		pack->callback(pack->data, value);
+	}
+}
+
+static void
+_execute_3int_callbacks(GList *cbs, int value1, int value2, int value3)
+{
+	GList *cb;
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_3int_pack *pack = (struct _cb_3int_pack *)cb->data;
+		pack->callback(pack->data, value1, value2, value3);
 	}
 }
 
