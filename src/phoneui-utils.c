@@ -25,8 +25,6 @@
 #include "phoneui-utils-device.h"
 #include "phoneui-utils-feedback.h"
 
-/*FIXME: fix this hackish var, drop it */
-static DBusGProxy *GQuery = NULL;
 
 static GValue *
 _new_gvalue_string(const char *value)
@@ -663,10 +661,10 @@ phoneui_utils_contact_get(const char *contact_path,
 	return (0);
 }
 
-struct _query_list_pack {
+struct _list_pack {
 	gpointer data;
 	int *count;
-	void (*callback)(gpointer, gpointer);
+	void (*callback)(GHashTable *, gpointer);
 	DBusGProxy *query;
 };
 
@@ -678,30 +676,42 @@ _compare_contacts(gconstpointer _a, gconstpointer _b)
 }
 
 static void
+_list_feed_callback(gpointer _message, gpointer _data)
+{
+	struct _list_pack *data = (struct _list_pack *)_data;
+	if (data->callback) {
+		data->callback((GHashTable *)_message, data->data);
+	}
+}
+
+static void
 _contact_list_result_callback(GError *error, GPtrArray *contacts, void *_data)
 {
-	/*FIXME: should we check the value of error? */
-	(void) error;
-	g_debug("Got to %s", __FUNCTION__);
-	struct _query_list_pack *data =
-		(struct _query_list_pack *)_data;
+	struct _list_pack *data = (struct _list_pack *)_data;
 
-	if (error || !contacts) {
-		return;
+	if (error) {
+		g_warning("Contacts result error: %s", error->message);
 	}
 
-	g_ptr_array_sort(contacts, _compare_contacts);
-	g_ptr_array_foreach(contacts, data->callback, data->data);
+	if (contacts) {
+		/* FIXME: remove when opimd correctly sorts by display name */
+		g_ptr_array_sort(contacts, _compare_contacts);
+		g_ptr_array_foreach(contacts, _list_feed_callback, data);
+// 		g_ptr_array_free(contacts);
+	}
 	opimd_contact_query_dispose(data->query, NULL, NULL);
 }
 
 static void
 _contact_list_count_callback(GError *error, const int count, gpointer _data)
 {
-	/*FIXME: should we use error? */
-	(void) error;
-	struct _query_list_pack *data =
-		(struct _query_list_pack *)_data;
+	struct _list_pack *data =
+		(struct _list_pack *)_data;
+	if (error) {
+		g_warning("Contact query error: %s", error->message);
+		data->callback(NULL, data->data);
+		return;
+	}
 	g_message("Contact query result gave %d entries", count);
 	*data->count = count;
 	opimd_contact_query_get_multiple_results(data->query,
@@ -712,24 +722,27 @@ _contact_list_count_callback(GError *error, const int count, gpointer _data)
 static void
 _contact_query_callback(GError *error, char *query_path, gpointer _data)
 {
+	struct _list_pack *data = (struct _list_pack *)_data;
 	if (error == NULL) {
-		struct _query_list_pack *data =
-			(struct _query_list_pack *)_data;
 		data->query = (DBusGProxy *)
 			dbus_connect_to_opimd_contact_query(query_path);
 		opimd_contact_query_get_result_count(data->query,
 				_contact_list_count_callback, data);
+		return;
+	}
+	if (data->callback) {
+		data->callback(NULL, data->data);
 	}
 }
 
 void
 phoneui_utils_contacts_get(int *count,
-		void (*callback)(gpointer, gpointer),
+		void (*callback)(GHashTable *, gpointer),
 		gpointer userdata)
 {
 	g_message("Probing for contacts");
-	struct _query_list_pack *data =
-		malloc(sizeof(struct _query_list_pack));
+	struct _list_pack *data =
+		malloc(sizeof(struct _list_pack));
 	data->data = userdata;
 	data->callback = callback;
 	data->count = count;
@@ -901,47 +914,74 @@ phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 	ogsmd_sim_unlock(puk, new_pin, _auth_send_callback, data);
 }
 
-/*FIXME: make this less ugly, do like I did in conacts */
-struct _messages_pack {
-	void (*callback) (GError *, GPtrArray *, void *);
-	void *data;
-};
-
-/*FIXME: even when there's an error should return! */
 static void
-_result_callback(GError * error, int count, void *_data)
+_messages_result_callback(GError *error, GPtrArray *messages, gpointer _data)
 {
-	struct _messages_pack *data = (struct _messages_pack *) _data;
-	if (error == NULL) {
-		g_message("Found %d messages, retrieving", count);
-		opimd_message_query_get_multiple_results(GQuery, count,
-							 data->callback,
-							 data->data);
+	struct _list_pack *data = (struct _list_pack *)_data;
+	if (error) {
+		g_warning("Message query result error: %s", error->message);
 	}
+
+	if (messages) {
+		g_ptr_array_foreach(messages, _list_feed_callback, data);
+// 		g_ptr_array_free(messages);
+	}
+	else {
+		/* call the callback anyway to signal
+		the user that an error occured */
+		data->callback(NULL, data->data);
+	}
+	opimd_message_query_dispose(data->query, NULL, NULL);
+// 	free(data);
 }
 
 static void
-_query_callback(GError * error, char *query_path, void *data)
+_messages_count_callback(GError * error, int count, void *_data)
 {
-	if (error == NULL) {
-		g_debug("Message query path is %s", query_path);
-		GQuery = dbus_connect_to_opimd_message_query(query_path);
-		opimd_message_query_get_result_count(GQuery, _result_callback,
-						     data);
+	struct _list_pack *data = (struct _list_pack *) _data;
+	if (error) {
+		g_warning("Message query count error: %s", error->message);
+		data->callback(NULL, data->data);
+		free(data);
+		return;
 	}
+
+	g_message("Found %d messages, retrieving", count);
+	*data->count = count;
+	opimd_message_query_get_multiple_results(data->query, count,
+				_messages_result_callback, data);
+}
+
+static void
+_messages_query_callback(GError * error, char *query_path, void *_data)
+{
+	struct _list_pack *data = (struct _list_pack *)_data;
+	if (error) {
+		g_warning("Message query error: %s", error->message);
+		data->callback(NULL, data->data);
+		free(data);
+		return;
+	}
+	g_debug("Message query path is %s", query_path);
+	data->query = dbus_connect_to_opimd_message_query(query_path);
+	opimd_message_query_get_result_count(data->query,
+						_messages_count_callback,
+						data);
 }
 
 void
-phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
+phoneui_utils_messages_get(int *count, void (*callback) (GHashTable *, gpointer),
 		      void *_data)
 {
-	struct _messages_pack *data;
+	struct _list_pack *data;
 	g_debug("Retrieving messages");
-	/*FIXME: I need to free, I allocate and don't free */
-	data = malloc(sizeof(struct _messages_pack *));
+	data = malloc(sizeof(struct _list_pack *));
 	data->callback = callback;
 	data->data = _data;
-	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, free);
+	data->count = count;
+	data->query = NULL;
+	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal,
+						  NULL, free);
 
 	GValue *sortby = calloc(1, sizeof(GValue));
 	g_value_init(sortby, G_TYPE_STRING);
@@ -953,7 +993,7 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	g_value_set_boolean(sortdesc, 1);
 	g_hash_table_insert(query, "_sortdesc", sortdesc);
 
-	opimd_messages_query(query, _query_callback, data);
+	opimd_messages_query(query, _messages_query_callback, data);
 	g_hash_table_destroy(query);
 }
 
