@@ -88,6 +88,8 @@ int phoneui_utils_message_delete(const char *message_path,
 int phoneui_utils_message_set_read_status(const char *path, int read,
 				void (*callback) (GError *, gpointer),
 				void *data);
+int phoneui_utils_message_get(const char *message_path,
+		void (*callback)(GHashTable *, gpointer), gpointer data);
 void phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 		      void *_data);
 

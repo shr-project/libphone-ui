@@ -1032,6 +1032,20 @@ phoneui_utils_call_get(const char *call_path,
 
 
 int
+phoneui_utils_message_get(const char *message_path,
+			  void (*callback)(GHashTable *, gpointer),
+			  gpointer data)
+{
+	struct _item_get_pack *_pack =
+		malloc(sizeof(struct _item_get_pack));
+	_pack->data = data;
+	_pack->callback = callback;
+	g_debug("Getting data of message with path: %s", message_path);
+	opimd_message_get_content(message_path, _item_get_callback, _pack);
+	return (0);
+}
+
+int
 phoneui_utils_resource_policy_set(enum PhoneUiResource resource,
 					enum PhoneUiResourcePolicy policy)
 {
