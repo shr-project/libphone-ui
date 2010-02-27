@@ -637,7 +637,7 @@ struct _item_get_pack {
 static void
 _item_get_callback(GError *error, GHashTable *_content, gpointer userdata)
 {
-	struct _contact_get_pack *data = (struct _contact_get_pack *)userdata;
+	struct _item_get_pack *data = (struct _item_get_pack *)userdata;
 	if (!error) {
 		struct _item_get_pack *data =
 			(struct _item_get_pack *)userdata;
@@ -655,7 +655,7 @@ phoneui_utils_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data)
 {
 	struct _item_get_pack *_pack =
-		malloc((sizeof(struct _item_get_pack));
+		malloc(sizeof(struct _item_get_pack));
 	_pack->data = data;
 	_pack->callback = callback;
 	g_debug("Getting data of contact with path: %s", contact_path);
