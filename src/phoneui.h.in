@@ -70,7 +70,7 @@ void phoneui_ussd_show(int mode, const char *message);
 void phoneui_quick_settings_show();
 void phoneui_quick_settings_hide();
 
-/* Idle screen */
+/* Idle Screen */
 void phoneui_idle_screen_show();
 void phoneui_idle_screen_hide();
 void phoneui_idle_screen_toggle();
@@ -85,6 +85,12 @@ void phoneui_idle_screen_update_provider(const char *provider);
 void phoneui_idle_screen_update_resource(const char *resource, const int state);
 void phoneui_idle_screen_update_alarm(const int alarm);
 void phoneui_idle_screen_update_profile(const char *profile);
+
+/* Phone Log */
+void phoneui_phone_log_show();
+void phoneui_phone_log_hide();
+void phoneui_phone_log_new_call(char *path);
+
 
 #endif
 

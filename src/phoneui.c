@@ -1,8 +1,9 @@
 /*
- *  Copyright (C) 2008
+ *  Copyright (C) 2008, 2009
  *      Authors (alphabetical) :
  *              Julien "Ainulindalë" Cassignol
  * 		Tom "TAsn" Hacohen <tom@stosb.com>
+ * 		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
  *              quickdev
  *
  *
@@ -79,7 +80,7 @@ static void (*_phoneui_ussd_show) (int mode, const char *message) = NULL;
 static void (*_phoneui_quick_settings_show) () = NULL;
 static void (*_phoneui_quick_settings_hide) () = NULL;
 
-/* Idle screen */
+/* Idle Screen */
 static void (*_phoneui_idle_screen_show) () = NULL;
 static void (*_phoneui_idle_screen_hide) () = NULL;
 static void (*_phoneui_idle_screen_toggle) () = NULL;
@@ -94,6 +95,11 @@ static void (*_phoneui_idle_screen_update_provider) (const char *provider) = NUL
 static void (*_phoneui_idle_screen_update_resource) (const char *resource, const int state) = NULL;
 static void (*_phoneui_idle_screen_update_alarm) (const int alarm) = NULL;
 static void (*_phoneui_idle_screen_update_profile) (const char *profile) = NULL;
+
+/* Phone Log */
+static void (*_phoneui_phone_log_show) () = NULL;
+static void (*_phoneui_phone_log_hide) () = NULL;
+static void (*_phoneui_phone_log_new_call) (char *path) = NULL;
 
 /* got to be in the same order as in the backends array */
 enum BackendType {
@@ -245,6 +251,10 @@ phoneui_connect()
 	CONNECT_HELPER(idle_screen_update_resource, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_update_alarm, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_update_profile, BACKEND_IDLE_SCREEN);
+
+	CONNECT_HELPER(phone_log_show, BACKEND_PHONELOG);
+	CONNECT_HELPER(phone_log_hide, BACKEND_PHONELOG);
+	CONNECT_HELPER(phone_log_new_call, BACKEND_PHONELOG);
 }
 
 static void
@@ -475,5 +485,21 @@ void
 phoneui_idle_screen_update_profile(const char *profile)
 {
 	PHONEUI_FUNCTION_CONTENT(idle_screen_update_profile, profile);
+}
+
+void
+phoneui_phone_log_show()
+{
+	PHONEUI_FUNCTION_CONTENT(phone_log_show);
+}
+void
+phoneui_phone_log_hide()
+{
+	PHONEUI_FUNCTION_CONTENT(phone_log_hide);
+}
+void
+phoneui_phone_log_new_call(char *path)
+{
+	PHONEUI_FUNCTION_CONTENT(phone_log_new_call, path);
 }
 
