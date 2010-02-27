@@ -28,6 +28,7 @@ static GList *callbacks_input_events = NULL;
 
 
 static void _missed_calls_handler(int amount);
+static void _new_call_handler(char *path);
 static void _unread_messages_handler(int amount);
 //static void _unfinished_tasks_handler(const int amount);
 static void _resource_changed_handler(const char *resource, gboolean state, GHashTable *properties);
@@ -73,6 +74,7 @@ phoneui_info_init()
 {
 	FrameworkdHandler *fw = frameworkd_handler_new();
 	fw->pimNewMissedCalls = _missed_calls_handler;
+	fw->pimNewCall = _new_call_handler;
 	fw->pimUnreadMessages = _unread_messages_handler;
 	//fw->pimUnfinishedTasks = _unfinished_tasks_handler;
 	fw->usageResourceChanged = _resource_changed_handler;
@@ -598,7 +600,12 @@ static void _missed_calls_handler(int amount)
 	phoneui_idle_screen_update_missed_calls(amount);
 }
 
-static void _unread_messages_handler(const int amount)
+static void _new_call_handler(char *path)
+{
+	phoneui_phone_log_new_call(path);
+}
+
+static void _unread_messages_handler(int amount)
 {
 	g_debug("_unread_messages_handler: %d unread messages", amount);
 	_execute_int_callbacks(callbacks_unread_messages, amount);

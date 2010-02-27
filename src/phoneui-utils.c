@@ -1,4 +1,3 @@
-
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
@@ -15,14 +14,23 @@
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-dbus.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-fields.h>
-#include <frameworkd-glib/ousaged/frameworkd-glib-ousaged.h>
-#include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-idlenotifier.h>
 
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 #include "phoneui-utils-device.h"
 #include "phoneui-utils-feedback.h"
+
+/* HACK, DROP THIS AND ALL THE CALLS */
+static const char *
+skip_tel (const char *num)
+{
+	if (!strncmp(num, "tel:", 4)) {
+		return num + 4;
+	}
+	return num;
+}
+/* END OF HACK */
+
 
 /*FIXME: fix this hackish var, drop it */
 static DBusGProxy *GQuery = NULL;
@@ -66,21 +74,28 @@ _new_gvalue_boolean(int value)
 	return val;
 }
 
-int
-phoneui_utils_init(GKeyFile *keyfile)
+static char *
+_lookup_add_prefix(const char *_number)
 {
-	int ret;
-	ret = phoneui_utils_sound_init(keyfile);
-	ret = phoneui_utils_device_init(keyfile);
-	ret = phoneui_utils_feedback_init(keyfile);
+	char *number = NULL;
+	if (strncmp(_number, "tel:", 4)) {
+		number = malloc(strlen(_number) + 5);	/* 5 is for "tel:" and the null */
+		if (!number) {
+			return NULL;
+		}
+		strcpy(number, "tel:");
+		strcat(number, _number);
+	}
+	else
+		number = g_strdup(_number);
 
-	return 0;
+
+	return number;
 }
 
 struct _contact_lookup_pack {
 	gpointer *data;
 	void (*callback)(GHashTable *, gpointer);
-	char *number;
 };
 
 static void
@@ -89,72 +104,58 @@ _contact_lookup_callback(GError *error, char *path, gpointer userdata)
 	struct _contact_lookup_pack *data =
 		(struct _contact_lookup_pack *)userdata;
 	if (!error && path && *path) {
-		g_debug("Found contact: %s", path);
+		g_debug("Found contact name: %s", path);
 		phoneui_utils_contact_get(path, data->callback, data->data);
 	}
 	else {
-		g_debug("No contact found.");
+		g_debug("No contact name found.");
 		data->callback(NULL, data->data);
 	}
-	free(data->number);
-	free(data);
 }
 
-static void
-_contact_lookup_type_callback(char **fields, gpointer _pack)
+int
+phoneui_utils_init(GKeyFile *keyfile)
 {
-	/*FIXME: should I clean fields? */
-	GHashTable *query;
-	struct _contact_lookup_pack *data =
-		(struct _contact_lookup_pack *)_pack;
-	if (!fields || !*fields) {
-		/* Fake a call to the callabkc with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack);
+	int ret;
+	ret = phoneui_utils_sound_init(keyfile);
+	ret = phoneui_utils_device_init(keyfile);
+	ret = phoneui_utils_feedback_init(keyfile);
+	
+	return 0;
+}
+
+int
+phoneui_utils_contact_lookup(const char *_number,
+			void (*_callback) (GHashTable *, gpointer),
+			void *_data)
+{
+	GHashTable *query =
+		g_hash_table_new(g_str_hash, g_str_equal);
+	char *number = _lookup_add_prefix(_number);
+	if (!number) {
+		return 1;
 	}
-	query = g_hash_table_new(g_str_hash, g_str_equal);
 
-	g_debug("Attempting to resolve name for: \"%s\"", data->number);
+	g_debug("Attempting to resolve name for: \"%s\"", number);
 
 
-	GValue *value = _new_gvalue_string(data->number);
+	GValue *value = _new_gvalue_string(number);	/*  we prefer using number */
 	if (!value) {
-		g_hash_table_destroy(query);
-		/* Fake a call to the callback with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack);
+		free(number);
+		return 1;
 	}
-	GValue *tmp = _new_gvalue_string("True");
-	if (!tmp) {
-		free(value);
-		g_hash_table_destroy(query);
-		/* Fake a call to the callback with no path found */
-		_contact_lookup_callback(NULL, NULL, _pack);
-	}
+	g_hash_table_insert(query, "Phone", value);
 
-	g_hash_table_insert(query, "_at_least_one", tmp);
-
-	for ( ; *fields ; fields++) {
-		g_debug("\tTrying field: \"%s\"", *fields);
-		g_hash_table_insert(query, *fields, value);
-	}
+	struct _contact_lookup_pack *data =
+		g_slice_alloc0(sizeof(struct _contact_lookup_pack));
+	data->data = _data;
+	data->callback = _callback;
 
 	opimd_contacts_get_single_entry_single_field
 		(query, "Path", _contact_lookup_callback, data);
 
+	free(number);
 	g_hash_table_destroy(query);
-}
-
-int
-phoneui_utils_contact_lookup(const char *number,
-			void (*_callback) (GHashTable *, gpointer),
-			void *_data)
-{
-	struct _contact_lookup_pack *data =
-		calloc(1, sizeof(struct _contact_lookup_pack));
-	data->data = _data;
-	data->callback = _callback;
-	data->number = strdup(number);
-	phoneui_utils_contacts_fields_get_with_type("phonenumber",
-					_contact_lookup_type_callback, data);
 
 	return 0;
 }
@@ -381,7 +382,7 @@ phoneui_utils_dial(const char *number,
 	}
 	pack->data = userdata;
 	pack->callback = callback;
-
+	number = (char *) skip_tel(number); /* HACK */
 	if (phone_utils_gsm_number_is_ussd(number)) {
 		phoneui_utils_ussd_initiate(number, _phoneui_utils_dial_ussd_cb, pack);
 	}
@@ -413,7 +414,7 @@ phoneui_utils_call_initiate(const char *number,
 }
 
 int
-phoneui_utils_call_release(int call_id,
+phoneui_utils_call_release(int call_id, 
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
@@ -422,7 +423,7 @@ phoneui_utils_call_release(int call_id,
 }
 
 int
-phoneui_utils_call_activate(int call_id,
+phoneui_utils_call_activate(int call_id, 
 			void (*callback)(GError *, gpointer),
 			gpointer userdata)
 {
@@ -521,17 +522,12 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 			continue;
 		}
 
-		/* Use the types mechanism */
 		/* sanitize phone numbers */
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
-			const char *s_val;
-			char **strv;
-			if (G_VALUE_HOLDS_BOXED(val)) {
-				strv = (char **)g_value_get_boxed(val);
-				s_val = strv[0];
-			}
-			else {
-				s_val = g_value_get_string(val);
+			const char *s_val = g_value_get_string(val);
+			/* for phonenumbers we have to strip the tel: prefix */
+			if (g_str_has_prefix(s_val, "tel:")) {
+				s_val += 4;
 			}
 
 			/* if key is exactly 'Phone' we want that is default
@@ -553,6 +549,7 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 char *
 phoneui_utils_contact_display_name_get(GHashTable *properties)
 {
+	g_debug("sanitizing a contact content...");
 	gpointer _key, _val;
 	const char *name = NULL, *surname = NULL;
 	const char *middlename = NULL, *nickname = NULL;
@@ -571,18 +568,22 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 
 		if (!strcmp(key, "Name")) {
 			const char *s_val = g_value_get_string(val);
+			g_debug("   Name found (%s)", s_val);
 			name = s_val;
 		}
 		else if (!strcmp(key, "Surname")) {
 			const char *s_val = g_value_get_string(val);
+			g_debug("   Surname found (%s)", s_val);
 			surname = s_val;
 		}
 		else if (!strcmp(key, "Middlename")) {
 			const char *s_val = g_value_get_string(val);
+			g_debug("   Middlename found (%s)", s_val);
 			middlename = s_val;
 		}
 		else if (!strcmp(key, "Nickname")) {
 			const char *s_val = g_value_get_string(val);
+			g_debug("   Nickname found (%s)", s_val);
 			nickname = s_val;
 		}
 	}
@@ -610,24 +611,6 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 	return displayname;
 }
 
-int
-phoneui_utils_contact_compare(GHashTable *contact1, GHashTable *contact2)
-{
-	int ret;
-	char *name1 = phoneui_utils_contact_display_name_get(contact1);
-	if (!name1)
-		return -1;
-	char *name2 = phoneui_utils_contact_display_name_get(contact2);
-	if (!name2) {
-		free (name1);
-		return 1;
-	}
-	ret = strcoll(name1, name2);
-	free(name1);
-	free(name2);
-	return ret;
-}
-
 struct _contact_get_pack {
 	gpointer data;
 	void (*callback)(GHashTable *, gpointer);
@@ -636,14 +619,11 @@ struct _contact_get_pack {
 static void
 _contact_get_callback(GError *error, GHashTable *_content, gpointer userdata)
 {
-	struct _contact_get_pack *data = (struct _contact_get_pack *)userdata;
 	if (!error) {
+		struct _contact_get_pack *data =
+			(struct _contact_get_pack *)userdata;
 		data->callback(_content, data->data);
 	}
-	else {
-		data->callback(NULL, data->data);
-	}
-	free(data);
 }
 
 
@@ -652,7 +632,7 @@ phoneui_utils_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data)
 {
 	struct _contact_get_pack *_pack =
-		malloc(sizeof(struct _contact_get_pack));
+		g_slice_alloc0(sizeof(struct _contact_get_pack));
 	_pack->data = data;
 	_pack->callback = callback;
 	g_debug("Getting data of contact with path: %s", contact_path);
@@ -670,8 +650,28 @@ struct _contact_list_pack {
 static gint
 _compare_contacts(gconstpointer _a, gconstpointer _b)
 {
-	return phoneui_utils_contact_compare(*((GHashTable **)_a),
-					     *((GHashTable**)_b));
+	GHashTable **a = (GHashTable **) _a;
+	GHashTable **b = (GHashTable **) _b;
+	gpointer p;
+	const char *name_a, *name_b;
+/* Probably not best (sorting by just Name) but will have to do ATM */
+	p = g_hash_table_lookup(*a, "Name");
+	if (!p) {
+		name_a = "";
+		g_debug("name a not found!!!!");
+	}
+	else
+		name_a = g_value_get_string(p);
+
+	p = g_hash_table_lookup(*b, "Name");
+	if (!p) {
+		name_b = "";
+		g_debug("name b not found!!!!");
+	}
+	else
+		name_b = g_value_get_string(p);
+
+	return (strcasecmp(name_a, name_b));
 }
 
 static void
@@ -737,103 +737,6 @@ phoneui_utils_contacts_get(int *count,
 	opimd_contacts_query(qry, _contact_query_callback, data);
 	g_hash_table_destroy(qry);
 }
-
-static void
-_fields_strip_system_fields(GHashTable *fields)
-{
-	/* Remove the system fields */
-	g_hash_table_remove(fields, "Path");
-}
-
-struct _fields_pack {
-	gpointer data;
-	void (*callback)(GHashTable *, gpointer);
-};
-struct _fields_with_type_pack {
-	gpointer data;
-	void (*callback)(char **, gpointer);
-};
-
-static void
-_fields_get_cb(GError *error, GHashTable *fields, gpointer _pack)
-{
-	struct _fields_pack *pack = (struct _fields_pack *)_pack;
-
-	_fields_strip_system_fields(fields);
-
-	if (error) {
-		g_warning("Failed to aquire contact fields");
-		if (pack->callback) {
-			pack->callback(NULL, pack->data);
-		}
-	}
-	else if (pack->callback) {
-		pack->callback(fields, pack->data);
-	}
-	free(pack);
-}
-
-static void
-_fields_get_with_type_cb(GError *error, char **fields, gpointer _pack)
-{
-	struct _fields_with_type_pack *pack = (struct _fields_with_type_pack *)_pack;
-
-	if (error) {
-		g_warning("Failed to aquire contact fields");
-		if (pack->callback) {
-			pack->callback(NULL, pack->data);
-		}
-	}
-	else if (pack->callback) {
-		pack->callback(fields, pack->data);
-	}
-	free(pack);
-}
-
-void
-phoneui_utils_contacts_fields_get_with_type(const char *type,
-		void (*callback)(char **, gpointer), gpointer userdata)
-{
-	struct _fields_with_type_pack *pack =
-			malloc(sizeof(struct _fields_with_type_pack));
-	pack->data = userdata;
-	pack->callback = callback;
-	opimd_contacts_fields_list_fields_with_type(type, _fields_get_with_type_cb, pack);
-}
-
-void
-phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer),
-		gpointer userdata)
-{
-	struct _fields_pack *pack = malloc(sizeof(struct _fields_pack));
-	pack->data = userdata;
-	pack->callback = callback;
-	opimd_contacts_fields_list(_fields_get_cb, pack);
-}
-
-void
-phoneui_utils_contacts_field_add(const char *name, const char *type,
-					void *callback, void *userdata)
-{
-	/*FIXME stub*/
-	(void) callback;
-	(void) userdata;
-	(void) name;
-	(void) type;
-	return;
-}
-
-void
-phoneui_utils_contacts_field_remove(const char *name,
-					void *callback, void *userdata)
-{
-	/*FIXME stub*/
-	(void) callback;
-	(void) userdata;
-	(void) name;
-	return;
-}
-
 
 /* --- SIM Auth handling --- */
 struct _auth_pack {
@@ -904,7 +807,7 @@ struct _messages_pack {
 	void *data;
 };
 
-/*FIXME: even when there's an error should return! */
+
 static void
 _result_callback(GError * error, int count, void *_data)
 {
@@ -938,14 +841,14 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 	data = malloc(sizeof(struct _messages_pack *));
 	data->callback = callback;
 	data->data = _data;
-	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, free);
+	GHashTable *query = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);	/*g_slice_alloc0 needs freeing */
 
-	GValue *sortby = calloc(1, sizeof(GValue));
+	GValue *sortby = g_slice_alloc0(sizeof(GValue));
 	g_value_init(sortby, G_TYPE_STRING);
 	g_value_set_string(sortby, "Timestamp");
 	g_hash_table_insert(query, "_sortby", sortby);
 
-	GValue *sortdesc = calloc(1, sizeof(GValue));
+	GValue *sortdesc = g_slice_alloc0(sizeof(GValue));
 	g_value_init(sortdesc, G_TYPE_BOOLEAN);
 	g_value_set_boolean(sortdesc, 1);
 	g_hash_table_insert(query, "_sortdesc", sortdesc);
@@ -974,7 +877,7 @@ phoneui_utils_resource_policy_set(enum PhoneUiResource resource,
 		return 1;
 		break;
 	}
-
+	
 	return 0;
 }
 
@@ -995,61 +898,6 @@ phoneui_utils_resource_policy_get(enum PhoneUiResource resource)
 	default:
 		break;
 	}
-
+	
 	return PHONEUI_RESOURCE_POLICY_ERROR;
 }
-
-void
-phoneui_utils_fields_types_get(void *callback, void *userdata)
-{
-	/*FIXME stub*/
-	(void) callback;
-	(void) userdata;
-	return;
-}
-
-void
-phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), void *userdata)
-{
-	ousaged_suspend(callback, userdata);
-}
-
-void
-phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), void *userdata)
-{
-	ousaged_shutdown(callback, userdata);
-}
-
-void
-phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer),
-                                 gpointer userdata)
-{
-	odeviced_idle_notifier_get_state(callback, userdata);
-}
-
-
-void
-phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*callback) (GError *, gpointer),
-                                      gpointer userdata)
-{
-	odeviced_idle_notifier_set_state(state, callback, userdata);
-}
-
-void
-phoneui_utils_resources_get_resource_policy(const char *name,
-                                 void (*callback) (GError *, char *, gpointer),
-                                 gpointer userdata)
-{
-	/*FIXME: Add error handling */
-	ousaged_get_resource_policy(name, callback, userdata);
-}
-
-void
-phoneui_utils_resources_set_resource_policy(const char *name, const char *policy,
-                                 void (*callback) (GError *, gpointer),
-                                 gpointer userdata)
-{
-	/*FIXME: Add error handling */
-	ousaged_set_resource_policy(name, policy, callback, userdata);
-}
-
