@@ -260,6 +260,13 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 	case SOUND_STATE_BT:
 		scenario = "gsmbluetooth";
 		break;
+	case SOUND_STATE_IDLE:
+	case SOUND_STATE_IDLE_BT:
+		scenario = "stereoout";
+		break;
+	case SOUND_STATE_IDLE_HEADSET:
+		scenario = "headset";
+		break;
 	default:
 		g_critical("Unknown sound state (%d), not saving. Please inform developers.\n", (int) sound_state);
 		break;
@@ -538,10 +545,16 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		return 0;
 	}
 
-	/* allow INIT only if sound_state was IDLE */
+	/* allow INIT only if sound_state was IDLE, IDLE_BT or IDLE_HEADSET */
 	if (state == SOUND_STATE_INIT) {
 		if (sound_state == SOUND_STATE_IDLE) {
 			state = SOUND_STATE_HANDSET;
+		}
+		else if (sound_state == SOUND_STATE_IDLE_BT) {
+			state = SOUND_STATE_BT;
+		}
+		else if (sound_state == SOUND_STATE_IDLE_HEADSET) {
+			state = SOUND_STATE_HEADSET;
 		}
 		else {
 			return 1;
@@ -563,6 +576,10 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	case SOUND_STATE_BT:
 		scenario = "gsmbluetooth";
 		break;
+	case SOUND_STATE_IDLE_HEADSET:
+		scenario = "headset";
+		break;
+	case SOUND_STATE_IDLE_BT:
 	case SOUND_STATE_IDLE:
 		/* return to the last active scenario */
 		g_debug("Pulled last phoneuid controlled scenario");
