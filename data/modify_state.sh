@@ -5,7 +5,7 @@ then
 	return 1
 fi
 
-STATEPATH="/etc/freesmartphone/alsa/default"
+STATEPATH="/etc/freesmartphone/conf/GTA02/alsa-default/"
 
 #in case it's a mono control
 sed -i "s/\('$2'\):1:[0-9]\+/\1:1:$3/" ${STATEPATH}/$1
