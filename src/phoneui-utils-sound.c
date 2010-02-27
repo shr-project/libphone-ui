@@ -545,7 +545,8 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		return 0;
 	}
 
-	/* allow INIT only if sound_state was IDLE, IDLE_BT or IDLE_HEADSET */
+	/* allow INIT only if sound_state was IDLE, IDLE_BT or IDLE_HEADSET
+	 * or, if speaker was on */
 	if (state == SOUND_STATE_INIT) {
 		if (sound_state == SOUND_STATE_IDLE) {
 			state = SOUND_STATE_HANDSET;
@@ -555,6 +556,10 @@ phoneui_utils_sound_state_set(enum SoundState state)
 		}
 		else if (sound_state == SOUND_STATE_IDLE_HEADSET) {
 			state = SOUND_STATE_HEADSET;
+		}
+		else if (sound_state == SOUND_STATE_SPEAKER) {
+			/*FIXME: should depend on the natural state*/
+			state = SOUND_STATE_HANDSET;
 		}
 		else {
 			return 1;
@@ -595,7 +600,7 @@ phoneui_utils_sound_state_set(enum SoundState state)
 	/*FIXME: fix casts, they are there just because frameworkd-glib
 	 * is broken there */
 
-	if (sound_state == SOUND_STATE_IDLE) {
+	if (sound_state == SOUND_STATE_IDLE || sound_state == SOUND_STATE_IDLE_BT) {
 		odeviced_audio_push_scenario((char *) scenario, NULL, NULL);
 	}
 	else {
