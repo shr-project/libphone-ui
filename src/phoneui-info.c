@@ -290,7 +290,7 @@ phoneui_info_request_profile(void (*callback)(void *, const char *), void *data)
 }
 
 void
-phoneui_info_register_and_request_profile(void (*callback)(void *, const char *),
+phoneui_info_register_and_request_profile_changes(void (*callback)(void *, const char *),
 					  void *data)
 {
 	phoneui_info_register_profile_changes(callback, data);
