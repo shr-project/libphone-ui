@@ -947,7 +947,9 @@ _messages_count_callback(GError * error, int count, void *_data)
 	}
 
 	g_message("Found %d messages, retrieving", count);
-	*data->count = count;
+	if (data->count) {
+		*data->count = count;
+	}
 	opimd_message_query_get_multiple_results(data->query, count,
 				_messages_result_callback, data);
 }
