@@ -65,7 +65,7 @@ int phoneui_utils_contact_add(const GHashTable *contact_data,
 int phoneui_utils_contact_get(const char *contact_path,
 		void (*callback)(GHashTable*, gpointer), void *data);
 void phoneui_utils_contacts_get(int *count,
-		void (*callback)(GHashTable *, gpointer),
+		void (*callback)(gpointer , gpointer),
 		gpointer userdata);
 
 void phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer), gpointer userdata);
@@ -88,10 +88,10 @@ int phoneui_utils_message_delete(const char *message_path,
 int phoneui_utils_message_set_read_status(const char *path, int read,
 				void (*callback) (GError *, gpointer),
 				void *data);
-void phoneui_utils_messages_get(int *count, void (*callback) (GHashTable *, gpointer), void *_data);
-
 int phoneui_utils_message_get(const char *message_path,
 		void (*callback)(GHashTable *, gpointer), gpointer data);
+void phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
+		      void *_data);
 
 void phoneui_utils_calls_get(int *count, void (*callback) (GHashTable *, gpointer),
 		void *_data);
