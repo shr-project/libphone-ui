@@ -67,7 +67,7 @@ int phoneui_utils_contact_get(const char *contact_path,
 void phoneui_utils_contacts_get(int *count,
 		void (*callback)(gpointer , gpointer),
 		gpointer userdata);
-char *phoneui_utils_contacts_field_type_get(const char *field);
+void phoneui_utils_contacts_field_type_get(const char *name, void (*callback)(GError *, char *, gpointer), gpointer user_data);
 void phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer), gpointer userdata);
 void phoneui_utils_contacts_fields_get_with_type(const char *type, void (*callback)(char **, gpointer), gpointer userdata);
 void phoneui_utils_contacts_field_add(const char *name, const char *type, void *callback, void *userdata);

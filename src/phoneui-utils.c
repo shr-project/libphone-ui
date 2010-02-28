@@ -68,16 +68,6 @@ _new_gvalue_boolean(int value)
 	return val;
 }
 
-/*FIXME: Bad Hack */
-static void
-_contacts_types_init_cb(GHashTable *types, void *data)
-{
-	(void) data;
-	if (_contacts_fields) {
-		g_hash_table_destroy(_contacts_fields);
-	}
-	_contacts_fields = types;
-}
 int
 phoneui_utils_init(GKeyFile *keyfile)
 {
@@ -85,7 +75,6 @@ phoneui_utils_init(GKeyFile *keyfile)
 	ret = phoneui_utils_sound_init(keyfile);
 	ret = phoneui_utils_device_init(keyfile);
 	ret = phoneui_utils_feedback_init(keyfile);
-	phoneui_utils_contacts_fields_get(_contacts_types_init_cb, NULL);
 	
 	return 0;
 }
@@ -816,13 +805,11 @@ phoneui_utils_contacts_fields_get_with_type(const char *type,
 	opimd_contacts_fields_list_fields_with_type(type, _fields_get_with_type_cb, pack);
 }
 
-/*FIXME: Takes from internal cache, and assumes it's ok */
-char *
-phoneui_utils_contacts_field_type_get(const char *field)
+void
+phoneui_utils_contacts_field_type_get(const char *name, 
+                void (*callback)(GError *, char *, gpointer), gpointer userdata)
 {
-	const char *type;
-	type = g_hash_table_lookup(_contacts_fields, field);
-	return (type) ? strdup(type) : NULL;
+	opimd_contacts_fields_get(name, callback, userdata);
 }
 
 void
