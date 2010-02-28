@@ -93,7 +93,7 @@ int phoneui_utils_message_get(const char *message_path,
 void phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 		      void *_data);
 
-void phoneui_utils_calls_get(int *count, void (*callback) (GHashTable *, gpointer),
+void phoneui_utils_calls_get(int *count, void (*callback) (gpointer, gpointer),
 		void *_data);
 int phoneui_utils_call_get(const char *call_path,
 		void (*callback)(GHashTable*, gpointer), void *data);
