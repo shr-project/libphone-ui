@@ -27,7 +27,6 @@
 
 /*FIXME: fix those hackish vars, drop them */
 static DBusGProxy *GQuery = NULL;
-static GHashTable *_contacts_fields = NULL;
 
 static GValue *
 _new_gvalue_string(const char *value)
