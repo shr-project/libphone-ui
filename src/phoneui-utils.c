@@ -74,7 +74,7 @@ phoneui_utils_init(GKeyFile *keyfile)
 	ret = phoneui_utils_sound_init(keyfile);
 	ret = phoneui_utils_device_init(keyfile);
 	ret = phoneui_utils_feedback_init(keyfile);
-	
+
 	return 0;
 }
 
@@ -805,7 +805,7 @@ phoneui_utils_contacts_fields_get_with_type(const char *type,
 }
 
 void
-phoneui_utils_contacts_field_type_get(const char *name, 
+phoneui_utils_contacts_field_type_get(const char *name,
                 void (*callback)(GError *, char *, gpointer), gpointer userdata)
 {
 	opimd_contacts_fields_get(name, callback, userdata);
@@ -967,45 +967,48 @@ phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
 static void
 _call_list_result_callback(GError *error, GPtrArray *calls, void *_data)
 {
-	/*FIXME: should we check the value of error? */
-	(void) error;
-	g_debug("Got to %s", __FUNCTION__);
-	struct _query_list_pack *data =
-		(struct _query_list_pack *)_data;
+	struct _query_list_pack *data = (struct _query_list_pack *)_data;
 
 	if (error || !calls) {
-		return;
+		/* call the callback with NULL to signal error */
+		data->callback(NULL, data->data);
 	}
-
-	//g_ptr_array_sort(contacts, _compare_contacts);
 	g_ptr_array_foreach(calls, data->callback, data->data);
 	opimd_call_query_dispose(data->query, NULL, NULL);
+	free(data);
 }
 
 static void
 _calls_list_count_callback(GError *error, int count, gpointer _data)
 {
-	/*FIXME: should we use error? */
-	(void) error;
-	struct _query_list_pack *data =
-		(struct _query_list_pack *)_data;
-	g_message("Call query result gave %d entries", count);
-	*data->count = count;
-	opimd_call_query_get_multiple_results(data->query,
-			count, _call_list_result_callback, data);
+	struct _query_list_pack *data = (struct _query_list_pack *)_data;
+	if (error == NULL) {
+		g_debug("Call query result gave %d entries", count);
+		if (count < *data->count)
+			*data->count = count;
+		opimd_call_query_get_multiple_results(data->query,
+				*data->count, _call_list_result_callback, data);
+		return;
+	}
+	/* call the callback with NULL to signal error */
+	data->callback(NULL, data->data);
+	free(data);
 }
 
 static void
 _calls_query_callback(GError *error, char *query_path, gpointer _data)
 {
+	struct _query_list_pack *data = (struct _query_list_pack *)_data;
 	if (error == NULL) {
-		struct _query_list_pack *data =
-			(struct _query_list_pack *)_data;
 		data->query = (DBusGProxy *)
 			dbus_connect_to_opimd_call_query(query_path);
 		opimd_call_query_get_result_count(data->query,
 				_calls_list_count_callback, data);
+		return;
 	}
+	/* call the callback with NULL to signal error */
+	data->callback(NULL, data->data);
+	free(data);
 }
 
 void
