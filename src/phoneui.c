@@ -99,7 +99,6 @@ static void (*_phoneui_idle_screen_update_profile) (const char *profile) = NULL;
 /* Phone Log */
 static void (*_phoneui_phone_log_show) () = NULL;
 static void (*_phoneui_phone_log_hide) () = NULL;
-static void (*_phoneui_phone_log_new_call) (char *path) = NULL;
 
 /* got to be in the same order as in the backends array */
 enum BackendType {
@@ -254,7 +253,6 @@ phoneui_connect()
 
 	CONNECT_HELPER(phone_log_show, BACKEND_PHONELOG);
 	CONNECT_HELPER(phone_log_hide, BACKEND_PHONELOG);
-	CONNECT_HELPER(phone_log_new_call, BACKEND_PHONELOG);
 }
 
 static void
@@ -497,9 +495,3 @@ phoneui_phone_log_hide()
 {
 	PHONEUI_FUNCTION_CONTENT(phone_log_hide);
 }
-void
-phoneui_phone_log_new_call(char *path)
-{
-	PHONEUI_FUNCTION_CONTENT(phone_log_new_call, path);
-}
-

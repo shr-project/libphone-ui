@@ -89,7 +89,6 @@ void phoneui_idle_screen_update_profile(const char *profile);
 /* Phone Log */
 void phoneui_phone_log_show();
 void phoneui_phone_log_hide();
-void phoneui_phone_log_new_call(char *path);
 
 
 #endif
