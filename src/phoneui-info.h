@@ -15,6 +15,8 @@ void phoneui_info_register_contact_changes(void (*_cb)(void *, const char *,
 						       enum PhoneuiInfoChangeType), void *data);
 void phoneui_info_register_message_changes(void (*_cb)(void *, const char *,
 						       enum PhoneuiInfoChangeType), void *data);
+void phoneui_info_register_call_changes(void (*_cb)(void *, const char *,
+						    enum PhoneuiInfoChangeType), void *data);
 void phoneui_info_register_pdp_network_status(void (*_cb)(void *, GHashTable *), void *data);
 void phoneui_info_request_pdp_network_status(void (*_cb)(void *, GHashTable *), void *data);
 void phoneui_info_register_and_request_pdp_network_status(void (*_cb)(void *, GHashTable *), void *data);

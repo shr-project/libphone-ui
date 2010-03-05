@@ -16,6 +16,7 @@
 
 static GList *callbacks_contact_changes = NULL;
 static GList *callbacks_message_changes = NULL;
+static GList *callbacks_call_changes = NULL;
 static GList *callbacks_pdp_network_status = NULL;
 static GList *callbacks_profile_changes = NULL;
 static GList *callbacks_capacity_changes = NULL;
@@ -197,6 +198,36 @@ phoneui_info_register_message_changes(void (*callback)(void *, const char*,
 		if (!callbacks_message_changes) {
 			callbacks_message_changes = l;
 			g_debug("Registered a callback for message changes");
+		}
+	}
+}
+
+void
+phoneui_info_register_call_changes(void (*callback)(void *, const char *,
+				enum PhoneuiInfoChangeType), void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback - fix your code");
+		return;
+	}
+	struct _cb_pim_changes_pack *pack =
+			malloc(sizeof(struct _cb_pim_changes_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack - not registering");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_call_changes, pack);
+	if (!l) {
+		g_warning("Failed to register callback for call changes");
+	}
+	else {
+		if (!callbacks_call_changes) {
+			callbacks_call_changes = l;
+			g_debug("Registered a callback for call changes");
 		}
 	}
 }
@@ -602,7 +633,8 @@ static void _missed_calls_handler(int amount)
 
 static void _new_call_handler(char *path)
 {
-	phoneui_phone_log_new_call(path);
+	_execute_pim_changed_callbacks(callbacks_contact_changes,
+				       path, PHONEUI_INFO_CHANGE_NEW);
 }
 
 static void _unread_messages_handler(int amount)
