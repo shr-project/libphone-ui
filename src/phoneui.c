@@ -100,6 +100,10 @@ static void (*_phoneui_idle_screen_update_profile) (const char *profile) = NULL;
 static void (*_phoneui_phone_log_show) () = NULL;
 static void (*_phoneui_phone_log_hide) () = NULL;
 
+/* SIM Manager */
+static void (*_phoneui_sim_manager_show) () = NULL;
+static void (*_phoneui_sim_manager_hide) () = NULL;
+
 /* got to be in the same order as in the backends array */
 enum BackendType {
 	BACKEND_DIALER = 0,
@@ -236,6 +240,8 @@ phoneui_connect()
 
 	CONNECT_HELPER(quick_settings_show, BACKEND_SETTINGS);
 	CONNECT_HELPER(quick_settings_hide, BACKEND_SETTINGS);
+	CONNECT_HELPER(sim_manager_show, BACKEND_SETTINGS);
+	CONNECT_HELPER(sim_manager_hide, BACKEND_SETTINGS);
 
 	CONNECT_HELPER(idle_screen_show, BACKEND_IDLE_SCREEN);
 	CONNECT_HELPER(idle_screen_hide, BACKEND_IDLE_SCREEN);
@@ -253,6 +259,7 @@ phoneui_connect()
 
 	CONNECT_HELPER(phone_log_show, BACKEND_PHONELOG);
 	CONNECT_HELPER(phone_log_hide, BACKEND_PHONELOG);
+
 }
 
 static void
@@ -494,4 +501,16 @@ void
 phoneui_phone_log_hide()
 {
 	PHONEUI_FUNCTION_CONTENT(phone_log_hide);
+}
+
+void
+phoneui_sim_manager_show()
+{
+	PHONEUI_FUNCTION_CONTENT(sim_manager_show);
+}
+
+void
+phoneui_sim_manager_hide()
+{
+	PHONEUI_FUNCTION_CONTENT(sim_manager_hide);
 }
