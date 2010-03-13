@@ -22,6 +22,8 @@
 #define PHONEUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
 #define PHONEUI_MODULES_PATH "@LIBDIR@/phoneui/modules/"
 
+#define SIM_MANAGER_CONTACTS_CATEGORIE "contacts"
+
 enum PhoneuiCallState {
 	PHONEUI_CALL_STATE_INCOMING = 0,
 	PHONEUI_CALL_STATE_OUTGOING,

@@ -1154,3 +1154,47 @@ phoneui_utils_resources_set_resource_policy(const char *name, const char *policy
 	ousaged_set_resource_policy(name, policy, callback, userdata);
 }
 
+
+/* Sim Manager utilities */
+/*
+ * Deletes contact index from SIM 
+ */
+int
+phoneui_utils_sim_contact_delete(const int index,
+				void (*callback)(GError *, gpointer),
+				void* data)
+{
+	void ogsmd_sim_delete_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
+				    callback, dataa);
+	return 0;
+}
+
+/*
+ * Adds new contact (name, number) to SIM
+ */
+int
+phoneui_utils_sim_contact_add(const char *name, const char *number,
+			void (*callback)(GError*, char *, gpointer),
+			void* data)
+{
+	ogsmd_sim_store_entry(SIM_MANAGER_CONTACTS_CATEGORIE, name, number,
+			      callback, data);
+	return 0;
+}
+
+/*
+ * Gets all Contacts from SIM as GPtrArray of GValueArray with:
+ * 0: index
+ * 1: name
+ * 2: number
+ * 3: invalid
+ */
+void
+phoneui_utils_sim_manager_contacts_get(int *count,
+		void (*callback)(gpointer, gpointer),
+		gpointer userdata)
+{
+	g_message("Probing for contacts");
+	ogsmd_sim_retrieve_phonebook(SIM_MANAGER_CONTACTS_CATEGORIE, callback,
+				     userdata);
+}
