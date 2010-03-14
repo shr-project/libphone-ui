@@ -1164,21 +1164,50 @@ phoneui_utils_sim_contact_delete(const int index,
 				void (*callback)(GError *, gpointer),
 				void* data)
 {
-	void ogsmd_sim_delete_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
-				    callback, dataa);
+	ogsmd_sim_delete_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
+				    callback, data);
 	return 0;
 }
 
 /*
- * Adds new contact (name, number) to SIM
+struct SimManagerData {
+	char *name;
+	char *number;
+	gpointer *data;
+	void (*callback)(gpointer, gpointer);
+};
+
+void
+_phoneui_utils_sim_contact_store_cb(void *_entry, void *_data)
+{
+	
+}
+*/
+
+/*
+ * Stores contact (name, number) to SIM at index
  */
 int
-phoneui_utils_sim_contact_add(const char *name, const char *number,
+phoneui_utils_sim_contact_store(const int index, const char *name,
+			const char *number,
 			void (*callback)(GError*, char *, gpointer),
 			void* data)
 {
-	ogsmd_sim_store_entry(SIM_MANAGER_CONTACTS_CATEGORIE, name, number,
-			      callback, data);
+	/*
+	if (!index) {
+		//search first unsed index
+		struct SimManagerData userdata;
+		userdata->name = name;
+		userdata->number = number;
+		userdata->data = data;
+		userdata->callback = callback;
+
+		ogsmd_sim_retrieve_phonebook(SIM_MANAGER_CONTACTS_CATEGORIE,
+				_phoneui_utils_sim_contact_store_cb, userdata);
+	}
+	*/
+	ogsmd_sim_store_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index, name,
+			      number, callback, data);
 	return 0;
 }
 

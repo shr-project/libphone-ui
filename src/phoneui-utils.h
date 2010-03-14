@@ -3,6 +3,8 @@
 #include <glib.h>
 #include "phoneui-utils-sound.h"
 
+#define SIM_MANAGER_CONTACTS_CATEGORIE "contacts"
+
 enum PhoneUiDialogType {
 	PHONEUI_DIALOG_ERROR_DO_NOT_USE = 0,
 	// This value is used for checking if we get a wrong pointer out of a HashTable.
