@@ -69,6 +69,7 @@ static void _execute_3int_callbacks(GList *cbs, int value1, int value2, int valu
 static void _execute_charp_callbacks(GList *cbs, const char *value);
 static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
+static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2);
 
 int
 phoneui_info_init()
@@ -138,6 +139,10 @@ struct _cb_resource_changes_pack {
 };
 struct _cb_3int_pack {
 	void (*callback)(void *, int, int, int);
+	void *data;
+};
+struct _cb_int_hashtable_pack {
+	void (*callback)(void *, int, GHashTable *);
 	void *data;
 };
 
@@ -232,6 +237,34 @@ phoneui_info_register_call_changes(void (*callback)(void *, const char *,
 	}
 }
 
+void phoneui_info_register_call_status_changes(void (*callback)(void *, int,
+						GHashTable *), void* data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (call status)");
+		return;
+	}
+	struct _cb_int_hashtable_pack *pack =
+		malloc(sizeof(struct _cb_int_hashtable_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (call status)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_call_status, pack);
+	if (!l) {
+		g_warning("Failed to register callback for call status");
+	}
+	else {
+		if (!callbacks_call_changes) {
+			callbacks_call_changes = l;
+		}
+		g_debug("Registered a callback for call status");
+	}
+}
 
 void
 phoneui_info_register_pdp_network_status(void (*callback)(void *,
@@ -1065,3 +1098,16 @@ _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state,
 	}
 }
 
+static void
+_execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2)
+{
+	GList *cb;
+
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_int_hashtable_pack *pack = cb->data;
+		pack->callback(pack->data, val1, val2);
+	}
+}
