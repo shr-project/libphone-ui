@@ -1188,9 +1188,8 @@ _phoneui_utils_sim_contact_store_cb(void *_entry, void *_data)
  * Stores contact (name, number) to SIM at index
  */
 int
-phoneui_utils_sim_contact_store(const int index, const char *name,
-			const char *number,
-			void (*callback)(GError*, char *, gpointer),
+phoneui_utils_sim_contact_store(const int index, char *name, char *number,
+			void (*callback) (GError *, gpointer),
 			void* data)
 {
 	/*
@@ -1220,7 +1219,7 @@ phoneui_utils_sim_contact_store(const int index, const char *name,
  */
 void
 phoneui_utils_sim_manager_contacts_get(int *count,
-		void (*callback)(gpointer, gpointer),
+		void (*callback) (GError *, GPtrArray * , gpointer),
 		gpointer userdata)
 {
 	g_message("Probing for contacts");
