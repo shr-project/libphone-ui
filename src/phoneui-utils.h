@@ -1,6 +1,7 @@
 #ifndef _PHONEUI_UTILS_H
 #define _PHONEUI_UTILS_H
 #include <glib.h>
+#include <glib-object.h>
 #include "phoneui-utils-sound.h"
 
 #define SIM_MANAGER_CONTACTS_CATEGORIE "contacts"
@@ -136,6 +137,14 @@ void phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*call
 
 void phoneui_utils_resources_get_resource_policy(const char *name, void (*callback) (GError *, char *, gpointer), gpointer userdata);
 void phoneui_utils_resources_set_resource_policy(const char *name,const char *policy, void (*callback) (GError *, gpointer),gpointer userdata);
+
+/* Sim Manager utilities */
+int phoneui_utils_sim_contact_delete(const int index, void (*callback)(GError *, gpointer), void* data);
+int phoneui_utils_sim_contact_store(const int index, char *name, char *number, void (*callback) (GError *, gpointer), void* data);
+void phoneui_utils_sim_manager_contacts_get(void (*callback) (GError *, GPtrArray *, gpointer), gpointer userdata);
+char *phoneui_utils_sim_manager_display_phone_get(GValueArray *properties);
+char *phoneui_utils_sim_manager_display_name_get(GValueArray *properties);
+int phoneui_utils_sim_manager_display_index_get(GValueArray *properties);
 
 int phoneui_utils_init(GKeyFile *keyfile);
 

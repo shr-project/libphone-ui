@@ -1218,11 +1218,34 @@ phoneui_utils_sim_contact_store(const int index, char *name, char *number,
  * 3: invalid
  */
 void
-phoneui_utils_sim_manager_contacts_get(int *count,
+phoneui_utils_sim_manager_contacts_get(
 		void (*callback) (GError *, GPtrArray * , gpointer),
 		gpointer userdata)
 {
 	g_message("Probing for contacts");
 	ogsmd_sim_retrieve_phonebook(SIM_MANAGER_CONTACTS_CATEGORIE, callback,
 				     userdata);
+}
+
+char *
+phoneui_utils_sim_manager_display_phone_get(GValueArray *prop)
+{
+
+	const char *phone = NULL;
+	phone = g_value_get_string(g_value_array_get_nth(prop, 2));
+	return (phone) ? strdup(phone) : NULL;
+}
+
+char *
+phoneui_utils_sim_manager_display_name_get(GValueArray *prop)
+{
+	const char *name = NULL;
+	name = g_value_get_string(g_value_array_get_nth(prop, 1));
+	return (name) ? strdup(name) : NULL;
+}
+
+int
+phoneui_utils_sim_manager_display_index_get(GValueArray *prop)
+{
+	return g_value_get_int(g_value_array_get_nth(prop, 0));
 }
