@@ -1227,10 +1227,38 @@ phoneui_utils_sim_manager_contacts_get(
 				     userdata);
 }
 
+/*
+ * Returns a GHashTable with the following values:
+ * ("min_index", int:value) = lowest entry index for given phonebook on the SIM,
+ * ("max_index", int:value) = highest entry index for given phonebook on the SIM,
+ * ("number_length", int:value) = maximum length for the number,
+ * ("name_length", int:value) = maximum length for the name.
+ */
+void
+phoneui_utils_sim_manager_phonebook_info_get(
+			void (*callback) (GError *, GHashTable *, gpointer),
+			gpointer userdata)
+{
+	ogsmd_sim_get_phonebook_info(SIM_MANAGER_CONTACTS_CATEGORIE,
+				     callback, userdata);
+}
+
+/*
+ * Gets phonebook entry with index <index>
+ */
+void
+phoneui_utils_sim_manager_phonebook_entry_get(const int index,
+		void (*callback) (GError *, char *name, char *number, gpointer),
+		gpointer userdata)
+{
+	ogsmd_sim_retrieve_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
+				 callback, userdata);
+}
+ 
 char *
 phoneui_utils_sim_manager_display_phone_get(GValueArray *prop)
 {
-
+	g_debug("Get contact phonenumber");
 	const char *phone = NULL;
 	phone = g_value_get_string(g_value_array_get_nth(prop, 2));
 	return (phone) ? strdup(phone) : NULL;
@@ -1239,6 +1267,7 @@ phoneui_utils_sim_manager_display_phone_get(GValueArray *prop)
 char *
 phoneui_utils_sim_manager_display_name_get(GValueArray *prop)
 {
+	g_debug("Get contact name");
 	const char *name = NULL;
 	name = g_value_get_string(g_value_array_get_nth(prop, 1));
 	return (name) ? strdup(name) : NULL;
@@ -1247,5 +1276,6 @@ phoneui_utils_sim_manager_display_name_get(GValueArray *prop)
 int
 phoneui_utils_sim_manager_display_index_get(GValueArray *prop)
 {
+	g_debug("Get contact index");
 	return g_value_get_int(g_value_array_get_nth(prop, 0));
 }
