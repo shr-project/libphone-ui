@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <glib.h>
+#include <X11/Xlib.h>
 
 static const char *device_vibrator = NULL;
 
@@ -67,7 +68,6 @@ _vibration_off(gpointer data)
 	return 0;
 }
 
-
 void
 phoneui_utils_device_vibrate(int duration, int intensity, int repeat, int pause)
 {
@@ -112,21 +112,33 @@ phoneui_utils_device_sound(const char *sound)
 	// TODO
 }
 
+static void
+_set_screensaver(int mode)
+{
+	int timeout, interval, prefer_blank, allow_exp;
+	Display* dpy =  XOpenDisplay(getenv("DISPLAY")); /*FIXME: should do it only once */
+	g_return_if_fail(dpy != NULL);
+
+	if (mode == ScreenSaverActive) {
+		XGetScreenSaver(dpy, &timeout, &interval, &prefer_blank,
+			&allow_exp);
+		prefer_blank = PreferBlanking;
+		XSetScreenSaver(dpy, timeout, interval, prefer_blank,
+			allow_exp);
+	}
+	XForceScreenSaver(dpy, mode);
+	XCloseDisplay(dpy);
+}
 
 void
 phoneui_utils_device_activate_screensaver(void)
 {
-	// FIXME: do this in a sane way!!!
-	int rc1 = system("xset -display localhost:0 s blank");
-	int rc2 = system("xset -display localhost:0 s activate");
-	g_return_if_fail(rc1 == 0 && rc2 ==0);
+	_set_screensaver(ScreenSaverActive);
 }
 
 void
 phoneui_utils_device_deactivate_screensaver(void)
 {
-	// FIXME: do this in a sane way!!!
-	int rc = system("xset -display localhost:0 s reset");
-	g_return_if_fail(rc == 0);
+	_set_screensaver(ScreenSaverReset);
 }
 
