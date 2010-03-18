@@ -141,12 +141,9 @@ void phoneui_utils_resources_set_resource_policy(const char *name,const char *po
 /* Sim Manager utilities */
 int phoneui_utils_sim_contact_delete(const int index, void (*callback)(GError *, gpointer), void* data);
 int phoneui_utils_sim_contact_store(const int index, char *name, char *number, void (*callback) (GError *, gpointer), void* data);
-void phoneui_utils_sim_manager_contacts_get(void (*callback) (GError *, GPtrArray *, gpointer), gpointer userdata);
-char *phoneui_utils_sim_manager_display_phone_get(GValueArray *properties);
-char *phoneui_utils_sim_manager_display_name_get(GValueArray *properties);
-int phoneui_utils_sim_manager_display_index_get(GValueArray *properties);
-void phoneui_utils_sim_manager_phonebook_info_get(void (*callback) (GError *, GHashTable *, gpointer), gpointer userdata);
-void phoneui_utils_sim_manager_phonebook_entry_get(const int index, void (*callback) (GError *, char *name, char *number, gpointer), gpointer userdata);
+void phoneui_utils_sim_contacts_get(void (*callback) (GError *, GPtrArray *, gpointer), gpointer userdata);
+void phoneui_utils_sim_phonebook_info_get(void (*callback) (GError *, GHashTable *, gpointer), gpointer userdata);
+void phoneui_utils_sim_phonebook_entry_get(const int index, void (*callback) (GError *, char *name, char *number, gpointer), gpointer userdata);
 
 int phoneui_utils_init(GKeyFile *keyfile);
 

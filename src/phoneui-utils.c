@@ -1170,21 +1170,6 @@ phoneui_utils_sim_contact_delete(const int index,
 }
 
 /*
-struct SimManagerData {
-	char *name;
-	char *number;
-	gpointer *data;
-	void (*callback)(gpointer, gpointer);
-};
-
-void
-_phoneui_utils_sim_contact_store_cb(void *_entry, void *_data)
-{
-	
-}
-*/
-
-/*
  * Stores contact (name, number) to SIM at index
  */
 int
@@ -1192,19 +1177,6 @@ phoneui_utils_sim_contact_store(const int index, char *name, char *number,
 			void (*callback) (GError *, gpointer),
 			void* data)
 {
-	/*
-	if (!index) {
-		//search first unsed index
-		struct SimManagerData userdata;
-		userdata->name = name;
-		userdata->number = number;
-		userdata->data = data;
-		userdata->callback = callback;
-
-		ogsmd_sim_retrieve_phonebook(SIM_MANAGER_CONTACTS_CATEGORIE,
-				_phoneui_utils_sim_contact_store_cb, userdata);
-	}
-	*/
 	ogsmd_sim_store_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index, name,
 			      number, callback, data);
 	return 0;
@@ -1218,7 +1190,7 @@ phoneui_utils_sim_contact_store(const int index, char *name, char *number,
  * 3: invalid
  */
 void
-phoneui_utils_sim_manager_contacts_get(
+phoneui_utils_sim_contacts_get(
 		void (*callback) (GError *, GPtrArray * , gpointer),
 		gpointer userdata)
 {
@@ -1235,7 +1207,7 @@ phoneui_utils_sim_manager_contacts_get(
  * ("name_length", int:value) = maximum length for the name.
  */
 void
-phoneui_utils_sim_manager_phonebook_info_get(
+phoneui_utils_sim_phonebook_info_get(
 			void (*callback) (GError *, GHashTable *, gpointer),
 			gpointer userdata)
 {
@@ -1247,35 +1219,10 @@ phoneui_utils_sim_manager_phonebook_info_get(
  * Gets phonebook entry with index <index>
  */
 void
-phoneui_utils_sim_manager_phonebook_entry_get(const int index,
+phoneui_utils_sim_phonebook_entry_get(const int index,
 		void (*callback) (GError *, char *name, char *number, gpointer),
 		gpointer userdata)
 {
 	ogsmd_sim_retrieve_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
 				 callback, userdata);
-}
- 
-char *
-phoneui_utils_sim_manager_display_phone_get(GValueArray *prop)
-{
-	g_debug("Get contact phonenumber");
-	const char *phone = NULL;
-	phone = g_value_get_string(g_value_array_get_nth(prop, 2));
-	return (phone) ? strdup(phone) : NULL;
-}
-
-char *
-phoneui_utils_sim_manager_display_name_get(GValueArray *prop)
-{
-	g_debug("Get contact name");
-	const char *name = NULL;
-	name = g_value_get_string(g_value_array_get_nth(prop, 1));
-	return (name) ? strdup(name) : NULL;
-}
-
-int
-phoneui_utils_sim_manager_display_index_get(GValueArray *prop)
-{
-	g_debug("Get contact index");
-	return g_value_get_int(g_value_array_get_nth(prop, 0));
 }
