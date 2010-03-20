@@ -10,6 +10,10 @@
 
 /* The sound state */
 static enum SoundState sound_state = SOUND_STATE_IDLE;
+static enum SoundStateType sound_state_type = SOUND_STATE_TYPE_DEFAULT;
+
+/* This is the index of the current sound state */
+#define STATE_INDEX calc_state_index(sound_state, sound_state_type)
 
 /* Controlling sound */
 struct SoundControl {
@@ -21,7 +25,8 @@ struct SoundControl {
 	unsigned int count; /*number of channels*/
 };
 
-static struct SoundControl controls[SOUND_STATE_INIT][CONTROL_END];
+/*This is a bit too big, but that's better for simplicity (because of sound_init and calc_state_index) */
+static struct SoundControl controls[SOUND_STATE_TYPE_NULL * SOUND_STATE_NULL][CONTROL_END];
 
 
 /* The sound cards hardware control */
@@ -36,6 +41,73 @@ static struct pollfd *poll_fds = NULL;
 
 static int _phoneui_utils_sound_volume_changed_cb(snd_hctl_elem_t *elem, unsigned int mask);
 static int _phoneui_utils_sound_volume_mute_changed_cb(snd_hctl_elem_t *elem, unsigned int mask);
+
+int
+calc_state_index(enum SoundState state, enum SoundStateType type)
+{
+	if (state == SOUND_STATE_IDLE) {
+		switch (type) {
+		case SOUND_STATE_TYPE_BLUETOOTH:
+		case SOUND_STATE_TYPE_HANDSET:
+			return ((SOUND_STATE_TYPE_HANDSET * SOUND_STATE_TYPE_NULL) + SOUND_STATE_TYPE_HANDSET);
+			break;
+		default:
+			break;
+		}
+	}
+	else if (state == SOUND_STATE_SPEAKER) { /* All are actually one */
+		return ((state * SOUND_STATE_TYPE_NULL) + SOUND_STATE_TYPE_HANDSET);
+	}
+
+	return ((state * SOUND_STATE_TYPE_NULL) + type);
+} 
+
+static const char *
+scenario_name_from_state(enum SoundState state, enum SoundStateType type)
+{
+	const char *scenario = "";
+	/* Should make it saner */
+	switch (state) {
+	case SOUND_STATE_CALL:
+		switch (type) {
+		case SOUND_STATE_TYPE_HEADSET:
+			scenario = "gsmheadset";
+			break;
+		case SOUND_STATE_TYPE_HANDSET:
+			scenario = "gsmhandset";
+			break;
+		case SOUND_STATE_TYPE_BLUETOOTH:
+			scenario = "gsmbluetooth";
+			break;
+		default:
+			g_critical("Unknown sound state type (%d), not saving. Please inform developers.\n", (int) type);
+			break;
+		}
+		break;
+	case SOUND_STATE_IDLE:
+		switch (type) {
+		case SOUND_STATE_TYPE_BLUETOOTH:
+		case SOUND_STATE_TYPE_HANDSET:
+			scenario = "stereoout";
+			break;
+		case SOUND_STATE_TYPE_HEADSET:
+			scenario = "headset";
+			break;
+		default:
+			g_critical("Unknown sound state type (%d), not saving. Please inform developers.\n", (int) type);
+			break;
+		}
+		break;
+	case SOUND_STATE_SPEAKER:
+		scenario = "gsmspeaker";
+		break;
+	default:
+		g_critical("Unknown sound state (%d), not saving. Please inform developers.\n", (int) state);
+		break;
+	}
+
+	return scenario;
+}
 
 static int
 _phoneui_utils_sound_volume_load_stats(struct SoundControl *control)
@@ -79,8 +151,8 @@ phoneui_utils_sound_volume_raw_get(enum SoundControlType type)
 	
 	snd_hctl_elem_t *elem;
 
-	count = controls[sound_state][type].count;	
-	elem = controls[sound_state][type].element;
+	count = controls[STATE_INDEX][type].count;	
+	elem = controls[STATE_INDEX][type].element;
 	if (!elem || !count) {
 		return 0;
 	}
@@ -107,12 +179,12 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 	long value;
 	long min, max;
 	
-	if (!controls[sound_state][type].element) {
+	if (!controls[STATE_INDEX][type].element) {
 		return 0;
 	}
 	
-	min = controls[sound_state][type].min;
-	max = controls[sound_state][type].max;
+	min = controls[STATE_INDEX][type].min;
+	max = controls[STATE_INDEX][type].max;
 
 	value = phoneui_utils_sound_volume_raw_get(type);
 	if (value <= min) {
@@ -125,7 +197,7 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 		value = ((double) (value - min) / (max - min)) * 100.0;
 	}
 	g_debug("Probing volume of control '%s' returned %d",
-		controls[sound_state][type].name, (int) value);
+		controls[STATE_INDEX][type].name, (int) value);
 	return value;
 }
 
@@ -139,12 +211,12 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 	snd_ctl_elem_value_t *control;
 	
 	
-	elem = controls[sound_state][type].element;
+	elem = controls[STATE_INDEX][type].element;
 	if (!elem) {
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(&control);
-	count = controls[sound_state][type].count;
+	count = controls[STATE_INDEX][type].count;
 	
 	for (i = 0 ; i < count ; i++) {		
 		snd_ctl_elem_value_set_integer(control, i, value);
@@ -173,7 +245,7 @@ phoneui_utils_sound_volume_mute_get(enum SoundControlType type)
 	snd_hctl_elem_t *elem;
 
 
-	elem = controls[sound_state][type].mute_element;
+	elem = controls[STATE_INDEX][type].mute_element;
 	if (!elem) {
 		return -1;
 	}
@@ -195,7 +267,7 @@ phoneui_utils_sound_volume_mute_set(enum SoundControlType type, int mute)
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
 	
-	elem = controls[sound_state][type].mute_element;
+	elem = controls[STATE_INDEX][type].mute_element;
 	if (!elem) {
 		return -1;
 	}
@@ -221,18 +293,18 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	snd_ctl_elem_value_t *control;
 	
 	
-	elem = controls[sound_state][type].element;
+	elem = controls[STATE_INDEX][type].element;
 	if (!elem) {
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(&control);
-	min = controls[sound_state][type].min;
-	max = controls[sound_state][type].max;
+	min = controls[STATE_INDEX][type].min;
+	max = controls[STATE_INDEX][type].max;
 	
 	value = min + ((max - min) * percent) / 100;
 	phoneui_utils_sound_volume_raw_set(type, value);
 	g_debug("Setting volume for control %s to %d",
-			controls[sound_state][type].name, percent);
+			controls[STATE_INDEX][type].name, percent);
 	return 0;
 }
 
@@ -242,31 +314,7 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 	const char *scenario="";
 	(void) type; /*FIXME: when it's possible to save only type, use it*/
 
-	switch (sound_state) {
-	case SOUND_STATE_SPEAKER:
-		scenario = "gsmspeakerout";
-		break;
-	case SOUND_STATE_HEADSET:
-		scenario = "gsmheadset";
-		break;
-	case SOUND_STATE_HANDSET:
-		scenario = "gsmhandset";
-		break;
-	case SOUND_STATE_BT:
-		scenario = "gsmbluetooth";
-		break;
-	case SOUND_STATE_IDLE:
-	case SOUND_STATE_IDLE_BT:
-		scenario = "stereoout";
-		break;
-	case SOUND_STATE_IDLE_HEADSET:
-		scenario = "headset";
-		break;
-	default:
-		g_critical("Unknown sound state (%d), not saving. Please inform developers.\n", (int) sound_state);
-		return 1;
-		break;
-	}
+	scenario = scenario_name_from_state(sound_state, sound_state_type);
 	/*FIXME: handle failures*/
 	odeviced_audio_save_scenario(scenario, NULL, NULL);
 	return 0;
@@ -285,60 +333,61 @@ _phoneui_utils_sound_init_get_control_by_name(const char *ctl_name)
 }
 
 static void
-_phoneui_utils_sound_init_set_volume_control(enum SoundState state, enum SoundControlType type)
+_phoneui_utils_sound_init_set_volume_control(enum SoundState state, enum SoundStateType type, enum SoundControlType control_type)
 {
-	const char *ctl_name = controls[state][type].name;
+	const char *ctl_name = controls[calc_state_index(state, type)][control_type].name;
 	snd_hctl_elem_t *elem;
 
 	/*if an empty string, return */
 	if (*ctl_name == '\0') {
-		controls[state][type].element = NULL;
+		controls[calc_state_index(state, type)][control_type].element = NULL;
 		return;
 	}
-	elem = controls[state][type].element =
+	elem = controls[calc_state_index(state, type)][control_type].element =
 		_phoneui_utils_sound_init_get_control_by_name(ctl_name);
 	if (elem) {
 		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_volume_changed_cb);
 	}
 	else {
 		g_critical("ALSA: No control named '%s' found - "
-			"Sound state: %d type: %d", ctl_name, state, type);
+			"Sound state: %d control type: %d", ctl_name, state, control_type);
 	}
 	
 }
 
 static void
-_phoneui_utils_sound_init_set_volume_mute_control(enum SoundState state,
-	enum SoundControlType type, const char *ctl_name)
+_phoneui_utils_sound_init_set_volume_mute_control(enum SoundState state, enum SoundStateType type,
+	enum SoundControlType control_type, const char *ctl_name)
 {
 	snd_hctl_elem_t *elem;
 
 	/*if an empty string, return */
 	if (*ctl_name == '\0') {
-		controls[state][type].mute_element = NULL;
+		controls[calc_state_index(state, type)][control_type].mute_element = NULL;
 		return;
 	}
-	elem = controls[state][type].mute_element =
+	elem = controls[calc_state_index(state, type)][control_type].mute_element =
 		_phoneui_utils_sound_init_get_control_by_name(ctl_name);
 	if (elem) {
 		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_volume_mute_changed_cb);
 	}
 	else {
 		g_critical("ALSA: No control named '%s' found - "
-			"Sound state: %d type: %d", ctl_name, state, type);
+			"Sound state: %d type: %d", ctl_name, state, control_type);
 	}
 	
 }
 
 static void
 _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
-				enum SoundState state)
+				enum SoundState state, enum SoundStateType type)
 {
 	char *field;
 	const char *speaker = NULL;
 	const char *microphone = NULL;
 	const char *speaker_mute = NULL;
 	const char *microphone_mute = NULL;
+	int state_index = calc_state_index(state, type);
 
 	/*FIXME: split to a generic function for both speaker and microphone */
 	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
@@ -362,28 +411,28 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		g_message("No microphone value for %s found, using none", _field);
 		microphone = "";
 	}
-	controls[state][CONTROL_SPEAKER].mute_element = NULL;
-	controls[state][CONTROL_MICROPHONE].mute_element = NULL;
+	controls[state_index][CONTROL_SPEAKER].mute_element = NULL;
+	controls[state_index][CONTROL_MICROPHONE].mute_element = NULL;
 	if (speaker_mute) {
-		_phoneui_utils_sound_init_set_volume_mute_control(state, CONTROL_SPEAKER, speaker_mute);
+		_phoneui_utils_sound_init_set_volume_mute_control(state, type, CONTROL_SPEAKER, speaker_mute);
 	}
 	if (microphone_mute) {
-		_phoneui_utils_sound_init_set_volume_mute_control(state, CONTROL_MICROPHONE, microphone_mute);
+		_phoneui_utils_sound_init_set_volume_mute_control(state, type, CONTROL_MICROPHONE, microphone_mute);
 	}
 	
-	controls[state][CONTROL_SPEAKER].name = strdup(speaker);
-	controls[state][CONTROL_MICROPHONE].name = strdup(microphone);
-	_phoneui_utils_sound_init_set_volume_control(state, CONTROL_SPEAKER);
-	_phoneui_utils_sound_init_set_volume_control(state, CONTROL_MICROPHONE);
+	controls[state_index][CONTROL_SPEAKER].name = strdup(speaker);
+	controls[state_index][CONTROL_MICROPHONE].name = strdup(microphone);
+	_phoneui_utils_sound_init_set_volume_control(state, type, CONTROL_SPEAKER);
+	_phoneui_utils_sound_init_set_volume_control(state, type, CONTROL_MICROPHONE);
 
 	/* Load min, max and count from alsa and init to zero before instead
 	 * of handling errors, hackish but fast. */
-	controls[state][CONTROL_SPEAKER].min = controls[state][CONTROL_SPEAKER].max = 0;
-	controls[state][CONTROL_MICROPHONE].min = controls[state][CONTROL_MICROPHONE].max = 0;
-	controls[state][CONTROL_MICROPHONE].count = 0;
+	controls[state_index][CONTROL_SPEAKER].min = controls[state_index][CONTROL_SPEAKER].max = 0;
+	controls[state_index][CONTROL_MICROPHONE].min = controls[state_index][CONTROL_MICROPHONE].max = 0;
+	controls[state_index][CONTROL_MICROPHONE].count = 0;
 	/* The function handles the case where the control has no element */
-	_phoneui_utils_sound_volume_load_stats(&controls[state][CONTROL_SPEAKER]);
-	_phoneui_utils_sound_volume_load_stats(&controls[state][CONTROL_MICROPHONE]);
+	_phoneui_utils_sound_volume_load_stats(&controls[state_index][CONTROL_SPEAKER]);
+	_phoneui_utils_sound_volume_load_stats(&controls[state_index][CONTROL_MICROPHONE]);
 
 	if (field) {
 		int tmp;
@@ -392,35 +441,35 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		 * check values for sanity and then apply them. */
 		if (g_key_file_has_key(keyfile, field, "microphone_min", NULL)) {
 			tmp = g_key_file_get_integer(keyfile, field, "microphone_min", NULL);
-			if (tmp > controls[state][CONTROL_MICROPHONE].min &&
-				tmp < controls[state][CONTROL_MICROPHONE].max) {
+			if (tmp > controls[state_index][CONTROL_MICROPHONE].min &&
+				tmp < controls[state_index][CONTROL_MICROPHONE].max) {
 
-				controls[state][CONTROL_MICROPHONE].min = tmp;			
+				controls[state_index][CONTROL_MICROPHONE].min = tmp;			
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "microphone_max", NULL)) {
 			tmp = g_key_file_get_integer(keyfile, field, "microphone_max", NULL);
 			if (tmp > controls[state][CONTROL_MICROPHONE].min &&
-				tmp < controls[state][CONTROL_MICROPHONE].max) {
+				tmp < controls[state_index][CONTROL_MICROPHONE].max) {
 
-				controls[state][CONTROL_MICROPHONE].max = tmp;			
+				controls[state_index][CONTROL_MICROPHONE].max = tmp;			
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "speaker_min", NULL)) {
 			tmp = g_key_file_get_integer(keyfile, field, "speaker_min", NULL);
-			if (tmp > controls[state][CONTROL_SPEAKER].min &&
-				tmp < controls[state][CONTROL_SPEAKER].max) {
+			if (tmp > controls[state_index][CONTROL_SPEAKER].min &&
+				tmp < controls[state_index][CONTROL_SPEAKER].max) {
 
-				controls[state][CONTROL_SPEAKER].min = tmp;
+				controls[state_index][CONTROL_SPEAKER].min = tmp;
 				g_debug("settisg speaker_min to %d", (int) tmp);		
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "speaker_max", NULL)) {
 			tmp = g_key_file_get_integer(keyfile, field, "speaker_max", NULL);
-			if (tmp > controls[state][CONTROL_SPEAKER].min &&
-				tmp < controls[state][CONTROL_SPEAKER].max) {
+			if (tmp > controls[state_index][CONTROL_SPEAKER].min &&
+				tmp < controls[state_index][CONTROL_SPEAKER].max) {
 
-				controls[state][CONTROL_SPEAKER].max = tmp;			
+				controls[state_index][CONTROL_SPEAKER].max = tmp;			
 			}
 		}
 		free(field);
@@ -479,6 +528,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 
 
 	sound_state = SOUND_STATE_IDLE;
+	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
 	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
 	if (!device_name) {
 		g_message("No hw control found, using default");
@@ -499,11 +549,12 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		g_critical("%s", snd_strerror(err));
 	}
 
-	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE);
-	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", SOUND_STATE_BT);
-	_phoneui_utils_sound_init_set_control(keyfile, "handset", SOUND_STATE_HANDSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "headset", SOUND_STATE_HEADSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER);
+	/*FIXME: add idle bt */
+	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE, SOUND_STATE_TYPE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", SOUND_STATE_CALL, SOUND_STATE_TYPE_BLUETOOTH);
+	_phoneui_utils_sound_init_set_control(keyfile, "handset", SOUND_STATE_CALL, SOUND_STATE_TYPE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "headset", SOUND_STATE_CALL, SOUND_STATE_TYPE_HEADSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER, SOUND_STATE_TYPE_HANDSET);
 
 	snd_hctl_nonblock(hctl, 1);
 
@@ -525,84 +576,39 @@ phoneui_utils_sound_deinit()
 {
 	/*FIXME: add freeing the controls array */
 	sound_state = SOUND_STATE_IDLE;
+	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
 	snd_hctl_close(hctl);
 	hctl = NULL;
 	return 0;
 }
 
 int
-phoneui_utils_sound_state_set(enum SoundState state)
+phoneui_utils_sound_state_set(enum SoundState state, enum SoundStateType type)
 {
 	const char *scenario = NULL;
 	/* if there's nothing to do, abort */
-	if (state == sound_state) {
+	if (state == sound_state && type == sound_state_type) {
 		return 0;
 	}
-
-	/* allow INIT only if sound_state was IDLE, IDLE_BT or IDLE_HEADSET
-	 * or, if speaker was on */
-	if (state == SOUND_STATE_INIT) {
-		if (sound_state == SOUND_STATE_IDLE) {
-			state = SOUND_STATE_HANDSET;
-		}
-		else if (sound_state == SOUND_STATE_IDLE_BT) {
-			state = SOUND_STATE_BT;
-		}
-		else if (sound_state == SOUND_STATE_IDLE_HEADSET) {
-			state = SOUND_STATE_HEADSET;
-		}
-		else if (sound_state == SOUND_STATE_SPEAKER) {
-			/*FIXME: should depend on the natural state*/
-			state = SOUND_STATE_HANDSET;
-		}
-		else {
-			return 1;
-		}
+	/* If NULL use current */
+	if (state == SOUND_STATE_NULL) {
+		state = sound_state;
 	}
-
-	g_debug("Setting sound state to %d", state);
+	if (type == SOUND_STATE_TYPE_NULL) {
+		type = sound_state_type;
+	}
 	
-	switch (state) {
-	case SOUND_STATE_SPEAKER:
-		scenario = "gsmspeaker";
-		break;
-	case SOUND_STATE_HEADSET:
-		scenario = "gsmheadset";
-		break;
-	case SOUND_STATE_HANDSET:
-		scenario = "gsmhandset";
-		break;
-	case SOUND_STATE_BT:
-		scenario = "gsmbluetooth";
-		break;
-	case SOUND_STATE_IDLE_HEADSET:
-		scenario = "headset";
-		break;
-	case SOUND_STATE_IDLE_BT:
-	case SOUND_STATE_IDLE:
-		/* return to the last active scenario */
-		g_debug("Pulled last phoneuid controlled scenario");
-		odeviced_audio_pull_scenario(NULL, NULL);
-		goto end;
-		break;
-	default:
-		break;
-	}
+	scenario = scenario_name_from_state(state, type);
 
-	/* if the previous state was idle (i.e not controlled by us)
-	 * we should push the scenario */
+	g_debug("Setting sound state to %s %d:%d", scenario, state, type);
+
 	/*FIXME: fix casts, they are there just because frameworkd-glib
 	 * is broken there */
 
-	if (sound_state == SOUND_STATE_IDLE || sound_state == SOUND_STATE_IDLE_BT) {
-		odeviced_audio_push_scenario((char *) scenario, NULL, NULL);
-	}
-	else {
-		odeviced_audio_set_scenario((char *) scenario, NULL, NULL);	
-	}
+	odeviced_audio_set_scenario((char *) scenario, NULL, NULL);	
 
-end:
 	sound_state = state;
+	sound_state_type = type;
 	return 0;
 
 }
@@ -613,13 +619,19 @@ phoneui_utils_sound_state_get()
 	return sound_state;
 }
 
+enum SoundStateType
+phoneui_utils_sound_state_type_get()
+{
+	return sound_state_type;
+}
+
 static enum SoundControlType
 _phoneui_utils_sound_volume_element_to_type(snd_hctl_elem_t *elem)
 {
 	int i;
 	
 	for (i = 0 ; i < CONTROL_END ; i++) {
-		if (controls[sound_state][i].element == elem) {
+		if (controls[STATE_INDEX][i].element == elem) {
 			return i;
 		}
 	}
@@ -632,7 +644,7 @@ _phoneui_utils_sound_volume_mute_element_to_type(snd_hctl_elem_t *elem)
 	int i;
 	
 	for (i = 0 ; i < CONTROL_END ; i++) {
-		if (controls[sound_state][i].mute_element == elem) {
+		if (controls[STATE_INDEX][i].mute_element == elem) {
 			return i;
 		}
 	}
@@ -656,7 +668,7 @@ _phoneui_utils_sound_volume_changed_cb(snd_hctl_elem_t *elem, unsigned int mask)
                 if (type != CONTROL_END) {
 			volume = phoneui_utils_sound_volume_get(type);
 			g_debug("Got alsa volume change for control '%s', new value: %d%%",
-				controls[sound_state][type].name, volume);
+				controls[STATE_INDEX][type].name, volume);
 			if (_phoneui_utils_sound_volume_changed_callback) {
 				_phoneui_utils_sound_volume_changed_callback(type, volume, _phoneui_utils_sound_volume_changed_userdata);
 			}

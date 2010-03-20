@@ -9,14 +9,18 @@ enum SoundControlType {
 };
 
 enum SoundState {
-	SOUND_STATE_IDLE = 0,
+	SOUND_STATE_CALL = 0,
+	SOUND_STATE_IDLE,
 	SOUND_STATE_SPEAKER,
-	SOUND_STATE_HANDSET,
-	SOUND_STATE_HEADSET,
-	SOUND_STATE_BT,
-	SOUND_STATE_IDLE_HEADSET,
-	SOUND_STATE_IDLE_BT,
-	SOUND_STATE_INIT /* MUST BE LAST */
+	SOUND_STATE_NULL /* MUST BE LAST */
+};
+
+enum SoundStateType {
+	SOUND_STATE_TYPE_DEFAULT = 0, /*make HANDSET the default*/
+	SOUND_STATE_TYPE_HANDSET = 0,
+	SOUND_STATE_TYPE_HEADSET,
+	SOUND_STATE_TYPE_BLUETOOTH,
+	SOUND_STATE_TYPE_NULL /* MUST BE LAST */
 };
 
 int phoneui_utils_sound_volume_get(enum SoundControlType type);
@@ -36,8 +40,9 @@ int phoneui_utils_sound_init(GKeyFile *keyfile);
 
 int phoneui_utils_sound_deinit();
 
-int phoneui_utils_sound_state_set(enum SoundState state);
+int phoneui_utils_sound_state_set(enum SoundState state, enum SoundStateType type);
 enum SoundState phoneui_utils_sound_state_get();
+enum SoundStateType phoneui_utils_sound_state_type_get();
 
 void phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, gpointer),
 				void *userdata);
