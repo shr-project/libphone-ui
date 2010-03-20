@@ -26,6 +26,7 @@ static GList *callbacks_resource_changes = NULL;
 static GList *callbacks_network_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
+static GList *callbacks_call_status = NULL;
 
 
 static void _missed_calls_handler(int amount);
@@ -57,7 +58,7 @@ static void _get_profile_callback(GError *error, char *profile, gpointer userdat
 static void _get_capacity_callback(GError *error, int energy, gpointer userdata);
 static void _get_network_status_callback(GError *error, GHashTable *properties, gpointer userdata);
 static void _get_signal_strength_callback(GError *error, int signal, gpointer userdata);
-static void _device_input_event_handler(int source, int action, int duration);
+static void _device_input_event_handler(char *source, char *action, int duration);
 //static void _get_alarm_callback(GError *error,
 //		int time, gpointer userdata);
 
@@ -65,8 +66,8 @@ static void _handle_network_status(GHashTable *properties);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
-static void _execute_3int_callbacks(GList *cbs, int value1, int value2, int value3);
 static void _execute_charp_callbacks(GList *cbs, const char *value);
+static void _execute_2charp_int_callbacks(GList *cbs, const char *value1, const char *value2, int value3);
 static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
 static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2);
@@ -131,6 +132,10 @@ struct _cb_int_pack {
 };
 struct _cb_charp_pack {
 	void (*callback)(void *, const char *);
+	void *data;
+};
+struct _cb_2charp_int_pack {
+	void (*callback)(void *, const char *, const char *, int);
 	void *data;
 };
 struct _cb_resource_changes_pack {
@@ -259,8 +264,8 @@ void phoneui_info_register_call_status_changes(void (*callback)(void *, int,
 		g_warning("Failed to register callback for call status");
 	}
 	else {
-		if (!callbacks_call_changes) {
-			callbacks_call_changes = l;
+		if (!callbacks_call_status) {
+			callbacks_call_status = l;
 		}
 		g_debug("Registered a callback for call status");
 	}
@@ -625,8 +630,8 @@ phoneui_info_request_signal_strength(void (*callback)(void *, int), void *data)
 }
 
 void
-phoneui_info_register_input_events(void (*callback)(void *, int, int, int),
-				   void *data)
+phoneui_info_register_input_events(void (*callback)(void *, const char *,
+						const char *, int), void *data)
 {
 	GList *l;
 
@@ -634,8 +639,8 @@ phoneui_info_register_input_events(void (*callback)(void *, int, int, int),
 		g_debug("Not registering an empty callback (input events)");
 		return;
 	}
-	struct _cb_3int_pack *pack =
-			malloc(sizeof(struct _cb_3int_pack));
+	struct _cb_2charp_int_pack *pack =
+			malloc(sizeof(struct _cb_2charp_int_pack));
 	if (!pack) {
 		g_warning("Failed allocating callback pack (input events)");
 		return;
@@ -720,8 +725,8 @@ static void _call_status_handler(int callid, int state,
 	default:
 		return;
 	}
+	_execute_int_hashtable_callbacks(callbacks_call_status, st, properties);
 	g_debug("_call_status_handler: call %d: %d", callid, state);
-	// TODO: get name and number
 }
 
 static void _pdp_network_status_handler(GHashTable *status)
@@ -969,9 +974,9 @@ static void _get_signal_strength_callback(GError *error,
 }
 
 static void
-_device_input_event_handler(int source, int action, int duration)
+_device_input_event_handler(char *source, char *action, int duration)
 {
-	_execute_3int_callbacks(callbacks_input_events,
+	_execute_2charp_int_callbacks(callbacks_input_events,
 				source, action, duration);
 }
 
@@ -1041,14 +1046,15 @@ _execute_int_callbacks(GList *cbs, int value)
 }
 
 static void
-_execute_3int_callbacks(GList *cbs, int value1, int value2, int value3)
+_execute_2charp_int_callbacks(GList *cbs, const char *value1,
+			      const char *value2, int value3)
 {
 	GList *cb;
 	if (!cbs)
 		return;
 
 	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
-		struct _cb_3int_pack *pack = (struct _cb_3int_pack *)cb->data;
+		struct _cb_2charp_int_pack *pack = cb->data;
 		pack->callback(pack->data, value1, value2, value3);
 	}
 }
