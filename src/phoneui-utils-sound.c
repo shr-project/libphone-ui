@@ -728,3 +728,24 @@ phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 	opreferencesd_get_profile(callback, userdata);
 }
 
+void phoneui_utils_sound_play(const char *name, int loop, int length,
+				void (*callback)(GError *, gpointer),
+				void *userdata)
+{
+	(void) name;
+	(void) loop;
+	(void) length;
+	(void) callback;
+	(void) userdata;
+	/*FIXME: stub*/
+}
+void phoneui_utils_sound_stop(const char *name,
+				void (*callback)(GError *, gpointer),
+				void *userdata)
+{
+	(void) name;
+	(void) callback;
+	(void) userdata;
+	/*FIXME: stub*/
+}
+

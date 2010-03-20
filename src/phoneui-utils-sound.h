@@ -48,5 +48,11 @@ void phoneui_utils_sound_profile_set(const char *profile,
 
 void phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 					void *userdata);
-				
+
+void phoneui_utils_sound_play(const char *name, int loop, int length,
+				void (*callback)(GError *, gpointer),
+				void *userdata);
+void phoneui_utils_sound_stop(const char *name,
+				void (*callback)(GError *, gpointer),
+				void *userdata);
 #endif
