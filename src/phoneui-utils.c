@@ -663,6 +663,24 @@ phoneui_utils_contact_get(const char *contact_path,
 	return (0);
 }
 
+void
+phoneui_utils_contact_get_fields_for_type(const char* contact_path,
+					  const char* type,
+					  void (*callback)(GHashTable *, gpointer),
+					  void *data)
+{
+	char *_type = calloc(sizeof(char), strlen(type)+2);
+	_type[0] = '$';
+	strcat(_type, type);
+	struct _item_get_pack *_pack = malloc(sizeof(struct _item_get_pack));
+	_pack->data = data;
+	_pack->callback = callback;
+	opimd_contact_get_multiple_fields(contact_path, _type,
+					  _item_get_callback, _pack);
+	free(_type);
+}
+
+
 struct _query_list_pack {
 	gpointer data;
 	int *count;
@@ -740,6 +758,7 @@ phoneui_utils_contacts_get(int *count,
 	opimd_contacts_query(qry, _contact_query_callback, data);
 	g_hash_table_destroy(qry);
 }
+
 
 static void
 _fields_strip_system_fields(GHashTable *fields)
