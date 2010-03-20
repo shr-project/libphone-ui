@@ -7,6 +7,7 @@
 #include <frameworkd-glib/opreferencesd/frameworkd-glib-opreferencesd-preferences.h>
 
 #include "phoneui-utils-sound.h"
+#include "phoneui-info.h"
 
 /* The sound state */
 static enum SoundState sound_state = SOUND_STATE_IDLE;
@@ -511,6 +512,25 @@ _sourcefunc_dispatch(GSource *source, GSourceFunc callback, gpointer userdata)
 	return (TRUE);
 }
 
+static void
+_input_events_cb(void *error, const char *name, const char *action, int duration)
+{
+	(void) duration;
+	if (error) {
+		return;
+	}
+	
+	if (!strcmp(name, "HEADSET")) {
+		if (!strcmp(action, "pressed")) {
+			g_message("Headset connected");
+			phoneui_utils_sound_state_set(SOUND_STATE_NULL, SOUND_STATE_TYPE_HEADSET);
+		}
+		else if (!strcmp(action, "released")) {
+			g_message("Headset disconnected");
+			phoneui_utils_sound_state_set(SOUND_STATE_NULL, SOUND_STATE_TYPE_HANDSET);
+		}
+	}
+}
 
 int
 phoneui_utils_sound_init(GKeyFile *keyfile)
@@ -567,6 +587,9 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		g_source_add_poll(src, (GPollFD *)&poll_fds[f]);
 	}
 	g_source_attach(src, NULL);
+
+	/*Register for HEADPHONE insertion */
+	phoneui_info_register_input_events(_input_events_cb, NULL);
 
 	return err;
 }
