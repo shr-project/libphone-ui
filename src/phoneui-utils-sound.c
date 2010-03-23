@@ -12,6 +12,8 @@
 /* The sound state */
 static enum SoundState sound_state = SOUND_STATE_IDLE;
 static enum SoundStateType sound_state_type = SOUND_STATE_TYPE_DEFAULT;
+static GSource *source_alsa_poll;
+
 
 /* This is the index of the current sound state */
 #define STATE_INDEX calc_state_index(sound_state, sound_state_type)
@@ -26,8 +28,9 @@ struct SoundControl {
 	unsigned int count; /*number of channels*/
 };
 
-/*This is a bit too big, but that's better for simplicity (because of sound_init and calc_state_index) */
-static struct SoundControl controls[SOUND_STATE_TYPE_NULL * SOUND_STATE_NULL][CONTROL_END];
+/*This is a bit too big, but that's better for simplicity (because of sound_init and calc_state_index) - This value is also used in code. */
+#define CONTROLS_LEN	(SOUND_STATE_TYPE_NULL * SOUND_STATE_NULL)
+static struct SoundControl controls[CONTROLS_LEN][CONTROL_END];
 
 
 /* The sound cards hardware control */
@@ -43,6 +46,12 @@ static struct pollfd *poll_fds = NULL;
 static int _phoneui_utils_sound_volume_changed_cb(snd_hctl_elem_t *elem, unsigned int mask);
 static int _phoneui_utils_sound_volume_mute_changed_cb(snd_hctl_elem_t *elem, unsigned int mask);
 
+static void
+free_sound_control(struct SoundControl *ctl)
+{
+	free(ctl->name);
+
+}
 int
 calc_state_index(enum SoundState state, enum SoundStateType type)
 {
@@ -582,11 +591,11 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	poll_fds = malloc(sizeof(struct pollfd) * poll_fd_count);
 	snd_hctl_poll_descriptors(hctl, poll_fds, poll_fd_count);
 
-	GSource *src = g_source_new(&funcs, sizeof(GSource));
+	source_alsa_poll = g_source_new(&funcs, sizeof(GSource));
 	for (f = 0; f < poll_fd_count; f++) {
-		g_source_add_poll(src, (GPollFD *)&poll_fds[f]);
+		g_source_add_poll(source_alsa_poll, (GPollFD *)&poll_fds[f]);
 	}
-	g_source_attach(src, NULL);
+	g_source_attach(source_alsa_poll, NULL);
 
 	/*Register for HEADPHONE insertion */
 	phoneui_info_register_input_events(_input_events_cb, NULL);
@@ -597,11 +606,20 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 int
 phoneui_utils_sound_deinit()
 {
+	int i, j;
 	sound_state = SOUND_STATE_IDLE;
 	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
-	/*FIXME: add freeing the controls array */
+	/*FIXME: add freeing the controls array properly */
+	for (i = 0 ; i < CONTROLS_LEN  ; i++) {
+		for (j = 0 ; j < CONTROL_END ; j++) {
+			if (controls[i][j].name) { /* Just a way to check if init, should probably change */
+				free_sound_control(&controls[i][j]);
+			}
+		}
+	}
 	
 	snd_hctl_close(hctl);
+	g_source_destroy(source_alsa_poll);
 	hctl = NULL;
 	return 0;
 }
