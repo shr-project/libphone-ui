@@ -82,6 +82,7 @@ void
 phoneui_utils_deinit()
 {
 	/*FIXME: stub*/
+	phoneui_utils_sound_deinit();
 }
 
 struct _contact_lookup_pack {
