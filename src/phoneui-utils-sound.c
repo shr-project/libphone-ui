@@ -18,7 +18,7 @@ static enum SoundStateType sound_state_type = SOUND_STATE_TYPE_DEFAULT;
 
 /* Controlling sound */
 struct SoundControl {
-	const char *name;
+	char *name;
 	snd_hctl_elem_t *element;
 	snd_hctl_elem_t *mute_element;
 	long min;
@@ -597,9 +597,10 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 int
 phoneui_utils_sound_deinit()
 {
-	/*FIXME: add freeing the controls array */
 	sound_state = SOUND_STATE_IDLE;
 	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
+	/*FIXME: add freeing the controls array */
+	
 	snd_hctl_close(hctl);
 	hctl = NULL;
 	return 0;
