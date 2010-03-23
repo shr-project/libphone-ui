@@ -189,7 +189,6 @@ phoneui_load(const char *application_name)
 
 	phoneui_connect();
 	/* init phone utils */
-	/* FIXME: should deinit somewhere! */
 	phone_utils_init();
 
 	phoneui_utils_init(keyfile);
@@ -275,6 +274,17 @@ _phoneui_backend_init(int argc, char **argv, void (*exit_cb) (),
 }
 
 static void
+_phoneui_backend_deinit(enum BackendType type)
+{
+	void (*_phoneui_deinit) ();
+	_phoneui_deinit = phoneui_get_function("phoneui_backend_init", backends[type].library);
+	if (_phoneui_deinit)
+		_phoneui_deinit();
+	else
+		g_warning("can't find function %s", __FUNCTION__);
+}
+
+static void
 _phoneui_backend_loop(enum BackendType type)
 {
 	void (*_phoneui_loop) ();
@@ -305,6 +315,29 @@ phoneui_init(int argc, char **argv, void (*exit_cb) ())
 	g_hash_table_destroy(inits);
 
 	phoneui_info_init();
+}
+
+void
+phoneui_deinit()
+{
+	/* the hash table is used to make sure we only init one backend once */
+	int i;
+	GHashTable *inits;
+	inits = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL);
+
+	for (i = 0 ; i < BACKEND_NO ; i++) {
+		if (!g_hash_table_lookup(inits, backends[i].library)) {
+			/* FIXME: the char * is a cast hack, since we won't change the content anyway */
+			g_hash_table_insert(inits, backends[i].library, (char *) backends[i].name);
+			_phoneui_backend_deinit(i);
+		}
+	}
+
+	g_hash_table_destroy(inits);
+
+	phoneui_info_deinit();
+	phoneui_utils_deinit();
+	phone_utils_deinit();
 }
 
 void

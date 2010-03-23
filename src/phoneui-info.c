@@ -103,6 +103,12 @@ phoneui_info_init()
 }
 
 void
+phoneui_info_deinit()
+{
+	/*FIXME: stub*/
+}
+
+void
 phoneui_info_trigger()
 {
 	/* manually feed initial data to the idle screen... further

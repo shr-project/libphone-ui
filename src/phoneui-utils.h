@@ -148,6 +148,7 @@ void phoneui_utils_sim_phonebook_info_get(void (*callback) (GError *, GHashTable
 void phoneui_utils_sim_phonebook_entry_get(const int index, void (*callback) (GError *, char *name, char *number, gpointer), gpointer userdata);
 
 int phoneui_utils_init(GKeyFile *keyfile);
+void phoneui_utils_deinit();
 
 #endif
 

@@ -36,6 +36,7 @@ void *phoneui_get_function(const char *name, void *phoneui_library);
 
 /* Implementation prototypes */
 void phoneui_init(int argc, char **argv, void (*exit_cb) ());
+void phoneui_deinit();
 void phoneui_loop();
 
 /* Calls */

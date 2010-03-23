@@ -9,6 +9,7 @@ enum PhoneuiInfoChangeType {
 
 
 int phoneui_info_init();
+void phoneui_info_deinit();
 void phoneui_info_trigger();
 
 void phoneui_info_register_contact_changes(void (*_cb)(void *, const char *,

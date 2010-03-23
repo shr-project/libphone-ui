@@ -78,6 +78,12 @@ phoneui_utils_init(GKeyFile *keyfile)
 	return 0;
 }
 
+void
+phoneui_utils_deinit()
+{
+	/*FIXME: stub*/
+}
+
 struct _contact_lookup_pack {
 	gpointer *data;
 	void (*callback)(GHashTable *, gpointer);
