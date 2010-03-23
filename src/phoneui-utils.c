@@ -1173,3 +1173,75 @@ phoneui_utils_resources_set_resource_policy(const char *name, const char *policy
 	ousaged_set_resource_policy(name, policy, callback, userdata);
 }
 
+
+/* Sim Manager utilities */
+/*
+ * Deletes contact index from SIM 
+ */
+int
+phoneui_utils_sim_contact_delete(const int index,
+				void (*callback)(GError *, gpointer),
+				void* data)
+{
+	ogsmd_sim_delete_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
+				    callback, data);
+	return 0;
+}
+
+/*
+ * Stores contact (name, number) to SIM at index
+ */
+int
+phoneui_utils_sim_contact_store(const int index, char *name, char *number,
+			void (*callback) (GError *, gpointer),
+			void* data)
+{
+	ogsmd_sim_store_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index, name,
+			      number, callback, data);
+	return 0;
+}
+
+/*
+ * Gets all Contacts from SIM as GPtrArray of GValueArray with:
+ * 0: index
+ * 1: name
+ * 2: number
+ * 3: invalid
+ */
+void
+phoneui_utils_sim_contacts_get(
+		void (*callback) (GError *, GPtrArray * , gpointer),
+		gpointer userdata)
+{
+	g_message("Probing for contacts");
+	ogsmd_sim_retrieve_phonebook(SIM_MANAGER_CONTACTS_CATEGORIE, callback,
+				     userdata);
+}
+
+/*
+ * Returns a GHashTable with the following values:
+ * ("min_index", int:value) = lowest entry index for given phonebook on the SIM,
+ * ("max_index", int:value) = highest entry index for given phonebook on the SIM,
+ * ("number_length", int:value) = maximum length for the number,
+ * ("name_length", int:value) = maximum length for the name.
+ */
+void
+phoneui_utils_sim_phonebook_info_get(
+			void (*callback) (GError *, GHashTable *, gpointer),
+			gpointer userdata)
+{
+	ogsmd_sim_get_phonebook_info(SIM_MANAGER_CONTACTS_CATEGORIE,
+				     callback, userdata);
+}
+
+/*
+ * Gets phonebook entry with index <index>
+ */
+void
+phoneui_utils_sim_phonebook_entry_get(const int index,
+		void (*callback) (GError *, char *name, char *number, gpointer),
+		gpointer userdata)
+{
+	ogsmd_sim_retrieve_entry(SIM_MANAGER_CONTACTS_CATEGORIE, index,
+				 callback, userdata);
+}

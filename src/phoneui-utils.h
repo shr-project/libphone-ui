@@ -1,7 +1,10 @@
 #ifndef _PHONEUI_UTILS_H
 #define _PHONEUI_UTILS_H
 #include <glib.h>
+#include <glib-object.h>
 #include "phoneui-utils-sound.h"
+
+#define SIM_MANAGER_CONTACTS_CATEGORIE "contacts"
 
 enum PhoneUiDialogType {
 	PHONEUI_DIALOG_ERROR_DO_NOT_USE = 0,
@@ -136,6 +139,13 @@ void phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*call
 
 void phoneui_utils_resources_get_resource_policy(const char *name, void (*callback) (GError *, char *, gpointer), gpointer userdata);
 void phoneui_utils_resources_set_resource_policy(const char *name,const char *policy, void (*callback) (GError *, gpointer),gpointer userdata);
+
+/* Sim Manager utilities */
+int phoneui_utils_sim_contact_delete(const int index, void (*callback)(GError *, gpointer), void* data);
+int phoneui_utils_sim_contact_store(const int index, char *name, char *number, void (*callback) (GError *, gpointer), void* data);
+void phoneui_utils_sim_contacts_get(void (*callback) (GError *, GPtrArray *, gpointer), gpointer userdata);
+void phoneui_utils_sim_phonebook_info_get(void (*callback) (GError *, GHashTable *, gpointer), gpointer userdata);
+void phoneui_utils_sim_phonebook_entry_get(const int index, void (*callback) (GError *, char *name, char *number, gpointer), gpointer userdata);
 
 int phoneui_utils_init(GKeyFile *keyfile);
 
