@@ -189,6 +189,7 @@ phoneui_load(const char *application_name)
 
 	phoneui_connect();
 	/* init phone utils */
+	/*FIXME: should be in init, does it cause problems?*/
 	phone_utils_init();
 
 	phoneui_utils_init(keyfile);

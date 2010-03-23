@@ -27,6 +27,7 @@ static GList *callbacks_network_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
 static GList *callbacks_call_status = NULL;
+static FrameworkdHandler *fso_handler;
 
 
 static void _missed_calls_handler(int amount);
@@ -75,30 +76,29 @@ static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *v
 int
 phoneui_info_init()
 {
-	FrameworkdHandler *fw = frameworkd_handler_new();
-	fw->pimNewMissedCalls = _missed_calls_handler;
-	fw->pimNewCall = _new_call_handler;
-	fw->pimUnreadMessages = _unread_messages_handler;
-	//fw->pimUnfinishedTasks = _unfinished_tasks_handler;
-	fw->usageResourceChanged = _resource_changed_handler;
-	fw->callCallStatus = _call_status_handler;
-	fw->pdpNetworkStatus = _pdp_network_status_handler;
-	fw->preferencesNotify = _profile_changed_handler;
-	fw->deviceIdleNotifierState = _idle_notifier_handler;
-	//fw->deviceWakeupTimeChanged = _alarm_changed_handler;
-	fw->devicePowerSupplyCapacity = _capacity_changed_handler;
-	fw->networkStatus = _network_status_handler;
-	fw->networkSignalStrength = _signal_strength_handler;
-	fw->pimNewContact = _pim_contact_new_handler;
-	fw->pimUpdatedContact = _pim_contact_updated_handler;
-	fw->pimDeletedContact = _pim_contact_deleted_handler;
-	fw->pimNewMessage = _pim_message_new_handler;
-	fw->pimUpdatedMessage = _pim_message_updated_handler;
-	fw->pimDeletedMessage = _pim_message_deleted_handler;
-	fw->deviceInputEvent = _device_input_event_handler;
+	fso_handler = frameworkd_handler_new();
+	fso_handler->pimNewMissedCalls = _missed_calls_handler;
+	fso_handler->pimNewCall = _new_call_handler;
+	fso_handler->pimUnreadMessages = _unread_messages_handler;
+	//fso_handler->pimUnfinishedTasks = _unfinished_tasks_handler;
+	fso_handler->usageResourceChanged = _resource_changed_handler;
+	fso_handler->callCallStatus = _call_status_handler;
+	fso_handler->pdpNetworkStatus = _pdp_network_status_handler;
+	fso_handler->preferencesNotify = _profile_changed_handler;
+	fso_handler->deviceIdleNotifierState = _idle_notifier_handler;
+	//fso_handler->deviceWakeupTimeChanged = _alarm_changed_handler;
+	fso_handler->devicePowerSupplyCapacity = _capacity_changed_handler;
+	fso_handler->networkStatus = _network_status_handler;
+	fso_handler->networkSignalStrength = _signal_strength_handler;
+	fso_handler->pimNewContact = _pim_contact_new_handler;
+	fso_handler->pimUpdatedContact = _pim_contact_updated_handler;
+	fso_handler->pimDeletedContact = _pim_contact_deleted_handler;
+	fso_handler->pimNewMessage = _pim_message_new_handler;
+	fso_handler->pimUpdatedMessage = _pim_message_updated_handler;
+	fso_handler->pimDeletedMessage = _pim_message_deleted_handler;
+	fso_handler->deviceInputEvent = _device_input_event_handler;
 
-	frameworkd_handler_connect(fw);
-
+	frameworkd_handler_connect(fso_handler);
 	return 0;
 }
 
@@ -106,6 +106,34 @@ void
 phoneui_info_deinit()
 {
 	/*FIXME: stub*/
+	/*FIXME: free is ok, but not enough, just get a proper function from lfg*/
+	free(fso_handler);
+	if (callbacks_contact_changes)
+		g_list_free(callbacks_contact_changes);
+	if (callbacks_message_changes)
+		g_list_free(callbacks_message_changes);
+	if (callbacks_call_changes)
+		g_list_free(callbacks_call_changes);
+	if (callbacks_pdp_network_status)
+		g_list_free(callbacks_pdp_network_status);
+	if (callbacks_profile_changes)
+		g_list_free(callbacks_profile_changes);
+	if (callbacks_capacity_changes)
+		g_list_free(callbacks_capacity_changes);
+	if (callbacks_missed_calls)
+		g_list_free(callbacks_missed_calls);
+	if (callbacks_unread_messages)
+		g_list_free(callbacks_unread_messages);
+	if (callbacks_resource_changes)
+		g_list_free(callbacks_resource_changes);
+	if (callbacks_network_status)
+		g_list_free(callbacks_network_status);
+	if (callbacks_signal_strength)
+		g_list_free(callbacks_signal_strength);
+	if (callbacks_input_events)
+		g_list_free(callbacks_input_events);
+	if (callbacks_call_status)
+		g_list_free(callbacks_call_status);
 }
 
 void
