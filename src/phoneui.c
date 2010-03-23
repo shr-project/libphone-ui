@@ -144,7 +144,7 @@ phoneui_load_backend(GKeyFile *keyfile, enum BackendType type)
 	library =
 		g_key_file_get_string(keyfile, backends[type].name, "module", NULL);
 	/* Load library */
-	if (library != NULL) {
+	if (library) {
 		/*FIXME: drop the hardcoded .so*/
 		char *library_path = malloc(strlen(library) + strlen(".so") +
 					strlen(PHONEUI_MODULES_PATH) + 1);
@@ -159,7 +159,7 @@ phoneui_load_backend(GKeyFile *keyfile, enum BackendType type)
 		if (!backends[type].library) {
 			g_error("Loading %s failed: %s", library_path, dlerror());
 		}
-
+		free(library);
 		free(library_path);
 	}
 	else {

@@ -29,6 +29,39 @@ static GList *callbacks_input_events = NULL;
 static GList *callbacks_call_status = NULL;
 static FrameworkdHandler *fso_handler;
 
+struct _cb_pim_changes_pack {
+	void (*callback)(void *, const char *, enum PhoneuiInfoChangeType);
+	void *data;
+};
+struct _cb_hashtable_pack {
+	void (*callback)(void *, GHashTable *);
+	void *data;
+};
+struct _cb_int_pack {
+	void (*callback)(void *, int);
+	void *data;
+};
+struct _cb_charp_pack {
+	void (*callback)(void *, const char *);
+	void *data;
+};
+struct _cb_2charp_int_pack {
+	void (*callback)(void *, const char *, const char *, int);
+	void *data;
+};
+struct _cb_resource_changes_pack {
+	void (*callback)(void *, const char*, gboolean, GHashTable *);
+	void *data;
+};
+struct _cb_3int_pack {
+	void (*callback)(void *, int, int, int);
+	void *data;
+};
+struct _cb_int_hashtable_pack {
+	void (*callback)(void *, int, GHashTable *);
+	void *data;
+};
+
 
 static void _missed_calls_handler(int amount);
 static void _new_call_handler(char *path);
@@ -73,6 +106,26 @@ static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
 static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2);
 
+static void
+_callbacks_list_free_foreach(gpointer _data, gpointer userdata)
+{
+	struct _cb_hashtable_pack *data = (struct _cb_hashtable_pack *) _data;
+	(void) userdata;
+	if (data->data) 
+		free(data->data);
+	free(data);
+}
+
+static void
+callbacks_list_free(GList *list)
+{
+	if (!list)
+		return;
+
+	g_list_foreach(list, _callbacks_list_free_foreach, NULL);
+	g_list_free(list);
+}
+
 int
 phoneui_info_init()
 {
@@ -108,32 +161,32 @@ phoneui_info_deinit()
 	/*FIXME: stub*/
 	/*FIXME: free is ok, but not enough, just get a proper function from lfg*/
 	free(fso_handler);
-	if (callbacks_contact_changes)
-		g_list_free(callbacks_contact_changes);
-	if (callbacks_message_changes)
-		g_list_free(callbacks_message_changes);
-	if (callbacks_call_changes)
-		g_list_free(callbacks_call_changes);
-	if (callbacks_pdp_network_status)
-		g_list_free(callbacks_pdp_network_status);
-	if (callbacks_profile_changes)
-		g_list_free(callbacks_profile_changes);
-	if (callbacks_capacity_changes)
-		g_list_free(callbacks_capacity_changes);
-	if (callbacks_missed_calls)
-		g_list_free(callbacks_missed_calls);
-	if (callbacks_unread_messages)
-		g_list_free(callbacks_unread_messages);
-	if (callbacks_resource_changes)
-		g_list_free(callbacks_resource_changes);
-	if (callbacks_network_status)
-		g_list_free(callbacks_network_status);
-	if (callbacks_signal_strength)
-		g_list_free(callbacks_signal_strength);
-	if (callbacks_input_events)
-		g_list_free(callbacks_input_events);
-	if (callbacks_call_status)
-		g_list_free(callbacks_call_status);
+
+	callbacks_list_free(callbacks_contact_changes);
+
+	callbacks_list_free(callbacks_message_changes);
+
+	callbacks_list_free(callbacks_call_changes);
+
+	callbacks_list_free(callbacks_pdp_network_status);
+
+	callbacks_list_free(callbacks_profile_changes);
+
+	callbacks_list_free(callbacks_capacity_changes);
+
+	callbacks_list_free(callbacks_missed_calls);
+
+	callbacks_list_free(callbacks_unread_messages);
+
+	callbacks_list_free(callbacks_resource_changes);
+
+	callbacks_list_free(callbacks_network_status);
+
+	callbacks_list_free(callbacks_signal_strength);
+
+	callbacks_list_free(callbacks_input_events);
+
+	callbacks_list_free(callbacks_call_status);
 }
 
 void
@@ -152,38 +205,6 @@ phoneui_info_trigger()
 	ogsmd_network_get_signal_strength(_get_signal_strength_callback, NULL);
 }
 
-struct _cb_pim_changes_pack {
-	void (*callback)(void *, const char *, enum PhoneuiInfoChangeType);
-	void *data;
-};
-struct _cb_hashtable_pack {
-	void (*callback)(void *, GHashTable *);
-	void *data;
-};
-struct _cb_int_pack {
-	void (*callback)(void *, int);
-	void *data;
-};
-struct _cb_charp_pack {
-	void (*callback)(void *, const char *);
-	void *data;
-};
-struct _cb_2charp_int_pack {
-	void (*callback)(void *, const char *, const char *, int);
-	void *data;
-};
-struct _cb_resource_changes_pack {
-	void (*callback)(void *, const char*, gboolean, GHashTable *);
-	void *data;
-};
-struct _cb_3int_pack {
-	void (*callback)(void *, int, int, int);
-	void *data;
-};
-struct _cb_int_hashtable_pack {
-	void (*callback)(void *, int, GHashTable *);
-	void *data;
-};
 
 
 void

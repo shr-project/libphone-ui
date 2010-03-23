@@ -383,9 +383,9 @@ _phoneui_utils_sound_init_set_volume_mute_control(enum SoundState state, enum So
 	}
 	else {
 		g_critical("ALSA: No control named '%s' found - "
-			"Sound state: %d type: %d", ctl_name, state, control_type);
+				"Sound state: %d type: %d", ctl_name, state, control_type);
 	}
-	
+
 }
 
 static void
@@ -393,12 +393,15 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 				enum SoundState state, enum SoundStateType type)
 {
 	char *field;
-	const char *speaker = NULL;
-	const char *microphone = NULL;
-	const char *speaker_mute = NULL;
-	const char *microphone_mute = NULL;
+	char *speaker = NULL;
+	char *microphone = NULL;
+	char *speaker_mute = NULL;
+	char *microphone_mute = NULL;
 	int state_index = calc_state_index(state, type);
-
+	if (controls[state_index][CONTROL_SPEAKER].name) { 
+		g_warning("Trying to allocate already allocated index %d.", state_index);
+		return;
+	}
 	/*FIXME: split to a generic function for both speaker and microphone */
 	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
 	if (field) {
@@ -415,23 +418,25 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	}
 	if (!speaker) {
 		g_message("No speaker value for %s found, using none", _field);
-		speaker = "";
+		speaker = strdup("");
 	}
 	if (!microphone) {
 		g_message("No microphone value for %s found, using none", _field);
-		microphone = "";
+		microphone = strdup("");
 	}
 	controls[state_index][CONTROL_SPEAKER].mute_element = NULL;
 	controls[state_index][CONTROL_MICROPHONE].mute_element = NULL;
 	if (speaker_mute) {
 		_phoneui_utils_sound_init_set_volume_mute_control(state, type, CONTROL_SPEAKER, speaker_mute);
+		free(speaker_mute);
 	}
 	if (microphone_mute) {
 		_phoneui_utils_sound_init_set_volume_mute_control(state, type, CONTROL_MICROPHONE, microphone_mute);
+		free(microphone_mute);
 	}
 	
-	controls[state_index][CONTROL_SPEAKER].name = strdup(speaker);
-	controls[state_index][CONTROL_MICROPHONE].name = strdup(microphone);
+	controls[state_index][CONTROL_SPEAKER].name = speaker;
+	controls[state_index][CONTROL_MICROPHONE].name = microphone;
 	_phoneui_utils_sound_init_set_volume_control(state, type, CONTROL_SPEAKER);
 	_phoneui_utils_sound_init_set_volume_control(state, type, CONTROL_MICROPHONE);
 
@@ -545,7 +550,7 @@ int
 phoneui_utils_sound_init(GKeyFile *keyfile)
 {
 	int err, f;
-	const char *device_name;
+	char *device_name;
 	static GSourceFuncs funcs = {
                 _sourcefunc_prepare,
                 _sourcefunc_check,
@@ -561,13 +566,14 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
 	if (!device_name) {
 		g_message("No hw control found, using default");
-		device_name = "hw:0";
+		device_name = strdup("hw:0");
 	}
 
 	if (hctl) {
 		snd_hctl_close(hctl);
 	}
 	err = snd_hctl_open(&hctl, device_name, 0);
+	free(device_name);
 	if (err) {
 		g_critical("%s", snd_strerror(err));
 		return err;
@@ -620,6 +626,8 @@ phoneui_utils_sound_deinit()
 	
 	snd_hctl_close(hctl);
 	g_source_destroy(source_alsa_poll);
+	free(poll_fds);
+	poll_fd_count = 0;
 	hctl = NULL;
 	return 0;
 }
