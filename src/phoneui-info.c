@@ -111,7 +111,7 @@ _callbacks_list_free_foreach(gpointer _data, gpointer userdata)
 {
 	struct _cb_hashtable_pack *data = (struct _cb_hashtable_pack *) _data;
 	(void) userdata;
-	if (data->data) 
+	if (data->data)
 		free(data->data);
 	free(data);
 }
@@ -753,6 +753,13 @@ phoneui_info_request_signal_strength(void (*callback)(void *, int), void *data)
 	pack->callback = callback;
 	pack->data = data;
 	ogsmd_network_get_signal_strength(_get_signal_strength_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_signal_strength(void (*callback)(void *, int), void *data)
+{
+	phoneui_info_register_signal_strength(callback, data);
+	phoneui_info_request_signal_strength(callback, data);
 }
 
 void
