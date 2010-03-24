@@ -41,7 +41,15 @@ void phoneui_info_register_unread_messages(void (*_cb)(void *, int), void *data)
 void phoneui_info_request_unread_messages(void (*_cb)(void *, int), void *data);
 void phoneui_info_register_and_request_unread_messages(void (*_cb)(void *, int), void *data);
 
-void phoneui_info_register_resource_changes(void (*_cb)(void *, const char *, gboolean, GHashTable *), void *data);
+void phoneui_info_register_unfinished_tasks(void (*_cb)(void *, int), void *data);
+void phoneui_info_request_unfinished_tasks(void (*_cb)(void *, int), void *data);
+void phoneui_info_register_and_request_unfinished_tasks(void (*_cb)(void *, int), void *data);
+
+void phoneui_info_register_resource_status(void (*_cb)(void *, const char *, gboolean, GHashTable *), void *data);
+void phoneui_info_request_resource_status(void (*_cb)(void *, const char *, gboolean, GHashTable *), void *data);
+void phoneui_info_register_and_request_resource_status(void (*_cb)(void *, const char *, gboolean, GHashTable *), void *data);
+
+// TODO register/request alarm
 
 void phoneui_info_register_network_status(void (*_cb)(void *, GHashTable *), void *data);
 void phoneui_info_request_network_status(void (*_cb)(void *, GHashTable *), void *data);
@@ -52,5 +60,6 @@ void phoneui_info_request_signal_strength(void (*_cb)(void *, int), void *data);
 void phoneui_info_register_and_request_signal_strength(void (*_cb)(void *, int), void *data);
 
 void phoneui_info_register_input_events(void (*_cb)(void *, const char *, const char *, int), void *data);
+
 #endif
 

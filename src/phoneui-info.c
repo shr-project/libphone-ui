@@ -9,6 +9,7 @@
 #include <frameworkd-glib/ousaged/frameworkd-glib-ousaged.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-calls.h>
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-tasks.h>
 #include <frameworkd-glib/opreferencesd/frameworkd-glib-opreferencesd-preferences.h>
 
 #include "phoneui.h"
@@ -22,6 +23,7 @@ static GList *callbacks_profile_changes = NULL;
 static GList *callbacks_capacity_changes = NULL;
 static GList *callbacks_missed_calls = NULL;
 static GList *callbacks_unread_messages = NULL;
+static GList *callbacks_unfinished_tasks = NULL;
 static GList *callbacks_resource_changes = NULL;
 static GList *callbacks_network_status = NULL;
 static GList *callbacks_signal_strength = NULL;
@@ -63,10 +65,10 @@ struct _cb_int_hashtable_pack {
 };
 
 
-static void _missed_calls_handler(int amount);
-static void _new_call_handler(char *path);
-static void _unread_messages_handler(int amount);
-//static void _unfinished_tasks_handler(const int amount);
+static void _pim_missed_calls_handler(int amount);
+static void _pim_new_call_handler(char *path);
+static void _pim_unread_messages_handler(int amount);
+static void _pim_unfinished_tasks_handler(int amount);
 static void _resource_changed_handler(const char *resource, gboolean state, GHashTable *properties);
 static void _call_status_handler(int, int, GHashTable *);
 static void _pdp_network_status_handler(GHashTable *status);
@@ -83,9 +85,9 @@ static void _pim_contact_deleted_handler(const char *path);
 static void _pim_message_new_handler(const char *path);
 static void _pim_message_updated_handler(const char *path, GHashTable *content);
 static void _pim_message_deleted_handler(const char *path);
-
-static void _missed_calls_callback(GError *error, int amount, gpointer userdata);
-static void _unread_messages_callback(GError *error, int amount, gpointer userdata);
+static void _pim_missed_calls_callback(GError *error, int amount, gpointer userdata);
+static void _pim_unread_messages_callback(GError *error, int amount, gpointer userdata);
+// static void _pim_unfinished_tasks_callback(GError *error, int amount, gpointer userdata);
 static void _list_resources_callback(GError *error, char **resources, gpointer userdata);
 static void _resource_state_callback(GError *error, gboolean state, gpointer userdata);
 static void _get_profile_callback(GError *error, char *profile, gpointer userdata);
@@ -95,8 +97,6 @@ static void _get_signal_strength_callback(GError *error, int signal, gpointer us
 static void _device_input_event_handler(char *source, char *action, int duration);
 //static void _get_alarm_callback(GError *error,
 //		int time, gpointer userdata);
-
-static void _handle_network_status(GHashTable *properties);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
@@ -129,29 +129,30 @@ callbacks_list_free(GList *list)
 int
 phoneui_info_init()
 {
-	fso_handler = frameworkd_handler_new();
-	fso_handler->pimNewMissedCalls = _missed_calls_handler;
-	fso_handler->pimNewCall = _new_call_handler;
-	fso_handler->pimUnreadMessages = _unread_messages_handler;
-	//fso_handler->pimUnfinishedTasks = _unfinished_tasks_handler;
-	fso_handler->usageResourceChanged = _resource_changed_handler;
-	fso_handler->callCallStatus = _call_status_handler;
-	fso_handler->pdpNetworkStatus = _pdp_network_status_handler;
-	fso_handler->preferencesNotify = _profile_changed_handler;
-	fso_handler->deviceIdleNotifierState = _idle_notifier_handler;
-	//fso_handler->deviceWakeupTimeChanged = _alarm_changed_handler;
-	fso_handler->devicePowerSupplyCapacity = _capacity_changed_handler;
-	fso_handler->networkStatus = _network_status_handler;
-	fso_handler->networkSignalStrength = _signal_strength_handler;
-	fso_handler->pimNewContact = _pim_contact_new_handler;
-	fso_handler->pimUpdatedContact = _pim_contact_updated_handler;
-	fso_handler->pimDeletedContact = _pim_contact_deleted_handler;
-	fso_handler->pimNewMessage = _pim_message_new_handler;
-	fso_handler->pimUpdatedMessage = _pim_message_updated_handler;
-	fso_handler->pimDeletedMessage = _pim_message_deleted_handler;
-	fso_handler->deviceInputEvent = _device_input_event_handler;
+	FrameworkdHandler *fw = frameworkd_handler_new();
+	fw->pimNewMissedCalls =  _pim_missed_calls_handler;
+	fw->pimNewCall =  _pim_new_call_handler;
+	fw->pimUnreadMessages =  _pim_unread_messages_handler;
+	fw->pimUnfinishedTasks = _pim_unfinished_tasks_handler;
+	fw->usageResourceChanged = _resource_changed_handler;
+	fw->callCallStatus = _call_status_handler;
+	fw->pdpNetworkStatus = _pdp_network_status_handler;
+	fw->preferencesNotify = _profile_changed_handler;
+	fw->deviceIdleNotifierState = _idle_notifier_handler;
+	//fw->deviceWakeupTimeChanged = _alarm_changed_handler;
+	fw->devicePowerSupplyCapacity = _capacity_changed_handler;
+	fw->networkStatus = _network_status_handler;
+	fw->networkSignalStrength = _signal_strength_handler;
+	fw->pimNewContact = _pim_contact_new_handler;
+	fw->pimUpdatedContact = _pim_contact_updated_handler;
+	fw->pimDeletedContact = _pim_contact_deleted_handler;
+	fw->pimNewMessage = _pim_message_new_handler;
+	fw->pimUpdatedMessage = _pim_message_updated_handler;
+	fw->pimDeletedMessage = _pim_message_deleted_handler;
+	fw->deviceInputEvent = _device_input_event_handler;
 
-	frameworkd_handler_connect(fso_handler);
+	frameworkd_handler_connect(fw);
+
 	return 0;
 }
 
@@ -194,17 +195,15 @@ phoneui_info_trigger()
 {
 	/* manually feed initial data to the idle screen... further
 	 * updates will be handled by the signal handlers registered above */
-	opimd_calls_get_new_missed_calls(_missed_calls_callback, NULL);
-	opimd_messages_get_unread_messages(_unread_messages_callback, NULL);
 	//TODO unfinished tasks
-	ousaged_list_resources(_list_resources_callback, NULL);
-	opreferencesd_get_profile(_get_profile_callback, NULL);
 	// TODO odeviced_realtime_clock_get_alarm(_get_alarm_callback, NULL);
-	odeviced_power_supply_get_capacity(_get_capacity_callback, NULL);
-	ogsmd_network_get_status(_get_network_status_callback, NULL);
-	ogsmd_network_get_signal_strength(_get_signal_strength_callback, NULL);
 }
 
+
+struct _resource_status_request_pack {
+	char *resource;
+	struct _cb_resource_changes_pack *pack;
+};
 
 
 void
@@ -507,7 +506,7 @@ phoneui_info_request_missed_calls(void (*callback)(void *, int), void *data)
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
-	opimd_calls_get_new_missed_calls(_missed_calls_callback, pack);
+	opimd_calls_get_new_missed_calls(_pim_missed_calls_callback, pack);
 }
 
 void
@@ -554,7 +553,7 @@ phoneui_info_request_unread_messages(void (*callback)(void *, int), void *data)
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
-	opimd_messages_get_unread_messages(_unread_messages_callback, pack);
+	opimd_messages_get_unread_messages(_pim_unread_messages_callback, pack);
 }
 
 void
@@ -566,9 +565,60 @@ phoneui_info_register_and_request_unread_messages(void (*callback)(void *, int),
 }
 
 void
-phoneui_info_register_resource_changes(void (*callback)(void *, const char *,
-						   gboolean, GHashTable *),
-				       void *data)
+phoneui_info_register_unfinished_tasks(void (*callback)(void *, int), void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (unfinished tasks)");
+		return;
+	}
+	struct _cb_int_pack *pack =
+			malloc(sizeof(struct _cb_int_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (unfinished tasks)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_unfinished_tasks, pack);
+	if (!l) {
+		g_warning("Failed to register callback for unfinished tasks");
+	}
+	else {
+		if (!callbacks_unfinished_tasks) {
+			callbacks_unfinished_tasks = l;
+			g_debug("Registered a callback for unfinished tasks");
+		}
+	}
+
+}
+
+void
+phoneui_info_request_unfinished_tasks(void (*callback)(void *, int), void *data)
+{
+	(void) callback;
+	(void) data;
+	// FIXME: activate when PIM.Tasks has GetUnfinishedTasks()
+/*	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
+	pack->callback = callback;
+	pack->data = data;
+	opimd_tasks_get_unfinished_tasks(_unfinished_tasks_callback, pack);*/
+}
+
+void
+phoneui_info_register_and_request_unfinished_tasks(void (*callback)(void *, int),
+						   void *data)
+{
+	phoneui_info_register_unfinished_tasks(callback, data);
+	phoneui_info_request_unfinished_tasks(callback, data);
+}
+
+
+
+void
+phoneui_info_register_resource_status(void (*callback)(void *, const char *,
+					gboolean, GHashTable *), void *data)
 {
 	GList *l;
 
@@ -595,6 +645,27 @@ phoneui_info_register_resource_changes(void (*callback)(void *, const char *,
 		}
 	}
 }
+
+void
+phoneui_info_request_resource_status(void (*callback)(void *, const char *,
+					gboolean, GHashTable *), void *data)
+{
+
+	struct _cb_resource_changes_pack *pack =
+			malloc(sizeof(struct _cb_resource_changes_pack));
+	pack->callback = callback;
+	pack->data = data;
+	ousaged_list_resources(_list_resources_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_resource_status(void (*callback)(void *,
+				const char *, gboolean, GHashTable *), void *data)
+{
+	phoneui_info_register_resource_status(callback, data);
+	phoneui_info_request_resource_status(callback, data);
+}
+
 
 void
 phoneui_info_register_network_status(void (*callback)(void *, GHashTable *),
@@ -716,33 +787,29 @@ phoneui_info_register_input_events(void (*callback)(void *, const char *,
 
 /* --- signal handlers --- */
 
-static void _missed_calls_handler(int amount)
+static void  _pim_missed_calls_handler(int amount)
 {
 	g_debug("_missed_calls_handler: %d missed calls", amount);
 	_execute_int_callbacks(callbacks_missed_calls, amount);
-	// FIXME: remove when idle screen is using callbacks
-	phoneui_idle_screen_update_missed_calls(amount);
 }
 
-static void _new_call_handler(char *path)
+static void  _pim_new_call_handler(char *path)
 {
 	_execute_pim_changed_callbacks(callbacks_contact_changes,
 				       path, PHONEUI_INFO_CHANGE_NEW);
 }
 
-static void _unread_messages_handler(int amount)
+static void  _pim_unread_messages_handler(int amount)
 {
 	g_debug("_unread_messages_handler: %d unread messages", amount);
 	_execute_int_callbacks(callbacks_unread_messages, amount);
-	// FIXME: remove when idle screen is using callbacks
-	phoneui_idle_screen_update_unread_messages(amount);
 }
 
-//static void _unfinished_tasks_handler(const int amount)
-//{
-//	g_debug("_unfinished_tasks_handler: %d unfinished tasks", amount);
-//	phoneui_idle_screen_update_unfinished_tasks(amount);
-//}
+static void _pim_unfinished_tasks_handler(int amount)
+{
+	g_debug("_unfinished_tasks_handler: %d unfinished tasks", amount);
+	_execute_int_callbacks(callbacks_unfinished_tasks, amount);
+}
 
 static void _resource_changed_handler(const char *resource,
 		gboolean state, GHashTable *properties)
@@ -752,8 +819,6 @@ static void _resource_changed_handler(const char *resource,
 			resource, state ? "enabled" : "disabled");
 	_execute_resource_callbacks(callbacks_resource_changes, resource,
 				    state, properties);
-	// FIXME: remove when idle screen is using callbacks
-	phoneui_idle_screen_update_resource(resource, state);
 }
 
 static void _call_status_handler(int callid, int state,
@@ -803,7 +868,6 @@ static void _pdp_network_status_callback(GError *error, GHashTable *status,
 static void _profile_changed_handler(const char *profile)
 {
 	g_debug("_profile_changed_handler: active profile is %s", profile);
-	phoneui_idle_screen_update_profile(profile);
 	_execute_charp_callbacks(callbacks_profile_changes, profile);
 }
 
@@ -817,21 +881,17 @@ static void _capacity_changed_handler(int energy)
 {
 	g_debug("_capacity_changed_handler: capacity is %d", energy);
 	_execute_int_callbacks(callbacks_capacity_changes, energy);
-	// FIXME: remove when idle screen uses callbacks
-	phoneui_idle_screen_update_power(energy);
 }
 
 static void _network_status_handler(GHashTable *properties)
 {
-	_handle_network_status(properties);
+	_execute_hashtable_callbacks(callbacks_network_status, properties);
 }
 
 static void _signal_strength_handler(int signal)
 {
 	g_debug("_signal_strength_handler: %d", signal);
 	_execute_int_callbacks(callbacks_signal_strength, signal);
-	// FIXME: remove when idle screen uses callbacks
-	phoneui_idle_screen_update_signal_strength(signal);
 }
 
 static void _idle_notifier_handler(int state)
@@ -884,10 +944,10 @@ static void _pim_message_deleted_handler(const char *path)
 }
 
 
-/* callbacks for initial feeding of data */
+/* callbacks for request of data */
 
-static void _missed_calls_callback(GError *error,
-		int amount, gpointer userdata)
+static void
+_pim_missed_calls_callback(GError *error, int amount, gpointer userdata)
 {
 	struct _cb_int_pack *pack;
 
@@ -901,12 +961,10 @@ static void _missed_calls_callback(GError *error,
 		pack->callback(pack->data, amount);
 		free(pack);
 	}
-	// FIXME: remove when idle screen is converted
-	phoneui_idle_screen_update_missed_calls(amount);
 }
 
-static void _unread_messages_callback(GError *error,
-		int amount, gpointer userdata)
+static void
+_pim_unread_messages_callback(GError *error, int amount, gpointer userdata)
 {
 	struct _cb_int_pack *pack;
 
@@ -920,14 +978,29 @@ static void _unread_messages_callback(GError *error,
 		pack->callback(pack->data, amount);
 		free(pack);
 	}
-	// FIXME: remove when idle screen is converted
-	phoneui_idle_screen_update_unread_messages(amount);
 }
 
-static void _list_resources_callback(GError *error,
-		char **resources, gpointer userdata)
+// static void
+// _pim_unfinished_tasks_callback(GError *error, int amount, gpointer userdata)
+// {
+// 	struct _cb_int_pack *pack;
+//
+// 	if (error) {
+// 		g_message("_pim_unfinished_tasks_callback: error% d: %s",
+// 			  error->code, error->message);
+// 		return;
+// 	}
+// 	if (userdata) {
+// 		pack = userdata;
+// 		pack->callback(pack->data, amount);
+// 		free(pack);
+// 	}
+// }
+
+static void
+_list_resources_callback(GError *error, char **resources, gpointer userdata)
 {
-	(void)userdata;
+	struct _resource_status_request_pack *pack;
 
 	if (error) {
 		g_message("_list_resources_callback: error %d: %s",
@@ -937,28 +1010,33 @@ static void _list_resources_callback(GError *error,
 	if (resources) {
 		int i = 0;
 		while (resources[i] != NULL) {
+			pack = malloc(sizeof(struct _resource_status_request_pack));
+			pack->resource = resources[i];
+			pack->pack = userdata;
 			ousaged_get_resource_state(resources[i],
-					_resource_state_callback,
-					resources[i]);
+						   _resource_state_callback, pack);
 			i++;
 		}
 	}
 }
 
-static void _resource_state_callback(GError *error,
-		gboolean state, gpointer userdata)
+static void
+_resource_state_callback(GError *error, gboolean state, gpointer userdata)
 {
 	if (error) {
 		g_message("_resource_state_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
-	phoneui_idle_screen_update_resource((char *)userdata, state);
-	// TODO: free(userdata);
+	struct _resource_status_request_pack *pack = userdata;
+	pack->pack->callback(pack->pack->data, pack->resource, state, NULL);
+	free(pack->pack);
+	// FIXME: do we have to free pack->resource ???
+	free(pack);
 }
 
-static void _get_profile_callback(GError *error,
-		char *profile, gpointer userdata)
+static void
+_get_profile_callback(GError *error, char *profile, gpointer userdata)
 {
 	struct _cb_charp_pack *pack;
 	if (error) {
@@ -966,7 +1044,6 @@ static void _get_profile_callback(GError *error,
 				error->code, error->message);
 		return;
 	}
-	phoneui_idle_screen_update_profile(profile);
 	if (userdata) {
 		pack = (struct _cb_charp_pack *)userdata;
 		pack->callback(pack->data, profile);
@@ -974,8 +1051,8 @@ static void _get_profile_callback(GError *error,
 	}
 }
 
-static void _get_capacity_callback(GError *error,
-		int energy, gpointer userdata)
+static void
+_get_capacity_callback(GError *error, int energy, gpointer userdata)
 {
 	struct _cb_int_pack *pack;
 	if (error) {
@@ -988,12 +1065,10 @@ static void _get_capacity_callback(GError *error,
 		pack->callback(pack->data, energy);
 		free(pack);
 	}
-	// FIXME: remove when idle screen is converted
-	phoneui_idle_screen_update_power(energy);
 }
 
-static void _get_network_status_callback(GError *error,
-		GHashTable *properties, gpointer userdata)
+static void
+_get_network_status_callback(GError *error, GHashTable *properties, gpointer userdata)
 {
 	struct _cb_hashtable_pack *pack;
 	if (error) {
@@ -1006,12 +1081,10 @@ static void _get_network_status_callback(GError *error,
 		pack->callback(pack->data, properties);
 		free(pack);
 	}
-	// FIXME: remove when idle screen is converted
-	_handle_network_status(properties);
 }
 
-static void _get_signal_strength_callback(GError *error,
-		int signal, gpointer userdata)
+static void
+_get_signal_strength_callback(GError *error, int signal, gpointer userdata)
 {
 	struct _cb_int_pack *pack;
 	if (error) {
@@ -1024,8 +1097,6 @@ static void _get_signal_strength_callback(GError *error,
 		pack->callback(pack->data, signal);
 		free(pack);
 	}
-	// FIXME: remove when idle screen is converted
-	phoneui_idle_screen_update_signal_strength(signal);
 }
 
 static void
@@ -1047,26 +1118,6 @@ _device_input_event_handler(char *source, char *action, int duration)
 //	}
 //	phoneui_idle_screen_update_alarm(time);
 //}
-
-static void _handle_network_status(GHashTable *properties)
-{
-	g_debug("_handle_network_status");
-	if (properties == NULL) {
-		g_message("_handle_network_status: no properties!");
-		return;
-	}
-	GValue *v = g_hash_table_lookup(properties, "provider");
-	if (v) {
-		g_debug("provider is '%s'", g_value_get_string(v));
-		phoneui_idle_screen_update_provider(g_value_get_string(v));
-	}
-	v = g_hash_table_lookup(properties, "strength");
-	if (v) {
-		g_debug("signal strength is %d", g_value_get_int(v));
-		phoneui_idle_screen_update_signal_strength(g_value_get_int(v));
-	}
-	g_hash_table_destroy(properties);
-}
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path,
 				       enum PhoneuiInfoChangeType type)
