@@ -202,7 +202,7 @@ phoneui_info_trigger()
 
 struct _resource_status_request_pack {
 	char *resource;
-	struct _cb_resource_changes_pack *pack;
+	struct _cb_resource_changes_pack pack;
 };
 
 
@@ -1008,23 +1008,27 @@ static void
 _list_resources_callback(GError *error, char **resources, gpointer userdata)
 {
 	struct _resource_status_request_pack *pack;
+	struct _cb_resource_changes_pack *packpack;
 
 	if (error) {
 		g_message("_list_resources_callback: error %d: %s",
 				error->code, error->message);
 		return;
 	}
+	packpack = userdata;
 	if (resources) {
 		int i = 0;
 		while (resources[i] != NULL) {
 			pack = malloc(sizeof(struct _resource_status_request_pack));
 			pack->resource = resources[i];
-			pack->pack = userdata;
+			pack->pack.callback = packpack->callback;
+			pack->pack.data = packpack->data;
 			ousaged_get_resource_state(resources[i],
 						   _resource_state_callback, pack);
 			i++;
 		}
 	}
+	free(packpack);
 }
 
 static void
@@ -1036,8 +1040,7 @@ _resource_state_callback(GError *error, gboolean state, gpointer userdata)
 		return;
 	}
 	struct _resource_status_request_pack *pack = userdata;
-	pack->pack->callback(pack->pack->data, pack->resource, state, NULL);
-	free(pack->pack);
+	pack->pack.callback(pack->pack.data, pack->resource, state, NULL);
 	// FIXME: do we have to free pack->resource ???
 	free(pack);
 }
