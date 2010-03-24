@@ -59,7 +59,7 @@ calc_state_index(enum SoundState state, enum SoundStateType type)
 		switch (type) {
 		case SOUND_STATE_TYPE_BLUETOOTH:
 		case SOUND_STATE_TYPE_HANDSET:
-			return ((SOUND_STATE_TYPE_HANDSET * SOUND_STATE_TYPE_NULL) + SOUND_STATE_TYPE_HANDSET);
+			return ((state * SOUND_STATE_TYPE_NULL) + SOUND_STATE_TYPE_HANDSET);
 			break;
 		default:
 			break;
