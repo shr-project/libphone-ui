@@ -278,7 +278,7 @@ static void
 _phoneui_backend_deinit(enum BackendType type)
 {
 	void (*_phoneui_deinit) ();
-	_phoneui_deinit = phoneui_get_function("phoneui_backend_init", backends[type].library);
+	_phoneui_deinit = phoneui_get_function("phoneui_backend_deinit", backends[type].library);
 	if (_phoneui_deinit)
 		_phoneui_deinit();
 	else
