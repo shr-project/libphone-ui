@@ -3,11 +3,12 @@
 #include <glib.h>
 #include <alsa/asoundlib.h>
 
-#include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-audio.h>
-#include <frameworkd-glib/opreferencesd/frameworkd-glib-opreferencesd-preferences.h>
+#include <freesmartphone.h>
+#include <fsoframework.h>
 
 #include "phoneui-utils-sound.h"
 #include "phoneui-info.h"
+#include "dbus.h"
 
 /* The sound state */
 static enum SoundState sound_state = SOUND_STATE_IDLE;
@@ -32,6 +33,8 @@ struct SoundControl {
 #define CONTROLS_LEN	(SOUND_STATE_TYPE_NULL * SOUND_STATE_NULL)
 static struct SoundControl controls[CONTROLS_LEN][CONTROL_END];
 
+static FreeSmartphoneDeviceAudio *fso_audio = NULL;
+static FreeSmartphonePreferences *fso_preferences = NULL;
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
@@ -70,7 +73,7 @@ calc_state_index(enum SoundState state, enum SoundStateType type)
 	}
 
 	return ((state * SOUND_STATE_TYPE_NULL) + type);
-} 
+}
 
 static const char *
 scenario_name_from_state(enum SoundState state, enum SoundStateType type)
@@ -126,14 +129,14 @@ _phoneui_utils_sound_volume_load_stats(struct SoundControl *control)
 
 	if (!control->element)
 		return -1;
-	
+
 	snd_ctl_elem_type_t element_type;
 	snd_ctl_elem_info_t *info;
 	snd_hctl_elem_t *elem;
-	
+
 	elem = control->element;
 	snd_ctl_elem_info_alloca(&info);
-	
+
 	err = snd_hctl_elem_info(elem, info);
 	if (err < 0) {
 		g_warning("%s", snd_strerror(err));
@@ -158,21 +161,21 @@ phoneui_utils_sound_volume_raw_get(enum SoundControlType type)
 
 	snd_ctl_elem_value_t *control;
 	snd_ctl_elem_value_alloca(&control);
-	
+
 	snd_hctl_elem_t *elem;
 
-	count = controls[STATE_INDEX][type].count;	
+	count = controls[STATE_INDEX][type].count;
 	elem = controls[STATE_INDEX][type].element;
 	if (!elem || !count) {
 		return 0;
 	}
-	
+
 	err = snd_hctl_elem_read(elem, control);
 	if (err < 0) {
 		g_warning("%s", snd_strerror(err));
 		return -1;
 	}
-	
+
 	value = 0;
 	/* FIXME: possible long overflow */
 	for (i = 0 ; i < count ; i++) {
@@ -188,11 +191,11 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 {
 	long value;
 	long min, max;
-	
+
 	if (!controls[STATE_INDEX][type].element) {
 		return 0;
 	}
-	
+
 	min = controls[STATE_INDEX][type].min;
 	max = controls[STATE_INDEX][type].max;
 
@@ -219,19 +222,19 @@ phoneui_utils_sound_volume_raw_set(enum SoundControlType type, long value)
 
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
-	
-	
+
+
 	elem = controls[STATE_INDEX][type].element;
 	if (!elem) {
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(&control);
 	count = controls[STATE_INDEX][type].count;
-	
-	for (i = 0 ; i < count ; i++) {		
+
+	for (i = 0 ; i < count ; i++) {
 		snd_ctl_elem_value_set_integer(control, i, value);
 	}
-	
+
 	err = snd_hctl_elem_write(elem, control);
 	if (err) {
 		g_warning("%s", snd_strerror(err));
@@ -251,7 +254,7 @@ phoneui_utils_sound_volume_mute_get(enum SoundControlType type)
 
 	snd_ctl_elem_value_t *control;
 	snd_ctl_elem_value_alloca(&control);
-	
+
 	snd_hctl_elem_t *elem;
 
 
@@ -259,7 +262,7 @@ phoneui_utils_sound_volume_mute_get(enum SoundControlType type)
 	if (!elem) {
 		return -1;
 	}
-	
+
 	err = snd_hctl_elem_read(elem, control);
 	if (err < 0) {
 		g_warning("%s", snd_strerror(err));
@@ -276,15 +279,15 @@ phoneui_utils_sound_volume_mute_set(enum SoundControlType type, int mute)
 
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
-	
+
 	elem = controls[STATE_INDEX][type].mute_element;
 	if (!elem) {
 		return -1;
 	}
 	snd_ctl_elem_value_alloca(&control);
-	
+
 	snd_ctl_elem_value_set_boolean(control, 0, !mute);
-	
+
 	err = snd_hctl_elem_write(elem, control);
 	if (err) {
 		g_warning("%s", snd_strerror(err));
@@ -301,8 +304,8 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	long min, max, value;
 	snd_hctl_elem_t *elem;
 	snd_ctl_elem_value_t *control;
-	
-	
+
+
 	elem = controls[STATE_INDEX][type].element;
 	if (!elem) {
 		return -1;
@@ -310,7 +313,7 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	snd_ctl_elem_value_alloca(&control);
 	min = controls[STATE_INDEX][type].min;
 	max = controls[STATE_INDEX][type].max;
-	
+
 	value = min + ((max - min) * percent) / 100;
 	phoneui_utils_sound_volume_raw_set(type, value);
 	g_debug("Setting volume for control %s to %d",
@@ -326,7 +329,8 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 
 	scenario = scenario_name_from_state(sound_state, sound_state_type);
 	/*FIXME: handle failures*/
-	odeviced_audio_save_scenario(scenario, NULL, NULL);
+	free_smartphone_device_audio_save_scenario(fso_audio, scenario,
+						   NULL, NULL);
 	return 0;
 }
 
@@ -338,8 +342,8 @@ _phoneui_utils_sound_init_get_control_by_name(const char *ctl_name)
 	snd_ctl_elem_id_alloca(&id);
 	snd_ctl_elem_id_set_interface(id, SND_CTL_ELEM_IFACE_MIXER);
 	snd_ctl_elem_id_set_name(id, ctl_name);
-	
-	return snd_hctl_find_elem(hctl, id);	
+
+	return snd_hctl_find_elem(hctl, id);
 }
 
 static void
@@ -362,7 +366,7 @@ _phoneui_utils_sound_init_set_volume_control(enum SoundState state, enum SoundSt
 		g_critical("ALSA: No control named '%s' found - "
 			"Sound state: %d control type: %d", ctl_name, state, control_type);
 	}
-	
+
 }
 
 static void
@@ -398,7 +402,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	char *speaker_mute = NULL;
 	char *microphone_mute = NULL;
 	int state_index = calc_state_index(state, type);
-	if (controls[state_index][CONTROL_SPEAKER].name) { 
+	if (controls[state_index][CONTROL_SPEAKER].name) {
 		g_warning("Trying to allocate already allocated index %d.", state_index);
 		return;
 	}
@@ -408,7 +412,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		/* init for now and for the next if */
 		strcpy(field, "alsa_control_");
 		strcat(field, _field);
-		
+
 		speaker = g_key_file_get_string(keyfile, field, "speaker", NULL);
 		microphone = g_key_file_get_string(keyfile, field, "microphone", NULL);
 		speaker_mute = g_key_file_get_string(keyfile, field, "speaker_mute", NULL);
@@ -434,7 +438,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		_phoneui_utils_sound_init_set_volume_mute_control(state, type, CONTROL_MICROPHONE, microphone_mute);
 		free(microphone_mute);
 	}
-	
+
 	controls[state_index][CONTROL_SPEAKER].name = speaker;
 	controls[state_index][CONTROL_MICROPHONE].name = microphone;
 	_phoneui_utils_sound_init_set_volume_control(state, type, CONTROL_SPEAKER);
@@ -451,7 +455,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 
 	if (field) {
 		int tmp;
-		
+
 		/* If the user specifies his own min and max for that control,
 		 * check values for sanity and then apply them. */
 		if (g_key_file_has_key(keyfile, field, "microphone_min", NULL)) {
@@ -459,7 +463,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 			if (tmp > controls[state_index][CONTROL_MICROPHONE].min &&
 				tmp < controls[state_index][CONTROL_MICROPHONE].max) {
 
-				controls[state_index][CONTROL_MICROPHONE].min = tmp;			
+				controls[state_index][CONTROL_MICROPHONE].min = tmp;
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "microphone_max", NULL)) {
@@ -467,7 +471,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 			if (tmp > controls[state][CONTROL_MICROPHONE].min &&
 				tmp < controls[state_index][CONTROL_MICROPHONE].max) {
 
-				controls[state_index][CONTROL_MICROPHONE].max = tmp;			
+				controls[state_index][CONTROL_MICROPHONE].max = tmp;
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "speaker_min", NULL)) {
@@ -476,7 +480,7 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 				tmp < controls[state_index][CONTROL_SPEAKER].max) {
 
 				controls[state_index][CONTROL_SPEAKER].min = tmp;
-				g_debug("settisg speaker_min to %d", (int) tmp);		
+				g_debug("settisg speaker_min to %d", (int) tmp);
 			}
 		}
 		if (g_key_file_has_key(keyfile, field, "speaker_max", NULL)) {
@@ -484,12 +488,12 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 			if (tmp > controls[state_index][CONTROL_SPEAKER].min &&
 				tmp < controls[state_index][CONTROL_SPEAKER].max) {
 
-				controls[state_index][CONTROL_SPEAKER].max = tmp;			
+				controls[state_index][CONTROL_SPEAKER].max = tmp;
 			}
 		}
 		free(field);
 	}
-	
+
 }
 
 static gboolean
@@ -533,7 +537,7 @@ _input_events_cb(void *error, const char *name, const char *action, int duration
 	if (error) {
 		return;
 	}
-	
+
 	if (!strcmp(name, "HEADSET")) {
 		if (!strcmp(action, "pressed")) {
 			g_message("Headset connected");
@@ -578,7 +582,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		g_critical("%s", snd_strerror(err));
 		return err;
 	}
-	
+
 	err = snd_hctl_load(hctl);
 	if (err) {
 		g_critical("%s", snd_strerror(err));
@@ -606,6 +610,12 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	/*Register for HEADPHONE insertion */
 	phoneui_info_register_input_events(_input_events_cb, NULL);
 
+	fso_audio = free_smartphone_device_get_audio_proxy(_dbus(),
+				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+				FSO_FRAMEWORK_DEVICE_AudioServicePath);
+        fso_preferences = free_smartphone_get_preferences_proxy(_dbus(),
+				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
 	return err;
 }
 
@@ -623,7 +633,7 @@ phoneui_utils_sound_deinit()
 			}
 		}
 	}
-	
+
 	snd_hctl_close(hctl);
 	g_source_destroy(source_alsa_poll);
 	free(poll_fds);
@@ -647,15 +657,13 @@ phoneui_utils_sound_state_set(enum SoundState state, enum SoundStateType type)
 	if (type == SOUND_STATE_TYPE_NULL) {
 		type = sound_state_type;
 	}
-	
+
 	scenario = scenario_name_from_state(state, type);
 
 	g_debug("Setting sound state to %s %d:%d", scenario, state, type);
 
-	/*FIXME: fix casts, they are there just because frameworkd-glib
-	 * is broken there */
-
-	odeviced_audio_set_scenario((char *) scenario, NULL, NULL);	
+	free_smartphone_device_audio_set_scenario(fso_audio, scenario,
+						  NULL, NULL);
 
 	sound_state = state;
 	sound_state_type = type;
@@ -679,7 +687,7 @@ static enum SoundControlType
 _phoneui_utils_sound_volume_element_to_type(snd_hctl_elem_t *elem)
 {
 	int i;
-	
+
 	for (i = 0 ; i < CONTROL_END ; i++) {
 		if (controls[STATE_INDEX][i].element == elem) {
 			return i;
@@ -692,7 +700,7 @@ static enum SoundControlType
 _phoneui_utils_sound_volume_mute_element_to_type(snd_hctl_elem_t *elem)
 {
 	int i;
-	
+
 	for (i = 0 ; i < CONTROL_END ; i++) {
 		if (controls[STATE_INDEX][i].mute_element == elem) {
 			return i;
@@ -707,8 +715,8 @@ _phoneui_utils_sound_volume_changed_cb(snd_hctl_elem_t *elem, unsigned int mask)
 	snd_ctl_elem_value_t *control;
 	enum SoundControlType type;
 	int volume;
-	
-	
+
+
         if (mask == SND_CTL_EVENT_MASK_REMOVE)
                 return 0;
         if (mask & SND_CTL_EVENT_MASK_VALUE) {
@@ -722,7 +730,7 @@ _phoneui_utils_sound_volume_changed_cb(snd_hctl_elem_t *elem, unsigned int mask)
 			if (_phoneui_utils_sound_volume_changed_callback) {
 				_phoneui_utils_sound_volume_changed_callback(type, volume, _phoneui_utils_sound_volume_changed_userdata);
 			}
-		}		
+		}
         }
 	return 0;
 }
@@ -733,8 +741,8 @@ _phoneui_utils_sound_volume_mute_changed_cb(snd_hctl_elem_t *elem, unsigned int 
 	snd_ctl_elem_value_t *control;
 	enum SoundControlType type;
 	int mute;
-	
-	
+
+
         if (mask == SND_CTL_EVENT_MASK_REMOVE)
                 return 0;
         if (mask & SND_CTL_EVENT_MASK_VALUE) {
@@ -747,8 +755,8 @@ _phoneui_utils_sound_volume_mute_changed_cb(snd_hctl_elem_t *elem, unsigned int 
 				type, mute);
 			if (_phoneui_utils_sound_volume_mute_changed_callback) {
 				_phoneui_utils_sound_volume_mute_changed_callback(type, mute, _phoneui_utils_sound_volume_mute_changed_userdata);
-			}	
-		}		
+			}
+		}
         }
 	return 0;
 }
@@ -768,11 +776,60 @@ phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControl
 	return 0;
 }
 
+struct _list_profiles_pack {
+	void (*callback)(GError *, char **, int, gpointer);
+	gpointer data;
+};
+
+static void
+_list_profiles_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	int count;
+	char **profiles;
+	struct _list_profiles_pack *pack = data;
+
+	profiles = free_smartphone_preferences_get_profiles_finish
+					(fso_preferences, res, &count, &error);
+	if (pack->callback) {
+		pack->callback(error, profiles, count, pack->data);
+	}
+	// FIXME: free profiles
+	free(pack);
+}
+
 void
-phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, gpointer),
+phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpointer),
 				void *userdata)
 {
-	opreferencesd_get_profiles(callback, userdata);
+	struct _list_profiles_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	free_smartphone_preferences_get_profiles
+			(fso_preferences, _list_profiles_callback, pack);
+}
+
+struct _set_profile_pack {
+	void (*callback)(GError *, gpointer);
+	gpointer data;
+};
+
+static void
+_set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _set_profile_pack *pack = data;
+
+	free_smartphone_preferences_set_profile_finish
+					(fso_preferences, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+	free (pack);
 }
 
 void
@@ -780,14 +837,46 @@ phoneui_utils_sound_profile_set(const char *profile,
 				void (*callback)(GError *, gpointer),
 				void *userdata)
 {
-	opreferencesd_set_profile(profile, callback, userdata);
+	struct _set_profile_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	free_smartphone_preferences_set_profile(fso_preferences, profile, _set_profile_callback, pack);
+}
+
+struct _get_profile_pack {
+	void (*callback)(GError *, char *, gpointer);
+	gpointer data;
+};
+
+static void
+_get_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	char *profile;
+	struct _get_profile_pack *pack = data;
+
+	profile = free_smartphone_preferences_get_profile_finish
+						(fso_preferences, res, &error);
+	if (pack->callback) {
+		pack->callback(error, profile, pack->data);
+	}
+	free(pack);
 }
 
 void
 phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 				void *userdata)
 {
-	opreferencesd_get_profile(callback, userdata);
+	struct _get_profile_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	free_smartphone_preferences_get_profile(fso_preferences,
+						_get_profile_callback, pack);
 }
 
 void phoneui_utils_sound_play(const char *name, int loop, int length,

@@ -1,19 +1,28 @@
 
 #include <stdlib.h>
 
-#include <frameworkd-glib/frameworkd-glib-dbus.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-call.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-network.h>
-#include <frameworkd-glib/ogsmd/frameworkd-glib-ogsmd-pdp.h>
-#include <frameworkd-glib/odeviced/frameworkd-glib-odeviced-powersupply.h>
-#include <frameworkd-glib/ousaged/frameworkd-glib-ousaged.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-calls.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-messages.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-tasks.h>
-#include <frameworkd-glib/opreferencesd/frameworkd-glib-opreferencesd-preferences.h>
-
-#include "phoneui.h"
+#include <freesmartphone.h>
+#include <fsoframework.h>
+#include <phoneui.h>
 #include "phoneui-info.h"
+#include "dbus.h"
+
+struct _fso {
+	FreeSmartphoneUsage *usage;
+	FreeSmartphoneGSMCall *gsm_call;
+	FreeSmartphoneGSMPDP *gsm_pdp;
+	FreeSmartphoneGSMNetwork *gsm_network;
+	FreeSmartphoneDeviceIdleNotifier *idle_notifier;
+	FreeSmartphoneDeviceInput *input;
+	FreeSmartphoneDevicePowerSupply *power_supply;
+	FreeSmartphonePreferences *preferences;
+	FreeSmartphonePIMMessages *pim_messages;
+	FreeSmartphonePIMContacts *pim_contacts;
+	FreeSmartphonePIMCalls *pim_calls;
+	FreeSmartphonePIMTasks *pim_tasks;
+};
+static struct _fso fso;
+
 
 static GList *callbacks_contact_changes = NULL;
 static GList *callbacks_message_changes = NULL;
@@ -29,7 +38,6 @@ static GList *callbacks_network_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
 static GList *callbacks_call_status = NULL;
-static FrameworkdHandler *fso_handler;
 
 struct _cb_pim_changes_pack {
 	void (*callback)(void *, const char *, enum PhoneuiInfoChangeType);
@@ -63,40 +71,44 @@ struct _cb_int_hashtable_pack {
 	void (*callback)(void *, int, GHashTable *);
 	void *data;
 };
+struct _cb_charp_hashtable_pack {
+	void (*callback)(void *, const char *, GHashTable *);
+	void *data;
+};
 
 
-static void _pim_missed_calls_handler(int amount);
-static void _pim_new_call_handler(char *path);
-static void _pim_unread_messages_handler(int amount);
-static void _pim_unfinished_tasks_handler(int amount);
-static void _resource_changed_handler(const char *resource, gboolean state, GHashTable *properties);
-static void _call_status_handler(int, int, GHashTable *);
-static void _pdp_network_status_handler(GHashTable *status);
-static void _pdp_network_status_callback(GError *error, GHashTable *status, gpointer _data);
-static void _profile_changed_handler(const char *profile);
+static void _pim_missed_calls_handler(GObject *source, int amount, gpointer data);
+static void _pim_new_call_handler(GObject *source, char *path, gpointer data);
+static void _pim_unread_messages_handler(GObject *source, int amount, gpointer data);
+static void _pim_unfinished_tasks_handler(GObject *source, int amount, gpointer data);
+static void _resource_changed_handler(GObject *source, char *resource, gboolean state, GHashTable *properties, gpointer data);
+static void _call_status_handler(GObject *source, int callid, FreeSmartphoneGSMCallStatus state, GHashTable *properties, gpointer data);
+static void _pdp_network_status_handler(GObject *source, GHashTable *status, gpointer data);
+static void _profile_changed_handler(GObject *source, const char *profile, gpointer data);
 //static void _alarm_changed_handler(int time);
-static void _capacity_changed_handler(int energy);
-static void _network_status_handler(GHashTable *properties);
-static void _signal_strength_handler(int signal);
-static void _idle_notifier_handler(int state);
-static void _pim_contact_new_handler(const char *path);
-static void _pim_contact_updated_handler(const char *path, GHashTable *content);
-static void _pim_contact_deleted_handler(const char *path);
-static void _pim_message_new_handler(const char *path);
-static void _pim_message_updated_handler(const char *path, GHashTable *content);
-static void _pim_message_deleted_handler(const char *path);
-static void _pim_missed_calls_callback(GError *error, int amount, gpointer userdata);
-static void _pim_unread_messages_callback(GError *error, int amount, gpointer userdata);
+static void _capacity_changed_handler(GObject *source, int energy, gpointer data);
+static void _network_status_handler(GObject *source, GHashTable *properties, gpointer data);
+static void _signal_strength_handler(GObject *source, int signal, gpointer data);
+static void _idle_notifier_handler(GObject *source, int state, gpointer data);
+static void _pim_contact_new_handler(GObject *source, const char *path, gpointer data);
+static void _pim_contact_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
+static void _pim_contact_deleted_handler(GObject *source, const char *path, gpointer data);
+static void _pim_message_new_handler(GObject *source, const char *path, gpointer data);
+static void _pim_message_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
+static void _pim_message_deleted_handler(GObject *source, const char *path, gpointer data);
+static void _device_input_event_handler(GObject *source, char *input_source, char *action, int duration, gpointer data);
+
+static void _pdp_network_status_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _pim_missed_calls_callback( GObject* source, GAsyncResult* res, gpointer data);
+static void _pim_unread_messages_callback( GObject* source, GAsyncResult* res, gpointer data);
 // static void _pim_unfinished_tasks_callback(GError *error, int amount, gpointer userdata);
-static void _list_resources_callback(GError *error, char **resources, gpointer userdata);
-static void _resource_state_callback(GError *error, gboolean state, gpointer userdata);
-static void _get_profile_callback(GError *error, char *profile, gpointer userdata);
-static void _get_capacity_callback(GError *error, int energy, gpointer userdata);
-static void _get_network_status_callback(GError *error, GHashTable *properties, gpointer userdata);
-static void _get_signal_strength_callback(GError *error, int signal, gpointer userdata);
-static void _device_input_event_handler(char *source, char *action, int duration);
-//static void _get_alarm_callback(GError *error,
-//		int time, gpointer userdata);
+static void _list_resources_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _resource_state_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _get_profile_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _get_capacity_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data);
+//static void _get_alarm_callback(GError *error, int time, gpointer userdata);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
@@ -129,29 +141,85 @@ callbacks_list_free(GList *list)
 int
 phoneui_info_init()
 {
-	FrameworkdHandler *fw = frameworkd_handler_new();
-	fw->pimNewMissedCalls =  _pim_missed_calls_handler;
-	fw->pimNewCall =  _pim_new_call_handler;
-	fw->pimUnreadMessages =  _pim_unread_messages_handler;
-	fw->pimUnfinishedTasks = _pim_unfinished_tasks_handler;
-	fw->usageResourceChanged = _resource_changed_handler;
-	fw->callCallStatus = _call_status_handler;
-	fw->pdpNetworkStatus = _pdp_network_status_handler;
-	fw->preferencesNotify = _profile_changed_handler;
-	fw->deviceIdleNotifierState = _idle_notifier_handler;
-	//fw->deviceWakeupTimeChanged = _alarm_changed_handler;
-	fw->devicePowerSupplyCapacity = _capacity_changed_handler;
-	fw->networkStatus = _network_status_handler;
-	fw->networkSignalStrength = _signal_strength_handler;
-	fw->pimNewContact = _pim_contact_new_handler;
-	fw->pimUpdatedContact = _pim_contact_updated_handler;
-	fw->pimDeletedContact = _pim_contact_deleted_handler;
-	fw->pimNewMessage = _pim_message_new_handler;
-	fw->pimUpdatedMessage = _pim_message_updated_handler;
-	fw->pimDeletedMessage = _pim_message_deleted_handler;
-	fw->deviceInputEvent = _device_input_event_handler;
 
-	frameworkd_handler_connect(fw);
+	fso.usage = free_smartphone_get_usage_proxy(_dbus(),
+				FSO_FRAMEWORK_USAGE_ServiceDBusName,
+				FSO_FRAMEWORK_USAGE_ServicePathPrefix);
+	g_signal_connect(G_OBJECT(fso.usage), "resource-changed",
+			 G_CALLBACK(_resource_changed_handler), NULL);
+
+	fso.gsm_call = free_smartphone_gsm_get_call_proxy(_dbus(),
+				FSO_FRAMEWORK_GSM_ServiceDBusName,
+				FSO_FRAMEWORK_GSM_DeviceServicePath);
+	g_signal_connect(G_OBJECT(fso.gsm_call), "call-status",
+			 G_CALLBACK(_call_status_handler), NULL);
+
+	fso.gsm_pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
+				FSO_FRAMEWORK_GSM_ServiceDBusName,
+				FSO_FRAMEWORK_GSM_DeviceServicePath);
+	g_signal_connect(G_OBJECT(fso.gsm_pdp), "context-status",
+			 G_CALLBACK(_pdp_network_status_handler), NULL);
+	fso.gsm_network = free_smartphone_gsm_get_network_proxy(_dbus(),
+				FSO_FRAMEWORK_GSM_ServiceDBusName,
+				FSO_FRAMEWORK_GSM_DeviceServicePath);
+	g_signal_connect(G_OBJECT(fso.gsm_network), "status",
+			 G_CALLBACK(_network_status_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.gsm_network), "signal-strength",
+			 G_CALLBACK(_signal_strength_handler), NULL);
+
+	fso.power_supply = free_smartphone_device_get_power_supply_proxy(_dbus(),
+				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+				FSO_FRAMEWORK_DEVICE_PowerSupplyServicePath);
+	g_signal_connect(G_OBJECT(fso.power_supply), "capacity",
+			 G_CALLBACK(_capacity_changed_handler), NULL);
+	fso.input = free_smartphone_device_get_input_proxy(_dbus(),
+				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+				FSO_FRAMEWORK_DEVICE_InputServicePath);
+	g_signal_connect(G_OBJECT(fso.input), "event",
+			 G_CALLBACK(_device_input_event_handler), NULL);
+	fso.idle_notifier = free_smartphone_device_get_idle_notifier_proxy(_dbus(),
+				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+				FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath);
+	g_signal_connect(G_OBJECT(fso.idle_notifier), "state",
+			 G_CALLBACK(_idle_notifier_handler), NULL);
+	fso.preferences = free_smartphone_get_preferences_proxy(_dbus(),
+				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
+	g_signal_connect(G_OBJECT(fso.preferences), "notify",
+			 G_CALLBACK(_profile_changed_handler), NULL);
+
+	fso.pim_contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
+				FSO_FRAMEWORK_PIM_ServiceDBusName,
+				FSO_FRAMEWORK_PIM_ContactsServicePath);
+        g_signal_connect(G_OBJECT(fso.pim_contacts), "new-contact",
+			 G_CALLBACK(_pim_contact_new_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.pim_contacts), "updated-contact",
+			 G_CALLBACK(_pim_contact_updated_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.pim_contacts), "deleted-contact",
+			 G_CALLBACK(_pim_contact_deleted_handler), NULL);
+	fso.pim_messages = free_smartphone_pim_get_messages_proxy(_dbus(),
+				FSO_FRAMEWORK_PIM_ServiceDBusName,
+				FSO_FRAMEWORK_PIM_MessagesServicePath);
+	g_signal_connect(G_OBJECT(fso.pim_messages), "unread-messages",
+			 G_CALLBACK(_pim_unread_messages_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.pim_messages), "new-message",
+			 G_CALLBACK(_pim_message_new_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.pim_messages), "updated-message",
+			 G_CALLBACK(_pim_message_updated_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.pim_messages), "deleted-message",
+			 G_CALLBACK(_pim_message_deleted_handler), NULL);
+	fso.pim_tasks = free_smartphone_pim_get_tasks_proxy(_dbus(),
+				FSO_FRAMEWORK_PIM_ServiceDBusName,
+				FSO_FRAMEWORK_PIM_TasksServicePath);
+	g_signal_connect(G_OBJECT(fso.pim_tasks), "unfinished-tasks",
+			 G_CALLBACK(_pim_unfinished_tasks_handler), NULL);
+        fso.pim_calls = free_smartphone_pim_get_calls_proxy(_dbus(),
+				FSO_FRAMEWORK_PIM_ServiceDBusName,
+				FSO_FRAMEWORK_PIM_CallsServicePath);
+	g_signal_connect(G_OBJECT(fso.pim_calls), "new-missed-calls",
+			 G_CALLBACK(_pim_missed_calls_handler), NULL);
+	g_signal_connect(G_OBJECT(fso.pim_calls), "new-call",
+			 G_CALLBACK(_pim_new_call_handler), NULL);
 
 	return 0;
 }
@@ -159,9 +227,8 @@ phoneui_info_init()
 void
 phoneui_info_deinit()
 {
-	/*FIXME: stub*/
-	/*FIXME: free is ok, but not enough, just get a proper function from lfg*/
-	free(fso_handler);
+	/*FIXME: find out how to correctly clean up dbus proxies and the connection itself */
+	dbus_g_connection_unref(_dbus());
 
 	callbacks_list_free(callbacks_contact_changes);
 
@@ -326,8 +393,8 @@ void phoneui_info_register_call_status_changes(void (*callback)(void *, int,
 }
 
 void
-phoneui_info_register_pdp_network_status(void (*callback)(void *,
-					      GHashTable *), void *data)
+phoneui_info_register_pdp_network_status
+	(void (*callback)(void *, const char *, GHashTable *), void *data)
 {
 	GList *l;
 
@@ -335,8 +402,8 @@ phoneui_info_register_pdp_network_status(void (*callback)(void *,
 		g_debug("Not registering an empty callback (pdp network status)");
 		return;
 	}
-	struct _cb_hashtable_pack *pack =
-			malloc(sizeof(struct _cb_hashtable_pack));
+	struct _cb_charp_hashtable_pack *pack =
+			malloc(sizeof(struct _cb_charp_hashtable_pack));
 	if (!pack) {
 		g_warning("Failed allocating callback pack (pdp network status)");
 		return;
@@ -356,20 +423,20 @@ phoneui_info_register_pdp_network_status(void (*callback)(void *,
 }
 
 void
-phoneui_info_request_pdp_network_status(void (*callback)(void *, GHashTable *),
-					void *data)
+phoneui_info_request_pdp_network_status
+	(void (*callback)(void *, const char *, GHashTable *), void *data)
 {
-	struct _cb_hashtable_pack *pack =
-			malloc(sizeof(struct _cb_hashtable_pack));
+	struct _cb_charp_hashtable_pack *pack =
+			malloc(sizeof(struct _cb_charp_hashtable_pack));
 	pack->callback = callback;
 	pack->data = data;
-	ogsmd_pdp_get_network_status(_pdp_network_status_callback, pack);
+	free_smartphone_gsm_pdp_get_context_status(fso.gsm_pdp,
+					_pdp_network_status_callback, pack);
 }
 
 void
-phoneui_info_register_and_request_pdp_network_status(void (*callback)(void *,
-								GHashTable *),
-						     void *data)
+phoneui_info_register_and_request_pdp_network_status
+	(void (*callback)(void *, const char *, GHashTable *), void *data)
 {
 	phoneui_info_register_pdp_network_status(callback, data);
 	phoneui_info_request_pdp_network_status(callback, data);
@@ -411,7 +478,8 @@ phoneui_info_request_profile(void (*callback)(void *, const char *), void *data)
 	struct _cb_charp_pack *pack = malloc(sizeof(struct _cb_charp_pack));
 	pack->callback = callback;
 	pack->data = data;
-	opreferencesd_get_profile(_get_profile_callback, pack);
+	free_smartphone_preferences_get_profile(fso.preferences,
+						_get_profile_callback, pack);
 }
 
 void
@@ -458,7 +526,8 @@ phoneui_info_request_capacity(void (*callback)(void *, int), void *data)
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
-	odeviced_power_supply_get_capacity(_get_capacity_callback, pack);
+	free_smartphone_device_power_supply_get_capacity(fso.power_supply,
+			(GAsyncReadyCallback) _get_capacity_callback, pack);
 }
 
 void
@@ -506,7 +575,8 @@ phoneui_info_request_missed_calls(void (*callback)(void *, int), void *data)
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
-	opimd_calls_get_new_missed_calls(_pim_missed_calls_callback, pack);
+	free_smartphone_pim_calls_get_new_missed_calls(fso.pim_calls,
+			(GAsyncReadyCallback)_pim_missed_calls_callback, pack);
 }
 
 void
@@ -553,7 +623,8 @@ phoneui_info_request_unread_messages(void (*callback)(void *, int), void *data)
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
-	opimd_messages_get_unread_messages(_pim_unread_messages_callback, pack);
+	free_smartphone_pim_messages_get_unread_messages(fso.pim_messages,
+		(GAsyncReadyCallback)_pim_unread_messages_callback, pack);
 }
 
 void
@@ -655,7 +726,8 @@ phoneui_info_request_resource_status(void (*callback)(void *, const char *,
 			malloc(sizeof(struct _cb_resource_changes_pack));
 	pack->callback = callback;
 	pack->data = data;
-	ousaged_list_resources(_list_resources_callback, pack);
+	free_smartphone_usage_list_resources(fso.usage,
+			(GAsyncReadyCallback)_list_resources_callback, pack);
 }
 
 void
@@ -705,7 +777,8 @@ phoneui_info_request_network_status(void (*callback)(void *, GHashTable *),
 			malloc(sizeof(struct _cb_hashtable_pack));
 	pack->callback = callback;
 	pack->data = data;
-	ogsmd_network_get_status(_get_network_status_callback, pack);
+	free_smartphone_gsm_network_get_status(fso.gsm_network,
+			(GAsyncReadyCallback)_get_network_status_callback, pack);
 }
 
 void
@@ -752,7 +825,8 @@ phoneui_info_request_signal_strength(void (*callback)(void *, int), void *data)
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
-	ogsmd_network_get_signal_strength(_get_signal_strength_callback, pack);
+	free_smartphone_gsm_network_get_signal_strength(fso.gsm_network,
+		(GAsyncReadyCallback)_get_signal_strength_callback, pack);
 }
 
 void
@@ -794,86 +868,79 @@ phoneui_info_register_input_events(void (*callback)(void *, const char *,
 
 /* --- signal handlers --- */
 
-static void  _pim_missed_calls_handler(int amount)
+static void
+_pim_missed_calls_handler(GObject* source, int amount, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_missed_calls_handler: %d missed calls", amount);
 	_execute_int_callbacks(callbacks_missed_calls, amount);
 }
 
-static void  _pim_new_call_handler(char *path)
+static void
+_pim_new_call_handler(GObject *source, char *path, gpointer data)
 {
+	(void) source;
+	(void) data;
 	_execute_pim_changed_callbacks(callbacks_contact_changes,
 				       path, PHONEUI_INFO_CHANGE_NEW);
 }
 
-static void  _pim_unread_messages_handler(int amount)
+static void
+_pim_unread_messages_handler(GObject* source, int amount, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_unread_messages_handler: %d unread messages", amount);
 	_execute_int_callbacks(callbacks_unread_messages, amount);
 }
 
-static void _pim_unfinished_tasks_handler(int amount)
+static void
+_pim_unfinished_tasks_handler(GObject* source, int amount, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_unfinished_tasks_handler: %d unfinished tasks", amount);
 	_execute_int_callbacks(callbacks_unfinished_tasks, amount);
 }
 
-static void _resource_changed_handler(const char *resource,
-		gboolean state, GHashTable *properties)
+static void
+_resource_changed_handler(GObject *source, char *resource, gboolean state,
+			  GHashTable *properties, gpointer data)
 {
-	(void)properties;
+	(void) source;
+	(void) data;
 	g_debug("_resource_changed_handler: %s is now %s",
 			resource, state ? "enabled" : "disabled");
 	_execute_resource_callbacks(callbacks_resource_changes, resource,
 				    state, properties);
 }
 
-static void _call_status_handler(int callid, int state,
-		GHashTable *properties)
+static void
+_call_status_handler(GObject *source, int callid,
+		     FreeSmartphoneGSMCallStatus state,
+		     GHashTable *properties, gpointer data)
 {
-	(void)properties;
-	enum PhoneuiCallState st;
-	switch (state) {
-	case CALL_STATUS_INCOMING:
-		st = PHONEUI_CALL_STATE_INCOMING;
-		break;
-	case CALL_STATUS_OUTGOING:
-		st = PHONEUI_CALL_STATE_OUTGOING;
-		break;
-	case CALL_STATUS_ACTIVE:
-		st = PHONEUI_CALL_STATE_ACTIVE;
-		break;
-	case CALL_STATUS_HELD:
-		st = PHONEUI_CALL_STATE_HELD;
-		break;
-	case CALL_STATUS_RELEASE:
-		st = PHONEUI_CALL_STATE_RELEASE;
-		break;
-	default:
-		return;
-	}
-	_execute_int_hashtable_callbacks(callbacks_call_status, st, properties);
+	(void) source;
+	(void) data;
+	_execute_int_hashtable_callbacks(callbacks_call_status, state, properties);
 	g_debug("_call_status_handler: call %d: %d", callid, state);
 }
 
-static void _pdp_network_status_handler(GHashTable *status)
+static void
+_pdp_network_status_handler(GObject* source, GHashTable* status, gpointer data)
 {
+	(void) source;
+	(void) data;
 	_execute_hashtable_callbacks(callbacks_pdp_network_status, status);
 }
 
-static void _pdp_network_status_callback(GError *error, GHashTable *status,
-					 gpointer _data)
-{
-	if (error) {
-		g_warning("PDP NetworkStatus: %s", error->message);
-		return;
-	}
-	struct _cb_hashtable_pack *data = (struct _cb_hashtable_pack *)_data;
-	data->callback(data->data, status);
-}
 
-static void _profile_changed_handler(const char *profile)
+static void
+_profile_changed_handler(GObject* source, const char* profile, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_profile_changed_handler: active profile is %s", profile);
 	_execute_charp_callbacks(callbacks_profile_changes, profile);
 }
@@ -884,104 +951,174 @@ static void _profile_changed_handler(const char *profile)
 //	phoneui_idle_screen_update_alarm(time);
 //}
 
-static void _capacity_changed_handler(int energy)
+static void
+_capacity_changed_handler(GObject* source, int energy, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_capacity_changed_handler: capacity is %d", energy);
 	_execute_int_callbacks(callbacks_capacity_changes, energy);
 }
 
-static void _network_status_handler(GHashTable *properties)
+static void
+_network_status_handler(GObject* source, GHashTable* properties, gpointer data)
 {
+	(void) source;
+	(void) data;
 	_execute_hashtable_callbacks(callbacks_network_status, properties);
 }
 
-static void _signal_strength_handler(int signal)
+static void
+_signal_strength_handler(GObject* source, int signal, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_signal_strength_handler: %d", signal);
 	_execute_int_callbacks(callbacks_signal_strength, signal);
 }
 
-static void _idle_notifier_handler(int state)
+static void
+_idle_notifier_handler(GObject* source, int state, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("_idle_notifier_handler: idle state now %d", state);
 }
 
-static void _pim_contact_new_handler(const char *path)
+static void
+_pim_contact_new_handler(GObject* source, const char* path, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("New contact %s got added", path);
 	_execute_pim_changed_callbacks(callbacks_contact_changes,
 				       path, PHONEUI_INFO_CHANGE_NEW);
 }
 
-static void _pim_contact_updated_handler(const char *path, GHashTable *content)
+static void
+_pim_contact_updated_handler(GObject* source, const char* path,
+			     GHashTable* content, gpointer data)
 {
-	(void)content;
+	(void) source;
+	(void) data;
+	(void) content;
 	g_debug("Contact %s got updated", path);
 	_execute_pim_changed_callbacks(callbacks_contact_changes,
 				       path, PHONEUI_INFO_CHANGE_UPDATE);
 }
 
-static void _pim_contact_deleted_handler(const char *path)
+static void
+_pim_contact_deleted_handler(GObject* source, const char* path, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("Contact %s got deleted", path);
 	_execute_pim_changed_callbacks(callbacks_contact_changes,
 				       path, PHONEUI_INFO_CHANGE_DELETE);
 }
 
-static void _pim_message_new_handler(const char *path)
+static void
+_pim_message_new_handler(GObject* source, const char* path, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("New message %s got added", path);
 	_execute_pim_changed_callbacks(callbacks_message_changes,
 				       path, PHONEUI_INFO_CHANGE_NEW);
 }
 
-static void _pim_message_updated_handler(const char *path, GHashTable *content)
+static void
+_pim_message_updated_handler(GObject* source, const char* path,
+			     GHashTable* content, gpointer data)
 {
-	(void)content;
+	(void) source;
+	(void) data;
+	(void) content;
 	g_debug("Message %s got updated", path);
 	_execute_pim_changed_callbacks(callbacks_message_changes,
 				       path, PHONEUI_INFO_CHANGE_UPDATE);
 }
 
-static void _pim_message_deleted_handler(const char *path)
+static void
+_pim_message_deleted_handler(GObject* source, const char* path, gpointer data)
 {
+	(void) source;
+	(void) data;
 	g_debug("Message %s got deleted", path);
 	_execute_pim_changed_callbacks(callbacks_message_changes,
 				       path, PHONEUI_INFO_CHANGE_DELETE);
 }
 
+static void
+_device_input_event_handler(GObject* source, char* input_source, char* action,
+			    int duration, gpointer data)
+{
+	(void) source;
+	(void) data;
+	_execute_2charp_int_callbacks(callbacks_input_events,
+				input_source, action, duration);
+}
 
 /* callbacks for request of data */
 
 static void
-_pim_missed_calls_callback(GError *error, int amount, gpointer userdata)
+_pdp_network_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	struct _cb_int_pack *pack;
+	(void) source;
+	GError *error = NULL;
+	char *status;
+	GHashTable *properties;
 
+	free_smartphone_gsm_pdp_get_context_status_finish(fso.gsm_pdp, res,
+					&status, &properties, &error);
+	if (error) {
+		g_warning("PDP NetworkStatus: %s", error->message);
+		g_error_free(error);
+		return;
+	}
+	struct _cb_charp_hashtable_pack *pack = data;
+	pack->callback(pack->data, status, properties);
+}
+
+static void
+_pim_missed_calls_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	int amount;
+
+	amount = free_smartphone_pim_calls_get_new_missed_calls_finish
+				(fso.pim_calls, res, &error);
 	if (error) {
 		g_message("_missed_calls_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	if (userdata) {
-		pack = (struct _cb_int_pack *)userdata;
+	if (data) {
+		struct _cb_int_pack *pack = data;
 		pack->callback(pack->data, amount);
 		free(pack);
 	}
 }
 
 static void
-_pim_unread_messages_callback(GError *error, int amount, gpointer userdata)
+_pim_unread_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	struct _cb_int_pack *pack;
+	(void) source;
+	GError *error = NULL;
+	int amount;
 
+	amount = free_smartphone_pim_messages_get_unread_messages_finish
+					(fso.pim_messages, res, &error);
 	if (error) {
 		g_message("_unread_messages_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	if (userdata) {
-		pack = (struct _cb_int_pack *)userdata;
+	if (data) {
+		struct _cb_int_pack *pack = data;
 		pack->callback(pack->data, amount);
 		free(pack);
 	}
@@ -1005,17 +1142,25 @@ _pim_unread_messages_callback(GError *error, int amount, gpointer userdata)
 // }
 
 static void
-_list_resources_callback(GError *error, char **resources, gpointer userdata)
+_list_resources_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
+	(void) source;
+	GError *error = NULL;
+	char **resources;
+	int count;
+
+	resources = free_smartphone_usage_get_resource_users_finish
+					(fso.usage, res, &count, &error);
 	struct _resource_status_request_pack *pack;
 	struct _cb_resource_changes_pack *packpack;
 
 	if (error) {
 		g_message("_list_resources_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	packpack = userdata;
+	packpack = data;
 	if (resources) {
 		int i = 0;
 		while (resources[i] != NULL) {
@@ -1023,8 +1168,8 @@ _list_resources_callback(GError *error, char **resources, gpointer userdata)
 			pack->resource = resources[i];
 			pack->pack.callback = packpack->callback;
 			pack->pack.data = packpack->data;
-			ousaged_get_resource_state(resources[i],
-						   _resource_state_callback, pack);
+			free_smartphone_usage_get_resource_state(fso.usage,
+				resources[i], _resource_state_callback, pack);
 			i++;
 		}
 	}
@@ -1032,89 +1177,117 @@ _list_resources_callback(GError *error, char **resources, gpointer userdata)
 }
 
 static void
-_resource_state_callback(GError *error, gboolean state, gpointer userdata)
+_resource_state_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
+	(void) source;
+	GError *error = NULL;
+	gboolean state;
+
+	state = free_smartphone_usage_get_resource_state_finish
+						(fso.usage, res, &error);
 	if (error) {
 		g_message("_resource_state_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	struct _resource_status_request_pack *pack = userdata;
-	pack->pack.callback(pack->pack.data, pack->resource, state, NULL);
-	// FIXME: do we have to free pack->resource ???
-	free(pack);
+	if (data) {
+		struct _resource_status_request_pack *pack = data;
+		pack->pack.callback(pack->pack.data, pack->resource, state, NULL);
+		// FIXME: do we have to free pack->resource ???
+		free(pack);
+	}
 }
 
 static void
-_get_profile_callback(GError *error, char *profile, gpointer userdata)
+_get_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	struct _cb_charp_pack *pack;
+	(void) source;
+	GError *error = NULL;
+	char *profile;
+
+	profile = free_smartphone_preferences_get_profile_finish
+						(fso.preferences, res, &error);
 	if (error) {
 		g_message("_get_profile_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	if (userdata) {
-		pack = (struct _cb_charp_pack *)userdata;
+	if (data) {
+		struct _cb_charp_pack *pack = data;
 		pack->callback(pack->data, profile);
 		free(pack);
 	}
 }
 
 static void
-_get_capacity_callback(GError *error, int energy, gpointer userdata)
+_get_capacity_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	struct _cb_int_pack *pack;
+	(void) source;
+	GError *error = NULL;
+	int energy;
+
+	energy = free_smartphone_device_power_supply_get_capacity_finish
+						(fso.power_supply, res, &error);
+
 	if (error) {
 		g_message("_get_capacity_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	if (userdata) {
-		pack = (struct _cb_int_pack *)userdata;
+	if (data) {
+		struct _cb_int_pack *pack = data;
 		pack->callback(pack->data, energy);
 		free(pack);
 	}
 }
 
 static void
-_get_network_status_callback(GError *error, GHashTable *properties, gpointer userdata)
+_get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	struct _cb_hashtable_pack *pack;
+	(void) source;
+	GError *error = NULL;
+	GHashTable *properties;
+
+	properties = free_smartphone_gsm_network_get_status_finish
+					(fso.gsm_network, res, &error);
 	if (error) {
 		g_message("_get_network_status_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	if (userdata) {
-		pack = (struct _cb_hashtable_pack *)userdata;
+	if (data) {
+		struct _cb_hashtable_pack *pack = data;
 		pack->callback(pack->data, properties);
 		free(pack);
 	}
 }
 
 static void
-_get_signal_strength_callback(GError *error, int signal, gpointer userdata)
+_get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	struct _cb_int_pack *pack;
+	(void) source;
+	GError *error = NULL;
+	int signal;
+
+	signal = free_smartphone_gsm_network_get_signal_strength_finish
+						(fso.gsm_network, res, &error);
 	if (error) {
 		g_message("_get_signal_strength_callback: error %d: %s",
 				error->code, error->message);
+		g_error_free(error);
 		return;
 	}
-	if (userdata) {
-		pack = (struct _cb_int_pack *)userdata;
+	if (data) {
+		struct _cb_int_pack *pack = data;
 		pack->callback(pack->data, signal);
 		free(pack);
 	}
 }
 
-static void
-_device_input_event_handler(char *source, char *action, int duration)
-{
-	_execute_2charp_int_callbacks(callbacks_input_events,
-				source, action, duration);
-}
 
 //static void _get_alarm_callback(GError *error,
 //		const int time, gpointer userdata)

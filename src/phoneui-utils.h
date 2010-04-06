@@ -2,9 +2,9 @@
 #define _PHONEUI_UTILS_H
 #include <glib.h>
 #include <glib-object.h>
+#include <freesmartphone.h>
 #include "phoneui-utils-sound.h"
 
-#define SIM_MANAGER_CONTACTS_CATEGORIE "contacts"
 
 enum PhoneUiDialogType {
 	PHONEUI_DIALOG_ERROR_DO_NOT_USE = 0,
@@ -52,100 +52,27 @@ gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
 
 
-int
-phoneui_utils_contact_lookup(const char *_number,
-			void (*_callback) (GHashTable *, gpointer),
-			void *_data);
-int phoneui_utils_contact_delete(const char *path,
-				void (*name_callback) (GError *, gpointer),
-				void *data);
-int phoneui_utils_contact_update(const char *path,
-				GHashTable *contact_data, void (*callback)(GError *, gpointer),
-				void* data);
-int phoneui_utils_contact_add(const GHashTable *contact_data,
-			void (*callback)(GError*, char *, gpointer),
-			void* data);
-int phoneui_utils_contact_get(const char *contact_path,
-		void (*callback)(GHashTable*, gpointer), void *data);
-void phoneui_utils_contact_get_fields_for_type(const char *contact_path, const char *type,
-					       void (*callback)(GHashTable *, gpointer), void *data);
-void phoneui_utils_contacts_get(int *count,
-		void (*callback)(gpointer , gpointer),
-		gpointer userdata);
-void phoneui_utils_contacts_field_type_get(const char *name, void (*callback)(GError *, char *, gpointer), gpointer user_data);
-void phoneui_utils_contacts_fields_get(void (*callback)(GHashTable *, gpointer), gpointer userdata);
-void phoneui_utils_contacts_fields_get_with_type(const char *type, void (*callback)(char **, gpointer), gpointer userdata);
-void phoneui_utils_contacts_field_add(const char *name, const char *type, void *callback, void *userdata);
-void phoneui_utils_contacts_field_remove(const char *name, void *callback, void *userdata);
-
-char *phoneui_utils_contact_display_phone_get(GHashTable *properties);
-
-char *phoneui_utils_contact_display_name_get(GHashTable *properties);
-
-int phoneui_utils_contact_compare(GHashTable *contact1, GHashTable *contact2);
-
 int phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),
 		  void *userdata);
-int phoneui_utils_message_delete(const char *message_path,
-				void (*callback)(GError *, gpointer),
-				void *data);
-int phoneui_utils_message_set_read_status(const char *path, int read,
-				void (*callback) (GError *, gpointer),
-				void *data);
-int phoneui_utils_message_get(const char *message_path,
-		void (*callback)(GHashTable *, gpointer), gpointer data);
-void phoneui_utils_messages_get(void (*callback) (GError *, GPtrArray *, void *),
-		      void *_data);
 
-void phoneui_utils_calls_get(int *count, void (*callback) (gpointer, gpointer),
-		void *_data);
-int phoneui_utils_call_get(const char *call_path,
-		void (*callback)(GHashTable*, gpointer), void *data);
 
-int phoneui_utils_dial(const char *number,
-				void (*callback)(GError *, int id_call, gpointer),
-				gpointer userdata);
-
-int phoneui_utils_call_initiate(const char *number,
-				void (*callback)(GError *, int id_call, gpointer),
-				gpointer userdata);
-int phoneui_utils_call_release(int call_id,
-			void (*callback)(GError *, gpointer),
-			gpointer userdata);
-int phoneui_utils_call_activate(int call_id,
-			void (*callback)(GError *, gpointer),
-			gpointer userdata);
-int phoneui_utils_call_send_dtmf(const char *tones,
-				void (*callback)(GError *, gpointer),
-				gpointer userdata);
-
-int phoneui_utils_ussd_initiate(const char *request,
-				void (*callback)(GError *, gpointer),
-				gpointer userdata);
-
-void phoneui_utils_sim_pin_send(const char *pin,
-		void (*callback)(int, gpointer), gpointer userdata);
-void phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
-		void (*callback)(int, gpointer), gpointer userdata);
 
 void phoneui_utils_fields_types_get(void *callback, void *userdata);
 
 void phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), void *userdata);
 void phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), void *userdata);
 
-void phoneui_utils_idle_get_state(void (*callback) (GError *, int, gpointer), gpointer userdata);
-void phoneui_utils_idle_set_state(enum PhoneUiDeviceIdleState state, void (*callback) (GError *, gpointer), gpointer userdata);
+void phoneui_utils_idle_set_state(FreeSmartphoneDeviceIdleState state, void (*callback) (GError *, gpointer), gpointer userdata);
 
-void phoneui_utils_resources_get_resource_policy(const char *name, void (*callback) (GError *, char *, gpointer), gpointer userdata);
-void phoneui_utils_resources_set_resource_policy(const char *name,const char *policy, void (*callback) (GError *, gpointer),gpointer userdata);
+void phoneui_utils_resources_get_resource_policy(const char *name, void (*callback) (GError *, FreeSmartphoneUsageResourcePolicy, gpointer), gpointer userdata);
+void phoneui_utils_resources_set_resource_policy(const char *name, FreeSmartphoneUsageResourcePolicy policy, void (*callback) (GError *, gpointer), gpointer userdata);
 
-/* Sim Manager utilities */
-int phoneui_utils_sim_contact_delete(const int index, void (*callback)(GError *, gpointer), void* data);
-int phoneui_utils_sim_contact_store(const int index, char *name, char *number, void (*callback) (GError *, gpointer), void* data);
-void phoneui_utils_sim_contacts_get(void (*callback) (GError *, GPtrArray *, gpointer), gpointer userdata);
-void phoneui_utils_sim_phonebook_info_get(void (*callback) (GError *, GHashTable *, gpointer), gpointer userdata);
-void phoneui_utils_sim_phonebook_entry_get(const int index, void (*callback) (GError *, char *name, char *number, gpointer), gpointer userdata);
+void phoneui_utils_calls_get(int *count, void (*callback) (GError *, GHashTable **, int, gpointer), void *_data);
+int phoneui_utils_call_get(const char *call_path, void (*callback)(GError *, GHashTable*, gpointer), void *data);
+
+void phoneui_utils_set_offline_mode(gboolean onoff, void (*callback)(GError *, gpointer userdata), gpointer userdata);
+void phoneui_utils_get_offline_mode(void (*callback)(GError *, gboolean, gpointer userdata), gpointer userdata);
 
 int phoneui_utils_init(GKeyFile *keyfile);
 void phoneui_utils_deinit();

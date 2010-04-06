@@ -16,7 +16,7 @@
 #ifndef _PHONEUI_H
 #define _PHONEUI_H
 #include <glib.h>
-
+#include <freesmartphone.h>
 #include "phoneui-utils.h"
 
 #define PHONEUI_CONFIG "@SYSCONFDIR@/libphoneui.conf"
