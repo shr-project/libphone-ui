@@ -24,7 +24,6 @@
 #include <glib.h>
 #include <stdlib.h>
 
-#include <frameworkd-glib/frameworkd-glib-dbus.h>
 #include <phone-utils.h>
 
 #include "phoneui.h"
