@@ -1,9 +1,10 @@
+* add Timezone info when sending an sms.
 * document utility (and non utility, but mostly utility) functions
 * consider lodaing utilityl functions from modules as well (an opimd module and an alsa module to start with)
 * drop all the g_slice0
 * typedef all the callback functions we provide 
 * add phoneui_deinit
 * move the screens init to libphone-ui instead of the phoneui-*.c in backends and then make screen caching configurable
-	* Should probably be in phoneuid, and I should provide an option to pass to the init function whether to hide or destroy the screen when closed
+* Should probably be in phoneuid, and I should provide an option to pass to the init function whether to hide or destroy the screen when closed
 
 Make the utils functions (and more?) thread safe as they might be used from different modules that can reside on different threads

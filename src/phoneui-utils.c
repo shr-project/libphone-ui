@@ -188,7 +188,7 @@ _add_opimd_message(const char *number, const char *message)
 	g_hash_table_insert(message_opimd, "Direction", tmp);
 
 	tmp = _new_gvalue_string("SMS");
-	g_hash_table_insert(message_opimd, "Folder", tmp);
+	g_hash_table_insert(message_opimd, "Source", tmp);
 
 	tmp = _new_gvalue_string(message);
 	g_hash_table_insert(message_opimd, "Content", tmp);
@@ -198,6 +198,8 @@ _add_opimd_message(const char *number, const char *message)
 
 	tmp = _new_gvalue_int(time(NULL));
 	g_hash_table_insert(message_opimd, "Timestamp", tmp);
+
+	/*FIXME: Add timezone!*/
 
 	opimd_messages_add(message_opimd, NULL, NULL);
 
