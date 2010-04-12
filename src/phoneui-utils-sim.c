@@ -289,8 +289,8 @@ phoneui_utils_sim_pin_send(const char *pin,
 	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
 					FSO_FRAMEWORK_GSM_ServiceDBusName,
 					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_sim_send_auth_code(pack->sim, pin,
-					       _pin_send_callback, pack);
+	free_smartphone_gsm_sim_send_auth_code
+				(pack->sim, pin, _pin_send_callback, pack);
 }
 
 static void
@@ -325,6 +325,6 @@ phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
 					FSO_FRAMEWORK_GSM_ServiceDBusName,
 					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_sim_unlock(pack->sim, puk, new_pin,
-				       _puk_send_callback, pack);
+	free_smartphone_gsm_sim_unlock
+			(pack->sim, puk, new_pin, _puk_send_callback, pack);
 }

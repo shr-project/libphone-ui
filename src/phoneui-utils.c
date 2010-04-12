@@ -151,6 +151,8 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 	unsigned int i;
 	struct _sms_send_pack *pack;
 	FreeSmartphoneGSMSMS *sms;
+	GHashTable *properties;
+	char *number;
 
 	if (!recipients) {
 		return 1;
@@ -159,10 +161,8 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 	sms = free_smartphone_gsm_get_s_m_s_proxy(_dbus(), FSO_FRAMEWORK_GSM_ServiceDBusName, FSO_FRAMEWORK_GSM_DeviceServicePath);
 	/* cycle through all the recipients */
 	for (i = 0; i < recipients->len; i++) {
-		GHashTable *properties =
-			(GHashTable *) g_ptr_array_index(recipients, i);
-		char *number =
-			phoneui_utils_contact_display_phone_get(properties);
+		properties = g_ptr_array_index(recipients, i);
+		number = phoneui_utils_contact_display_phone_get(properties);
 		if (!number) {
 			continue;
 		}
