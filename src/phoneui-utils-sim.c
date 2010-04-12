@@ -137,13 +137,6 @@ _sim_retrieve_phonebook_callback(GObject *source, GAsyncResult *res, gpointer da
 	free(pack);
 }
 
-/*
- * Gets all Contacts from SIM as GPtrArray of GValueArray with:
- * 0: index
- * 1: name
- * 2: number
- * 3: invalid
- */
 void
 phoneui_utils_sim_contacts_get(const char *category,
 	void (*callback) (GError *, FreeSmartphoneGSMSIMEntry *, int, gpointer),
@@ -226,9 +219,6 @@ _sim_contact_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 	}
 	else {
 		pack->callback(error, NULL, NULL, pack->data);
-	}
-	if (contacts) {
-		free_smartphone_gsm_sim_entry_free(contacts);
 	}
 	if (error) {
 		g_error_free(error);
