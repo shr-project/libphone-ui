@@ -34,7 +34,6 @@ struct SoundControl {
 static struct SoundControl controls[CONTROLS_LEN][CONTROL_END];
 
 static FreeSmartphoneDeviceAudio *fso_audio = NULL;
-static FreeSmartphonePreferences *fso_preferences = NULL;
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
@@ -613,9 +612,6 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	fso_audio = free_smartphone_device_get_audio_proxy(_dbus(),
 				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
 				FSO_FRAMEWORK_DEVICE_AudioServicePath);
-        fso_preferences = free_smartphone_get_preferences_proxy(_dbus(),
-				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
-				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
 	return err;
 }
 
@@ -777,6 +773,7 @@ phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControl
 }
 
 struct _list_profiles_pack {
+	FreeSmartphonePreferences *preferences;
 	void (*callback)(GError *, char **, int, gpointer);
 	gpointer data;
 };
@@ -791,7 +788,7 @@ _list_profiles_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _list_profiles_pack *pack = data;
 
 	profiles = free_smartphone_preferences_get_profiles_finish
-					(fso_preferences, res, &count, &error);
+					(pack->preferences, res, &count, &error);
 	if (pack->callback) {
 		pack->callback(error, profiles, count, pack->data);
 	}
@@ -808,11 +805,15 @@ phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpoint
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
+	pack->preferences = free_smartphone_get_preferences_proxy(_dbus(),
+				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
 	free_smartphone_preferences_get_profiles
-			(fso_preferences, _list_profiles_callback, pack);
+			(pack->preferences, _list_profiles_callback, pack);
 }
 
 struct _set_profile_pack {
+	FreeSmartphonePreferences *preferences;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
@@ -825,9 +826,17 @@ _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _set_profile_pack *pack = data;
 
 	free_smartphone_preferences_set_profile_finish
-					(fso_preferences, res, &error);
+					(pack->preferences, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
+	}
+	if (error) {
+		g_critical("SetProfile error: (%d) %s",
+			   error->code, error->message);
+		g_error_free(error);
+	}
+	else {
+		g_debug("Profile successfully set");
 	}
 	free (pack);
 }
@@ -839,13 +848,19 @@ phoneui_utils_sound_profile_set(const char *profile,
 {
 	struct _set_profile_pack *pack;
 
+	g_debug("Setting profile to '%s'", profile);
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	free_smartphone_preferences_set_profile(fso_preferences, profile, _set_profile_callback, pack);
+	pack->preferences = free_smartphone_get_preferences_proxy(_dbus(),
+				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
+
+	free_smartphone_preferences_set_profile(pack->preferences, profile, _set_profile_callback, pack);
 }
 
 struct _get_profile_pack {
+	FreeSmartphonePreferences *preferences;
 	void (*callback)(GError *, char *, gpointer);
 	gpointer data;
 };
@@ -859,7 +874,7 @@ _get_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _get_profile_pack *pack = data;
 
 	profile = free_smartphone_preferences_get_profile_finish
-						(fso_preferences, res, &error);
+						(pack->preferences, res, &error);
 	if (pack->callback) {
 		pack->callback(error, profile, pack->data);
 	}
@@ -875,7 +890,10 @@ phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	free_smartphone_preferences_get_profile(fso_preferences,
+	pack->preferences = free_smartphone_get_preferences_proxy(_dbus(),
+				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
+	free_smartphone_preferences_get_profile(pack->preferences,
 						_get_profile_callback, pack);
 }
 
