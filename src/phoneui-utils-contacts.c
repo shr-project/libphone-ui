@@ -5,6 +5,8 @@
 #include <glib-object.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-dbus.h>
+#include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include "helpers.h"
 #include "dbus.h"
 #include "phoneui-utils-contacts.h"
@@ -520,6 +522,10 @@ phoneui_utils_contact_delete(const char *path,
 	return 0;
 }
 
+#if 0
+
+<ACTIVATE WHENVER VALA LEARNED TO DO THE RIGHT THING !!!!>
+
 static void
 _contact_update_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
@@ -558,7 +564,16 @@ phoneui_utils_contact_update(const char *path,
 	pack->data = data;
 	pack->contact = free_smartphone_pim_get_contact_proxy(_dbus(),
 				FSO_FRAMEWORK_PIM_ServiceDBusName, path);
-        free_smartphone_pim_contact_update(pack->contact, contact_data,
+	if (!pack->contact) {
+		g_critical("did not get a proxy for the contact!!!");
+		return 1;
+	}
+	if (free_smartphone_pim_contact_get_type() ==
+		G_TYPE_FROM_INSTANCE(pack->contact)) {
+		g_debug("yeah, proxy is actually a contact proxy :-)");
+	}
+        free_smartphone_pim_contact_update(pack->contact,
+					   g_hash_table_ref(contact_data),
 					   _contact_update_callback, pack);
 	g_debug("update initiated");
 	return 0;
@@ -593,14 +608,45 @@ phoneui_utils_contact_add(GHashTable *contact_data,
 {
 	struct _contact_add_pack *pack;
 
+	g_debug("adding new contact");
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
 	pack->contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
 					FSO_FRAMEWORK_PIM_ServiceDBusName,
 					FSO_FRAMEWORK_PIM_ContactsServicePath);
-	free_smartphone_pim_contacts_add(pack->contacts, contact_data,
+        if (!pack->contacts) {
+		g_critical("Did not get a contacts proxy!!!");
+		return 1;
+        }
+        if (free_smartphone_pim_contacts_get_type() ==
+		G_TYPE_FROM_INSTANCE(pack->contacts)) {
+		g_debug("yeah, proxy is actually a contacts proxy :-)");
+	}
+	free_smartphone_pim_contacts_add(pack->contacts,
+					 g_hash_table_ref(contact_data),
 					 _contact_add_callback, pack);
+	return 0;
+}
+</ACTIVATE WHENVER VALA LEARNED TO DO THE RIGHT THING !!!!>
+#endif
+
+int
+phoneui_utils_contact_update(const char *path,
+			     GHashTable *contact_data,
+			     void (*callback)(GError *, gpointer),
+			     void* data)
+{
+	opimd_contact_update(path, contact_data, callback, data);
+	return 0;
+}
+
+int
+phoneui_utils_contact_add(GHashTable *contact_data,
+			  void (*callback)(GError*, char *, gpointer),
+			  void* data)
+{
+	opimd_contacts_add(contact_data, callback, data);
 	return 0;
 }
 

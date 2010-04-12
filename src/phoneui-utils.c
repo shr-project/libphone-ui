@@ -8,6 +8,7 @@
 #include <dbus/dbus-glib-bindings.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
+#include <frameworkd-glib-dbus.h>
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 #include "phoneui-utils-device.h"
@@ -61,6 +62,10 @@ phoneui_utils_init(GKeyFile *keyfile)
 	ret = phoneui_utils_sound_init(keyfile);
 	ret = phoneui_utils_device_init(keyfile);
 	ret = phoneui_utils_feedback_init(keyfile);
+
+	// FIXME: remove when vala learned to handle multi-field contacts !!!
+	g_debug("Initing libframeworkd-glib :(");
+	frameworkd_handler_connect(NULL);
 
 	return 0;
 }
