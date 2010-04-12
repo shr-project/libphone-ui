@@ -73,11 +73,14 @@ _call_release_callback(GObject *source, GAsyncResult *res, gpointer data)
 	GError *error = NULL;
 	struct _empty_pack *pack = data;
 
-	free_smartphone_gsm_call_release_finish(pack->call, res, &error);
+// 	free_smartphone_gsm_call_release_finish(pack->call, res, &error);
+	free_smartphone_gsm_call_release_all_finish(pack->call, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
+		g_critical("Failed to release a call: (%d) %s",
+			   error->code, error->message);
 		g_error_free(error);
 	}
 	g_object_unref(pack->call);
@@ -88,6 +91,7 @@ int
 phoneui_utils_call_release(int call_id, void (*callback)(GError *, gpointer),
 			   gpointer data)
 {
+	(void) call_id;
 	struct _empty_pack *pack;
 
 	pack = malloc(sizeof(*pack));
@@ -96,8 +100,9 @@ phoneui_utils_call_release(int call_id, void (*callback)(GError *, gpointer),
 	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
 					FSO_FRAMEWORK_GSM_ServiceDBusName,
 					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_call_release(pack->call, call_id,
-					 _call_release_callback, pack);
+/*	free_smartphone_gsm_call_release(pack->call, call_id,
+					 _call_release_callback, pack);*/
+        free_smartphone_gsm_call_release_all(pack->call, _call_release_callback, pack);
 	return 0;
 }
 
