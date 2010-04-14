@@ -121,9 +121,6 @@ _contact_lookup_type_callback(char **fields, gpointer _pack)
 	}
 	query = g_hash_table_new(g_str_hash, g_str_equal);
 
-	g_debug("Attempting to resolve name for: \"%s\"", data->number);
-
-
 	GValue *value = _new_gvalue_string(data->number);
 	if (!value) {
 		g_hash_table_destroy(query);
