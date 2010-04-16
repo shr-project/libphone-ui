@@ -31,10 +31,10 @@ struct _sim_contacts_get_pack {
 	gpointer data;
 };
 
-struct _sim_auth_pack {
+struct _sim_auth_status_pack {
 	FreeSmartphoneGSMSIM *sim;
 	gpointer data;
-	void (*callback)(GError *, gpointer);
+	void (*callback)(GError *, FreeSmartphoneGSMSIMAuthStatus, gpointer);
 };
 
 static void
@@ -252,7 +252,7 @@ _pin_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
 	GError *error = NULL;
-	struct _sim_auth_pack *pack = data;
+	struct _sim_pack *pack = data;
 
 	free_smartphone_gsm_sim_send_auth_code_finish(pack->sim, res, &error);
 	g_debug("_auth_send_callback(%s)", error ? "ERROR" : "OK");
@@ -264,6 +264,8 @@ _pin_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 			error->code, error->message);
 		g_error_free(error);
 	}
+	g_object_unref(pack->sim);
+	free(pack);
 }
 
 void
@@ -296,6 +298,8 @@ _puk_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 		pack->callback(error, pack->data);
 	}
 	if (error) {
+		g_warning("Sending PUK failed: (%d) %s",
+			  error->code, error->message);
 		g_error_free(error);
 	}
 	g_object_unref(pack->sim);
