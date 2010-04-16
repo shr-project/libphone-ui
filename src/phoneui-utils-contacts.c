@@ -16,8 +16,9 @@ struct _query_list_pack {
 	gpointer data;
 	int *count;
 	void (*callback)(gpointer, gpointer);
-	FreeSmartphonePIMContactQuery *query;
-	FreeSmartphonePIMContacts *contacts;
+	DBusGProxy *query;
+// 	FreeSmartphonePIMContactQuery *query;
+// 	FreeSmartphonePIMContacts *contacts;
 };
 
 struct _field_type_pack {
@@ -75,7 +76,7 @@ struct _contact_get_pack {
 	void (*callback)(GError *, GHashTable *, gpointer);
 };
 
-
+#if 0
 // static gint
 // _compare_contacts(gconstpointer _a, gconstpointer _b)
 // {
@@ -178,7 +179,64 @@ phoneui_utils_contacts_get(int *count,
 					   _contacts_query_callback, pack);
 	g_hash_table_unref(qry);
 }
+#endif
 
+static void
+_result_callback(GError *error, GPtrArray *contacts, gpointer data)
+{
+	struct _query_list_pack *pack = data;
+
+	if (error || !contacts)
+		return;
+
+	g_ptr_array_foreach(contacts, pack->callback, pack->data);
+	opimd_contact_query_dispose(pack->query, NULL, NULL);
+}
+
+static void
+_query_count_callback(GError *error, int count, gpointer data)
+{
+	struct _query_list_pack *pack = data;
+
+	if (error) {
+		return;
+	}
+
+	*pack->count = count;
+	opimd_contact_query_get_multiple_results
+				(pack->query, count, _result_callback, pack);
+}
+static void
+_query_callback(GError *error, char *path, gpointer data)
+{
+	struct _query_list_pack *pack = data;
+
+	if (error) {
+		return;
+	}
+
+	pack->query = dbus_connect_to_opimd_contact_query(path);
+	opimd_contact_query_get_result_count
+			(pack->query, _query_count_callback, pack);
+}
+
+void
+phoneui_utils_contacts_get(int *count,
+			   void (*callback)(gpointer, gpointer),
+			   gpointer userdata)
+{
+	GHashTable *qry;
+	struct _query_list_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	pack->count = count;
+	qry = g_hash_table_new_full
+			(g_str_hash, g_str_equal, NULL, _helpers_free_gvalue);
+
+	opimd_contacts_query(qry, _query_callback, pack);
+}
 
 static void
 _contacts_field_type_callback(GObject *source, GAsyncResult *res, gpointer data)
@@ -650,6 +708,7 @@ phoneui_utils_contact_add(GHashTable *contact_data,
 	return 0;
 }
 
+#if 0
 static void
 _contact_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
@@ -711,6 +770,53 @@ phoneui_utils_contact_get_fields_for_type(const char* contact_path,
 						_contact_get_callback, pack);
 	free(_type);
 }
+#endif
+
+static void
+_contact_get_callback(GError *error, GHashTable *contact, gpointer data)
+{
+	struct _contact_get_pack *pack = data;
+
+	if (pack->callback) {
+		pack->callback(error, contact, pack->data);
+	}
+
+	free(pack);
+}
+
+int
+phoneui_utils_contact_get(const char *contact_path,
+			  void (*callback)(GError *, GHashTable *, gpointer),
+			  gpointer data)
+{
+	struct _contact_get_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+
+	opimd_contact_get_content(contact_path, _contact_get_callback, pack);
+	return 0;
+}
+
+void
+phoneui_utils_contact_get_fields_for_type(const char* contact_path,
+					  const char* type,
+					  void (*callback)(GError *, GHashTable *, gpointer),
+					  void *data)
+{
+	struct _contact_get_pack *pack;
+
+	char *_type = calloc(sizeof(char), strlen(type)+2);
+	_type[0] = '$';
+	strcat(_type, type);
+	pack = malloc(sizeof(*pack));
+	pack->data = data;
+	pack->callback = callback;
+	opimd_contact_get_multiple_fields(contact_path, _type,
+					  _contact_get_callback, pack);
+	free(_type);
+}
 
 char *
 phoneui_utils_contact_display_phone_get(GHashTable *properties)
@@ -734,12 +840,20 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
 			const char *s_val;
 			char **strv;
+			if (!G_IS_VALUE(_val)) {
+				g_debug("it's NOT a gvalue!!!");
+				continue;
+			}
 			if (G_VALUE_HOLDS_BOXED(val)) {
 				strv = (char **)g_value_get_boxed(val);
 				s_val = strv[0];
 			}
-			else {
+			else if (G_VALUE_HOLDS_STRING(val)) {
 				s_val = g_value_get_string(val);
+			}
+			else {
+				g_debug("Value for field %s is neither string nor boxed :(", key);
+				continue;
 			}
 
 			/* if key is exactly 'Phone' we want that is default
