@@ -322,3 +322,42 @@ phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 	free_smartphone_gsm_sim_unlock
 			(pack->sim, puk, new_pin, _puk_send_callback, pack);
 }
+
+static void
+_get_auth_status_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _sim_auth_status_pack *pack = data;
+	FreeSmartphoneGSMSIMAuthStatus status;
+
+	status = free_smartphone_gsm_sim_get_auth_status_finish
+						(pack->sim, res, &error);
+	if (pack->callback) {
+		pack->callback(error, status, pack->data);
+	}
+
+	if (error) {
+		g_critical("Failed to get SIMAuthStatus: (%d) %s",
+			   error->code, error->message);
+		g_error_free(error);
+	}
+	g_object_unref(pack->sim);
+	free(pack);
+}
+
+void
+phoneui_utils_sim_auth_status_get(void (*callback)(GError *,
+		FreeSmartphoneGSMSIMAuthStatus, gpointer), gpointer data)
+{
+	struct _sim_auth_status_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->data = data;
+	pack->callback = callback;
+	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
+					FSO_FRAMEWORK_GSM_ServiceDBusName,
+					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	free_smartphone_gsm_sim_get_auth_status
+				(pack->sim, _get_auth_status_callback, pack);
+}
