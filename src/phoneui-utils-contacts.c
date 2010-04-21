@@ -928,6 +928,9 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 	else if (name) {
 		displayname = g_strdup(name);
 	}
+	else if (surname) {
+		displayname = g_strdup(surname);
+	}
 
 	return displayname;
 }

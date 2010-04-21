@@ -97,7 +97,7 @@ _add_opimd_message(const char *number, const char *message)
 	tmp = _helpers_new_gvalue_string("out");
 	g_hash_table_insert(message_opimd, "Direction", tmp);
 
-	tmp = _new_gvalue_string("SMS");
+	tmp = _helpers_new_gvalue_string("SMS");
 	g_hash_table_insert(message_opimd, "Source", tmp);
 
 	tmp = _helpers_new_gvalue_string(message);
@@ -223,9 +223,6 @@ phoneui_utils_resource_policy_get(enum PhoneUiResource resource)
 		break;
 	default:
 		break;
-	}
-	else if (surname) {
-		displayname = g_strdup(surname);
 	}
 
 	return PHONEUI_RESOURCE_POLICY_ERROR;
