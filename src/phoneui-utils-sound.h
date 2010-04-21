@@ -44,7 +44,7 @@ int phoneui_utils_sound_state_set(enum SoundState state, enum SoundStateType typ
 enum SoundState phoneui_utils_sound_state_get();
 enum SoundStateType phoneui_utils_sound_state_type_get();
 
-void phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, gpointer),
+void phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpointer),
 				void *userdata);
 
 void phoneui_utils_sound_profile_set(const char *profile,
