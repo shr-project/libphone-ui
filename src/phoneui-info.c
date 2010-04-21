@@ -176,9 +176,8 @@ phoneui_info_init()
 	fso.preferences = free_smartphone_get_preferences_proxy(_dbus(),
 				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
 				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
-	g_signal_connect(G_OBJECT(fso.preferences), "notify",
+	g_signal_connect(G_OBJECT(fso.preferences), "changed",
 			 G_CALLBACK(_profile_changed_handler), NULL);
-
 	fso.pim_contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
 				FSO_FRAMEWORK_PIM_ServiceDBusName,
 				FSO_FRAMEWORK_PIM_ContactsServicePath);
@@ -1275,7 +1274,7 @@ _execute_hashtable_callbacks(GList *cbs, GHashTable *properties)
 }
 
 static void
-_execute_charp_callbacks(GList *cbs, const char *value)
+_execute_charp_callbacks(GList* cbs, const char* value)
 {
 	GList *cb;
 
