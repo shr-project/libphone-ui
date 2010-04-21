@@ -838,6 +838,7 @@ _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	else {
 		g_debug("Profile successfully set");
 	}
+	g_object_unref(pack->preferences);
 	free (pack);
 }
 
@@ -846,6 +847,8 @@ phoneui_utils_sound_profile_set(const char *profile,
 				void (*callback)(GError *, gpointer),
 				void *userdata)
 {
+	(void) callback;
+	(void) userdata;
 	struct _set_profile_pack *pack;
 
 	g_debug("Setting profile to '%s'", profile);
@@ -856,7 +859,8 @@ phoneui_utils_sound_profile_set(const char *profile,
 				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
 				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
 
-	free_smartphone_preferences_set_profile(pack->preferences, profile, _set_profile_callback, pack);
+	free_smartphone_preferences_set_profile(pack->preferences, profile,
+						_set_profile_callback, pack);
 }
 
 struct _get_profile_pack {
