@@ -517,11 +517,10 @@ _contact_lookup_type_callback(GError *error, char **fields,
 					FSO_FRAMEWORK_PIM_ServiceDBusName,
 					FSO_FRAMEWORK_PIM_ContactsServicePath);
         free_smartphone_pim_contacts_get_single_entry_single_field
-		(pack->contacts, query, "Path", _contact_lookup_callback, pack);
+		(pack->contacts, g_hash_table_ref(query), "Path",
+		 _contact_lookup_callback, pack);
 
-	g_debug("fired single field request");
  	g_hash_table_unref(query);
-	g_debug("freed query");
 }
 
 int
