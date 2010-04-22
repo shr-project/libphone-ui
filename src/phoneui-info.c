@@ -53,8 +53,8 @@ struct _cb_charp_pack {
 	void (*callback)(void *, const char *);
 	void *data;
 };
-struct _cb_2charp_int_pack {
-	void (*callback)(void *, const char *, const char *, int);
+struct _cb_input_event_pack {
+	void (*callback)(void *, const char *, FreeSmartphoneDeviceInputState, int);
 	void *data;
 };
 struct _cb_resource_changes_pack {
@@ -93,7 +93,7 @@ static void _pim_contact_deleted_handler(GObject *source, const char *path, gpoi
 static void _pim_message_new_handler(GObject *source, const char *path, gpointer data);
 static void _pim_message_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
 static void _pim_message_deleted_handler(GObject *source, const char *path, gpointer data);
-static void _device_input_event_handler(GObject *source, char *input_source, char *action, int duration, gpointer data);
+static void _device_input_event_handler(GObject* source, char* input_source, FreeSmartphoneDeviceInputState state, int duration, gpointer data);
 
 static void _pim_missed_calls_callback( GObject* source, GAsyncResult* res, gpointer data);
 static void _pim_unread_messages_callback( GObject* source, GAsyncResult* res, gpointer data);
@@ -109,7 +109,7 @@ static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gp
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
 static void _execute_charp_callbacks(GList *cbs, const char *value);
-static void _execute_2charp_int_callbacks(GList *cbs, const char *value1, const char *value2, int value3);
+static void _execute_input_event_callbacks(GList *cbs, const char *value1, FreeSmartphoneDeviceInputState value2, int value3);
 static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
 static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2);
@@ -776,7 +776,7 @@ phoneui_info_register_and_request_signal_strength(void (*callback)(void *, int),
 
 void
 phoneui_info_register_input_events(void (*callback)(void *, const char *,
-						const char *, int), void *data)
+			FreeSmartphoneDeviceInputState, int), void *data)
 {
 	GList *l;
 
@@ -784,8 +784,8 @@ phoneui_info_register_input_events(void (*callback)(void *, const char *,
 		g_debug("Not registering an empty callback (input events)");
 		return;
 	}
-	struct _cb_2charp_int_pack *pack =
-			malloc(sizeof(struct _cb_2charp_int_pack));
+	struct _cb_input_event_pack *pack =
+			malloc(sizeof(struct _cb_input_event_pack));
 	if (!pack) {
 		g_warning("Failed allocating callback pack (input events)");
 		return;
@@ -979,12 +979,13 @@ _pim_message_deleted_handler(GObject* source, const char* path, gpointer data)
 }
 
 static void
-_device_input_event_handler(GObject* source, char* input_source, char* action,
+_device_input_event_handler(GObject* source, char* input_source,
+			    FreeSmartphoneDeviceInputState action,
 			    int duration, gpointer data)
 {
 	(void) source;
 	(void) data;
-	_execute_2charp_int_callbacks(callbacks_input_events,
+	_execute_input_event_callbacks(callbacks_input_events,
 				input_source, action, duration);
 }
 
@@ -1245,15 +1246,15 @@ _execute_int_callbacks(GList *cbs, int value)
 }
 
 static void
-_execute_2charp_int_callbacks(GList *cbs, const char *value1,
-			      const char *value2, int value3)
+_execute_input_event_callbacks(GList *cbs, const char *value1,
+			       FreeSmartphoneDeviceInputState value2, int value3)
 {
 	GList *cb;
 	if (!cbs)
 		return;
 
 	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
-		struct _cb_2charp_int_pack *pack = cb->data;
+		struct _cb_input_event_pack *pack = cb->data;
 		pack->callback(pack->data, value1, value2, value3);
 	}
 }

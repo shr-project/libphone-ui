@@ -530,7 +530,8 @@ _sourcefunc_dispatch(GSource *source, GSourceFunc callback, gpointer userdata)
 }
 
 static void
-_input_events_cb(void *error, const char *name, const char *action, int duration)
+_input_events_cb(void *error, const char *name,
+		 FreeSmartphoneDeviceInputState action, int duration)
 {
 	(void) duration;
 	if (error) {
@@ -538,11 +539,11 @@ _input_events_cb(void *error, const char *name, const char *action, int duration
 	}
 
 	if (!strcmp(name, "HEADSET")) {
-		if (!strcmp(action, "pressed")) {
+		if (action == FREE_SMARTPHONE_DEVICE_INPUT_STATE_PRESSED) {
 			g_message("Headset connected");
 			phoneui_utils_sound_state_set(SOUND_STATE_NULL, SOUND_STATE_TYPE_HEADSET);
 		}
-		else if (!strcmp(action, "released")) {
+		else if (action == FREE_SMARTPHONE_DEVICE_INPUT_STATE_RELEASED) {
 			g_message("Headset disconnected");
 			phoneui_utils_sound_state_set(SOUND_STATE_NULL, SOUND_STATE_TYPE_HANDSET);
 		}

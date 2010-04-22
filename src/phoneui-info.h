@@ -1,5 +1,6 @@
 #ifndef _PHONEUI_INFO_H
 #define _PHONEUI_INFO_H
+#include <freesmartphone.h>
 
 enum PhoneuiInfoChangeType {
 	PHONEUI_INFO_CHANGE_NEW = 0,
@@ -55,7 +56,7 @@ void phoneui_info_register_signal_strength(void (*_cb)(void *, int), void *data)
 void phoneui_info_request_signal_strength(void (*_cb)(void *, int), void *data);
 void phoneui_info_register_and_request_signal_strength(void (*_cb)(void *, int), void *data);
 
-void phoneui_info_register_input_events(void (*_cb)(void *, const char *, const char *, int), void *data);
+void phoneui_info_register_input_events(void (*_cb)(void *, const char *, FreeSmartphoneDeviceInputState, int), void *data);
 
 #endif
 
