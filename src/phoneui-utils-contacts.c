@@ -952,5 +952,30 @@ phoneui_utils_contact_compare(GHashTable *contact1, GHashTable *contact2)
 	return ret;
 }
 
+char *
+phoneui_utils_contact_get_dbus_path(int entryid)
+{
+	/* 15 = 1 for '\0', 1 for '/' and 13 for max possible int size */
+	int len = strlen(FSO_FRAMEWORK_PIM_ContactsServicePath) + 15;
+	char *ret = calloc(sizeof(char), len);
+	if (!ret) {
+		return NULL;
+	}
+	snprintf(ret, len-1, "%s/%d", FSO_FRAMEWORK_PIM_ContactsServicePath, entryid);
 
+	return ret;
+}
 
+int
+phoneui_utils_contact_get_entryid(const char* path)
+{
+	const char *s = rindex(path, '/');
+	if (!s) {
+		return -1;
+	}
+	s++;
+	if (!*s) {
+		return -1;
+	}
+	return atoi(s);
+}
