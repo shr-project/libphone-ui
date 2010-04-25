@@ -13,12 +13,12 @@ int phoneui_info_init();
 void phoneui_info_deinit();
 void phoneui_info_trigger();
 
-void phoneui_info_register_contact_changes(void (*_cb)(void *, const char *,
-						       enum PhoneuiInfoChangeType), void *data);
-void phoneui_info_register_message_changes(void (*_cb)(void *, const char *,
-						       enum PhoneuiInfoChangeType), void *data);
-void phoneui_info_register_call_changes(void (*_cb)(void *, const char *,
-						    enum PhoneuiInfoChangeType), void *data);
+void phoneui_info_register_contact_changes(void (*_cb)(void *, const char *, enum PhoneuiInfoChangeType), void *data);
+void phoneui_info_register_single_contact_changes(int entryid, void (*_cb)(void *, int, enum PhoneuiInfoChangeType), void *data);
+void phoneui_info_unregister_single_contact_changes(int entryid, void (*callback)(void *, int, enum PhoneuiInfoChangeType));
+
+void phoneui_info_register_message_changes(void (*_cb)(void *, const char *, enum PhoneuiInfoChangeType), void *data);
+void phoneui_info_register_call_changes(void (*_cb)(void *, const char *, enum PhoneuiInfoChangeType), void *data);
 
 void phoneui_info_register_call_status_changes(void (*_cb)(void *, int, GHashTable *), void *data);
 

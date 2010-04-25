@@ -5,6 +5,7 @@
 #include <fsoframework.h>
 #include <phoneui.h>
 #include "phoneui-info.h"
+#include "phoneui-utils-contacts.h"
 #include "dbus.h"
 
 struct _fso {
@@ -36,11 +37,24 @@ static GList *callbacks_network_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
 static GList *callbacks_call_status = NULL;
+static GHashTable *single_contact_changes = NULL;
 
 struct _cb_pim_changes_pack {
 	void (*callback)(void *, const char *, enum PhoneuiInfoChangeType);
 	void *data;
 };
+
+struct _cb_pim_single_changes_pack {
+	void (*callback)(void *, int, enum PhoneuiInfoChangeType);
+	void *data;
+};
+
+struct _single_pim_changes_pack {
+	int entryid;
+	GObject *proxy;
+	GList *callbacks;
+};
+
 struct _cb_hashtable_pack {
 	void (*callback)(void *, GHashTable *);
 	void *data;
@@ -90,6 +104,8 @@ static void _idle_notifier_handler(GObject *source, int state, gpointer data);
 static void _pim_contact_new_handler(GObject *source, const char *path, gpointer data);
 static void _pim_contact_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
 static void _pim_contact_deleted_handler(GObject *source, const char *path, gpointer data);
+static void _pim_single_contact_updated_handler(GObject *source, GHashTable *content, gpointer data);
+static void _pim_single_contact_deleted_handler(GObject *source, gpointer data);
 static void _pim_message_new_handler(GObject *source, const char *path, gpointer data);
 static void _pim_message_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
 static void _pim_message_deleted_handler(GObject *source, const char *path, gpointer data);
@@ -107,6 +123,7 @@ static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gp
 //static void _get_alarm_callback(GError *error, int time, gpointer userdata);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
+static void _execute_pim_single_changed_callbacks(GList* cbs, int entryid, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
 static void _execute_charp_callbacks(GList *cbs, const char *value);
 static void _execute_input_event_callbacks(GList *cbs, const char *value1, FreeSmartphoneDeviceInputState value2, int value3);
@@ -289,6 +306,105 @@ phoneui_info_register_contact_changes(void (*callback)(void *, const char*,
 			g_debug("Registered a callback for contact changes");
 		}
 	}
+}
+
+void
+phoneui_info_register_single_contact_changes(int entryid, void (*callback)(void *, int,
+					enum PhoneuiInfoChangeType), void *data)
+{
+	struct _single_pim_changes_pack *pack = NULL;
+	struct _cb_pim_single_changes_pack *cbpack = NULL;
+	GList *l;
+	char *path;
+
+	if (single_contact_changes) {
+		pack = g_hash_table_lookup(single_contact_changes, &entryid);
+	}
+	else {
+		single_contact_changes = g_hash_table_new(g_int_hash, g_int_equal);
+	}
+
+	cbpack = malloc(sizeof(*cbpack));
+	if (!cbpack) {
+		g_warning("Failed allocating cb pack for changes of contact %d - Not registering", entryid);
+		return;
+	}
+	cbpack->callback = callback;
+	cbpack->data = data;
+	if (!pack) {
+		pack = malloc(sizeof(*pack));
+		if (!pack) {
+			g_warning("Failed allocating pack for single PIM contact changes!");
+			free(cbpack);
+			return;
+		}
+		path = phoneui_utils_contact_get_dbus_path(entryid);
+		if (!path) {
+			free(cbpack);
+			return;
+		}
+		pack->entryid = entryid;
+		pack->callbacks = NULL;
+		pack->proxy = G_OBJECT(free_smartphone_pim_get_contact_proxy
+				(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, path));
+		g_signal_connect(pack->proxy, "contact-updated",
+				 G_CALLBACK(_pim_single_contact_updated_handler),
+				 GINT_TO_POINTER(entryid));
+		g_signal_connect(pack->proxy, "contact-deleted",
+				 G_CALLBACK(_pim_single_contact_deleted_handler),
+				 GINT_TO_POINTER(entryid));
+
+		g_hash_table_insert(single_contact_changes, &pack->entryid, pack);
+		free(path);
+	}
+
+	l = g_list_append(pack->callbacks, cbpack);
+	if (!l) {
+		g_warning("Failed to register callback for changes of contact %d", entryid);
+	}
+	else {
+		if (!pack->callbacks) {
+			pack->callbacks = l;
+		}
+		g_debug("Registered a callback for changes of contact %d", entryid);
+	}
+}
+
+void
+phoneui_info_unregister_single_contact_changes(int entryid,
+			void (*callback)(void *, int, enum PhoneuiInfoChangeType))
+{
+	GList *cb;
+	struct _single_pim_changes_pack *pack;
+	struct _cb_pim_single_changes_pack *cbpack;
+
+	if (!single_contact_changes) {
+		g_debug("No one registered for single contact changes - Nothing to unregister");
+		return;
+	}
+	pack = g_hash_table_lookup(single_contact_changes, &entryid);
+	if (!pack) {
+		g_debug("No one registered for changes of contact %d - Nothing to unregister", entryid);
+		return;
+	}
+
+	for (cb = g_list_first(pack->callbacks); cb; cb = g_list_next(cb)) {
+		cbpack = cb->data;
+		g_debug("comparing a callback");
+		if ((void *)cbpack->callback == (void *)callback) {
+			pack->callbacks = g_list_remove(pack->callbacks, cbpack);
+			g_debug("Removed callback for Contact %d", entryid);
+			if (!pack->callbacks) {
+				g_debug("Was the last one - releasing the Contact proxy for %d", entryid);
+				g_object_unref(pack->proxy);
+				free(pack);
+				g_hash_table_remove(single_contact_changes,
+						    &entryid);
+			}
+			return;
+		}
+	}
+	g_debug("Callback not found for contact %d", entryid);
 }
 
 void
@@ -947,6 +1063,51 @@ _pim_contact_deleted_handler(GObject* source, const char* path, gpointer data)
 }
 
 static void
+_pim_single_contact_updated_handler(GObject *source, GHashTable *content,
+				    gpointer data)
+{
+	(void) source;
+	(void) content;
+	struct _single_pim_changes_pack *pack;
+	int entryid = GPOINTER_TO_INT(data);
+
+	g_debug("Handling update of single contact %d", entryid);
+	if (!single_contact_changes) {
+		g_warning("No listener for changes of single PIM Contacts!");
+		return;
+	}
+	pack = g_hash_table_lookup(single_contact_changes, &entryid);
+	if (!pack) {
+		g_warning("No listener for changes of PIM Contact %d", entryid);
+		return;
+	}
+	_execute_pim_single_changed_callbacks(pack->callbacks, entryid,
+					      PHONEUI_INFO_CHANGE_UPDATE);
+}
+
+static void
+_pim_single_contact_deleted_handler(GObject *source, gpointer data)
+{
+	(void) source;
+	struct _single_pim_changes_pack *pack;
+	int entryid = GPOINTER_TO_INT(data);
+
+	g_debug("Handling deletion of single contact %d", entryid);
+
+	if (!single_contact_changes) {
+		g_warning("No listener for changes of single PIM Contacts!");
+		return;
+	}
+	pack = g_hash_table_lookup(single_contact_changes, &entryid);
+	if (!pack) {
+		g_warning("No listener for changes of PIM Contact %d", entryid);
+		return;
+	}
+	_execute_pim_single_changed_callbacks(pack->callbacks, entryid,
+					      PHONEUI_INFO_CHANGE_DELETE);
+}
+
+static void
 _pim_message_new_handler(GObject* source, const char* path, gpointer data)
 {
 	(void) source;
@@ -1228,6 +1389,21 @@ static void _execute_pim_changed_callbacks(GList *cbs, const char *path,
 		struct _cb_pim_changes_pack *pack =
 			(struct _cb_pim_changes_pack *)cb->data;
 		pack->callback(pack->data, path, type);
+	}
+}
+
+static void _execute_pim_single_changed_callbacks(GList *cbs, int entryid,
+						  enum PhoneuiInfoChangeType type)
+{
+	GList *cb;
+
+	if (!cbs) {
+		g_debug("No callbacks registered");
+		return;
+	}
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_pim_single_changes_pack *pack = cb->data;
+		pack->callback(pack->data, entryid, type);
 	}
 }
 
