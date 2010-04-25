@@ -23,7 +23,6 @@ char *phoneui_utils_contact_display_name_get(GHashTable *properties);
 int phoneui_utils_contact_compare(GHashTable *contact1, GHashTable *contact2);
 
 char *phoneui_utils_contact_get_dbus_path(int entryid);
-int phoneui_utils_contact_get_entryid(const char *path);
 
 
 #endif

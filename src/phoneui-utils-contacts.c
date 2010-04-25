@@ -965,17 +965,3 @@ phoneui_utils_contact_get_dbus_path(int entryid)
 
 	return ret;
 }
-
-int
-phoneui_utils_contact_get_entryid(const char* path)
-{
-	const char *s = rindex(path, '/');
-	if (!s) {
-		return -1;
-	}
-	s++;
-	if (!*s) {
-		return -1;
-	}
-	return atoi(s);
-}
