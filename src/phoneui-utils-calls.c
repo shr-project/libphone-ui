@@ -146,7 +146,7 @@ static void
 _send_dtmf_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
-	GError *error;
+	GError *error = NULL;
 	struct _empty_pack *pack = data;
 
 	free_smartphone_gsm_call_send_dtmf_finish(pack->call, res, &error);
@@ -154,6 +154,7 @@ _send_dtmf_callback(GObject *source, GAsyncResult *res, gpointer data)
 		pack->callback(error, pack->data);
 	}
 	if (error) {
+		g_warning("Sending DMF failed: (%d) %s", error->code, error->message);
 		g_error_free(error);
 	}
 	g_object_unref(pack->call);
