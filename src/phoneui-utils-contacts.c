@@ -181,6 +181,11 @@ phoneui_utils_contacts_get(int *count,
 }
 #endif
 
+static int _compare_func(gconstpointer a, gconstpointer b)
+{
+	return phoneui_utils_contact_compare(*((GHashTable **)a), *((GHashTable **)b));
+}
+
 static void
 _result_callback(GError *error, GPtrArray *contacts, gpointer data)
 {
@@ -188,7 +193,7 @@ _result_callback(GError *error, GPtrArray *contacts, gpointer data)
 
 	if (error || !contacts)
 		return;
-
+	g_ptr_array_sort(contacts, _compare_func);
 	g_ptr_array_foreach(contacts, pack->callback, pack->data);
 	opimd_contact_query_dispose(pack->query, NULL, NULL);
 }
