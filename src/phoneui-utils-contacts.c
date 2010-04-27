@@ -882,6 +882,7 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 	gpointer _key, _val;
 	const char *name = NULL, *surname = NULL;
 	const char *middlename = NULL, *nickname = NULL;
+	const char *affiliation = NULL;
 	char *displayname = NULL;
 	GHashTableIter iter;
 
@@ -911,29 +912,56 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 			const char *s_val = g_value_get_string(val);
 			nickname = s_val;
 		}
+		else if (!strcmp(key, "Affiliation")) {
+			affiliation = g_value_get_string(val);
+		}
 	}
 
 	/* construct some sane display name from the fields */
-	if (name && nickname && surname) {
+	if (name && nickname && surname && affiliation) {
+		displayname = g_strdup_printf("%s '%s' %s (%s)",
+				name, nickname, surname, affiliation);
+	}
+	else if (name && nickname && surname) {
 		displayname = g_strdup_printf("%s '%s' %s",
 				name, nickname, surname);
+	}
+	else if (name && middlename && surname && affiliation) {
+		displayname = g_strdup_printf("%s %s %s (%s)",
+				name, middlename, surname, affiliation);
 	}
 	else if (name && middlename && surname) {
 		displayname = g_strdup_printf("%s %s %s",
 				name, middlename, surname);
 	}
+	else if (name && surname && affiliation) {
+		displayname = g_strdup_printf("%s %s (%s)",
+				name, surname, affiliation);
+	}
 	else if (name && surname) {
 		displayname = g_strdup_printf("%s %s",
 				name, surname);
 	}
+	else if (nickname && affiliation) {
+		displayname = g_strdup_printf("%s (%s)", nickname, affiliation);
+	}
 	else if (nickname) {
 		displayname = g_strdup(nickname);
+	}
+	else if (name && affiliation) {
+		displayname = g_strdup_printf("%s (%s)", name, affiliation);
 	}
 	else if (name) {
 		displayname = g_strdup(name);
 	}
+	else if (surname && affiliation) {
+		displayname = g_strdup_printf("%s (%s)", surname, affiliation);
+	}
 	else if (surname) {
 		displayname = g_strdup(surname);
+	}
+	else if (affiliation) {
+		displayname = g_strdup(affiliation);
 	}
 
 	return displayname;
