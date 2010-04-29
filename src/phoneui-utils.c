@@ -130,15 +130,18 @@ _sms_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 
 	free_smartphone_gsm_sms_send_text_message_finish(pack->sms, res,
 						&reference, &timestamp, &error);
+	if (error) {
+		/*FIXME: print the error*/
+		g_error_free(error);
+		goto end;
+	}
 	if (pack->callback) {
 		pack->callback(error, reference, timestamp, pack->data);
-	}
-	if (error) {
-		g_error_free(error);
 	}
 	if (timestamp) {
 		free(timestamp);
 	}
+end:
 	g_object_unref(pack->sms);
 	free(pack);
 }
