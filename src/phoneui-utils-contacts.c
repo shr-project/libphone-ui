@@ -367,66 +367,14 @@ _contact_lookup_callback(GObject *source, GAsyncResult *res, gpointer data)
 	free(pack);
 }
 
-static void
-_contact_lookup_type_callback(GError *error, char **fields,
-			      int count, gpointer data)
-{
-	/*FIXME: should I clean fields? */
-	GHashTable *query;
-	int i;
-	struct _contact_lookup_pack *pack = data;
-
-	if (error || !fields || !*fields) {
-		pack->callback(error, NULL, pack->data);
-		return;
-	}
-
-	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-				      free, _helpers_free_gvalue);
-
-	GValue *value = _helpers_new_gvalue_string(pack->number);
-	if (!value) {
-		g_hash_table_destroy(query);
-		// FIXME: create a nice error and pass it
-		pack->callback(NULL, NULL, pack->data);
-		free(pack->number);
-		free(pack);
-		return;
-	}
-	GValue *tmp = _helpers_new_gvalue_boolean(TRUE);
-	if (!tmp) {
-		_helpers_free_gvalue(value);
-		g_hash_table_destroy(query);
-		// FIXME: create a nice error and pass it
-		pack->callback(NULL, NULL, pack->data);
-		free(pack->number);
-		free(pack);
-		return;
-	}
-
-	g_hash_table_insert(query, strdup("_at_least_one"), tmp);
-
-	for (i = 0; i < count; i++) {
-		g_debug("\tTrying field: \"%s\"", fields[i]);
-		g_hash_table_insert(query, strdup(fields[i]), value);
-	}
-	g_debug("All fields collected");
-	pack->contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
-        free_smartphone_pim_contacts_get_single_entry_single_field
-		(pack->contacts, g_hash_table_ref(query), "Path",
-		 _contact_lookup_callback, pack);
-
- 	g_hash_table_unref(query);
-}
-
 int
 phoneui_utils_contact_lookup(const char *number,
 			void (*callback)(GError *, GHashTable *, gpointer),
 			gpointer data)
 {
 	struct _contact_lookup_pack *pack;
+	GValue *value;
+	GHashTable *query;
 
 	/* makes no sense to continue without callback */
 	if (!callback) {
@@ -437,9 +385,30 @@ phoneui_utils_contact_lookup(const char *number,
 	pack->data = data;
 	pack->callback = callback;
 	pack->number = strdup(number);
-	phoneui_utils_contacts_fields_get_with_type("phonenumber",
-					_contact_lookup_type_callback, pack);
 
+	query = g_hash_table_new_full(g_str_hash, g_str_equal,
+		free, _helpers_free_gvalue);
+
+	value = _helpers_new_gvalue_string(pack->number);
+	if (!value) {
+		g_hash_table_destroy(query);
+		// FIXME: create a nice error and pass it
+		pack->callback(NULL, NULL, pack->data);
+		free(pack->number);
+		free(pack);
+		return 1;
+	}
+
+	g_hash_table_insert(query, strdup("$phonenumber"), value);
+
+	pack->contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
+					FSO_FRAMEWORK_PIM_ServiceDBusName,
+					FSO_FRAMEWORK_PIM_ContactsServicePath);
+        free_smartphone_pim_contacts_get_single_entry_single_field
+		(pack->contacts, g_hash_table_ref(query), "Path",
+		 _contact_lookup_callback, pack);
+
+ 	g_hash_table_unref(query);
 	return 0;
 }
 
