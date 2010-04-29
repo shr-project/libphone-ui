@@ -381,8 +381,6 @@ _contact_lookup_type_callback(GError *error, char **fields,
 		return;
 	}
 
-	g_debug("Attempting to resolve name for: \"%s\"", pack->number);
-
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
 				      free, _helpers_free_gvalue);
 
