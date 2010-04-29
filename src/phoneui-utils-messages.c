@@ -118,13 +118,13 @@ _message_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _message_get_pack *pack = data;
 	message_data = free_smartphone_pim_message_get_content_finish
 						(pack->message, res, &error);
+	if (pack->callback) {
+		pack->callback(error, message_data, pack->data);
+	}
 	if (error) {
 		/*FIXME: print error*/
 		g_error_free(error);
 		goto end;
-	}
-	if (pack->callback) {
-		pack->callback(error, message_data, pack->data);
 	}
 	if (message_data) {
 		g_hash_table_unref(message_data);
