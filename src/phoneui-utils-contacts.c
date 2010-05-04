@@ -147,9 +147,8 @@ _contacts_field_type_callback(GObject *source, GAsyncResult *res, gpointer data)
 	char *type = NULL;
 	struct _field_type_pack *pack = data;
 
-	// FIXME !!!!!!!!!!!!!!!!!!!!1
-/*	type = free_smartphone_pim_fields_get_type_finish
-					(pack->fields, res, &error);*/
+	type = free_smartphone_pim_fields_get_type__finish
+					(pack->fields, res, &error);
 	if (pack->callback) {
 		pack->callback(error, type, pack->data);
 	}
