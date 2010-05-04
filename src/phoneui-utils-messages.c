@@ -173,31 +173,6 @@ _result_callback(GObject *source, GAsyncResult *res, gpointer data)
 }
 
 static void
-_result_count_callback(GObject *source, GAsyncResult *res, gpointer data)
-{
-	(void) source;
-	GError *error = NULL;
-	int count;
-	struct _message_query_list_pack *pack = data;
-
-	count = free_smartphone_pim_message_query_get_result_count_finish
-						(pack->query, res, &error);
-
-	g_debug("messages query has %d results", count);
-	if (error) {
-		g_warning("message result count error: (%d) %s",
-			  error->code, error->message);
-		pack->callback(error, NULL, 0, pack->data);
-		g_error_free(error);
-		g_object_unref(pack->query);
-		free(pack);
-		return;
-	}
-	g_message("Found %d messages, retrieving", count);
-	free_smartphone_pim_message_query_get_multiple_results(pack->query, count, _result_callback, pack);
-}
-
-static void
 _query_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
@@ -208,9 +183,7 @@ _query_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
 	g_debug("Query callback!");
 	query_path = free_smartphone_pim_messages_query_finish
 						(pack->messages, res, &error);
-        g_debug("Unrefing messages proxy");
 	g_object_unref(pack->messages);
-	g_debug("Done");
 	if (error) {
 		g_warning("message query error: (%d) %s",
 			  error->code, error->message);
@@ -220,8 +193,10 @@ _query_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
 	}
 	pack->query = free_smartphone_pim_get_message_query_proxy(_dbus(),
 				FSO_FRAMEWORK_PIM_ServiceDBusName, query_path);
-	free_smartphone_pim_message_query_get_result_count(pack->query,
-						_result_count_callback, pack);
+
+	free_smartphone_pim_message_query_get_multiple_results(pack->query, -1,
+							       _result_callback,
+							       pack);
 }
 
 void
