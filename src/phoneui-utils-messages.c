@@ -230,17 +230,19 @@ phoneui_utils_messages_get(void (*callback)(GError *, GHashTable **, int, gpoint
 {
 	struct _message_query_list_pack *pack;
 	GHashTable *query;
-	GValue *sortby, *sortdesc;
+	GValue *gval_tmp;
 
 	g_debug("Retrieving messages");
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
 						  NULL, _helpers_free_gvalue);
 
-	sortby = _helpers_new_gvalue_string("Timestamp");
-	g_hash_table_insert(query, "_sortby", sortby);
-	sortdesc = _helpers_new_gvalue_boolean(TRUE);
-	g_hash_table_insert(query, "_sortdesc", sortdesc);
+	gval_tmp = _helpers_new_gvalue_string("Timestamp");
+	g_hash_table_insert(query, "_sortby", gval_tmp);
+	gval_tmp = _helpers_new_gvalue_boolean(TRUE);
+	g_hash_table_insert(query, "_sortdesc", gval_tmp);
+	gval_tmp = _helpers_new_gvalue_boolean(TRUE);
+	g_hash_table_insert(query, "_resolve_phonenumber", gval_tmp);
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
