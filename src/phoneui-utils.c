@@ -335,7 +335,7 @@ phoneui_utils_idle_set_state(FreeSmartphoneDeviceIdleState state,
 	pack->data = data;
 	pack->idle = free_smartphone_device_get_idle_notifier_proxy(_dbus(),
 				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-				FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath);
+				FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath"/0");
 	free_smartphone_device_idle_notifier_set_state(pack->idle, state,
 						_set_idle_state_callback, pack);
 }
