@@ -92,7 +92,7 @@ _add_opimd_message(const char *number, const char *message)
 	GValue *tmp;
 
 	tmp = _helpers_new_gvalue_string(number);
-	g_hash_table_insert(message_opimd, "Recipient", tmp);
+	g_hash_table_insert(message_opimd, "Peer", tmp);
 
 	tmp = _helpers_new_gvalue_string("out");
 	g_hash_table_insert(message_opimd, "Direction", tmp);
