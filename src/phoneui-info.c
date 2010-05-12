@@ -12,6 +12,7 @@ struct _fso {
 	FreeSmartphoneUsage *usage;
 	FreeSmartphoneGSMCall *gsm_call;
 	FreeSmartphoneGSMNetwork *gsm_network;
+	FreeSmartphoneGSMPDP *gsm_pdp;
 	FreeSmartphoneDeviceIdleNotifier *idle_notifier;
 	FreeSmartphoneDeviceInput *input;
 	FreeSmartphoneDevicePowerSupply *power_supply;
@@ -34,6 +35,7 @@ static GList *callbacks_unread_messages = NULL;
 static GList *callbacks_unfinished_tasks = NULL;
 static GList *callbacks_resource_changes = NULL;
 static GList *callbacks_network_status = NULL;
+static GList *callbacks_pdp_context_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
 static GList *callbacks_call_status = NULL;
@@ -99,6 +101,7 @@ static void _profile_changed_handler(GObject *source, const char *profile, gpoin
 //static void _alarm_changed_handler(int time);
 static void _capacity_changed_handler(GObject *source, int energy, gpointer data);
 static void _network_status_handler(GObject *source, GHashTable *properties, gpointer data);
+static void _pdp_context_status_handler(GObject *source, const char *status, GHashTable *properties, gpointer data);
 static void _signal_strength_handler(GObject *source, int signal, gpointer data);
 static void _idle_notifier_handler(GObject *source, int state, gpointer data);
 static void _pim_contact_new_handler(GObject *source, const char *path, gpointer data);
@@ -119,6 +122,7 @@ static void _resource_state_callback(GObject *source, GAsyncResult *res, gpointe
 static void _get_profile_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_capacity_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _get_pdp_context_status_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data);
 //static void _get_alarm_callback(GError *error, int time, gpointer userdata);
 
@@ -130,6 +134,7 @@ static void _execute_input_event_callbacks(GList *cbs, const char *value1, FreeS
 static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
 static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2);
+static void _execute_charp_hashtable_callbacks(GList *cbs, const char *val1, GHashTable *val2);
 
 static void
 _callbacks_list_free_foreach(gpointer _data, gpointer userdata)
@@ -174,6 +179,12 @@ phoneui_info_init()
 			 G_CALLBACK(_network_status_handler), NULL);
 	g_signal_connect(G_OBJECT(fso.gsm_network), "signal-strength",
 			 G_CALLBACK(_signal_strength_handler), NULL);
+
+	fso.gsm_pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
+				FSO_FRAMEWORK_GSM_ServiceDBusName,
+				FSO_FRAMEWORK_GSM_DeviceServicePath);
+	g_signal_connect(G_OBJECT(fso.gsm_pdp), "context-status",
+			 G_CALLBACK(_pdp_context_status_handler), NULL);
 
 	fso.power_supply = free_smartphone_device_get_power_supply_proxy(_dbus(),
 				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
@@ -254,6 +265,8 @@ phoneui_info_deinit()
 	callbacks_list_free(callbacks_resource_changes);
 
 	callbacks_list_free(callbacks_network_status);
+
+	callbacks_list_free(callbacks_pdp_context_status);
 
 	callbacks_list_free(callbacks_signal_strength);
 
@@ -844,6 +857,56 @@ phoneui_info_register_and_request_network_status(void (*callback)(void *,
 }
 
 void
+phoneui_info_register_pdp_context_status(void (*callback)(void *, const char *,
+						GHashTable *), void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (pdp context status)");
+		return;
+	}
+	struct _cb_charp_hashtable_pack *pack =
+			malloc(sizeof(struct _cb_charp_hashtable_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (pdp context status)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_pdp_context_status, pack);
+	if (!l) {
+		g_warning("Failed to register callback for pdp context status");
+	}
+	else {
+		if (!callbacks_pdp_context_status) {
+			callbacks_pdp_context_status = l;
+			g_debug("Registered a callback for pdp context status");
+		}
+	}
+}
+
+void
+phoneui_info_request_pdp_context_status(void (*callback)(void *, const char *,
+						GHashTable *), void *data)
+{
+	struct _cb_charp_hashtable_pack *pack =
+			malloc(sizeof(struct _cb_charp_hashtable_pack));
+	pack->callback = callback;
+	pack->data = data;
+	free_smartphone_gsm_pdp_get_context_status(fso.gsm_pdp,
+					_get_pdp_context_status_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_pdp_context_status(void (*callback)(void *,
+					const char *, GHashTable *), void *data)
+{
+	phoneui_info_register_pdp_context_status(callback, data);
+	phoneui_info_request_pdp_context_status(callback, data);
+}
+
+void
 phoneui_info_register_signal_strength(void (*callback)(void *, int),
 				      void *data)
 {
@@ -1011,6 +1074,16 @@ _network_status_handler(GObject* source, GHashTable* properties, gpointer data)
 	(void) source;
 	(void) data;
 	_execute_hashtable_callbacks(callbacks_network_status, properties);
+}
+
+static void
+_pdp_context_status_handler(GObject *source, const char *status,
+			    GHashTable *properties, gpointer data)
+{
+	(void) source;
+	(void) data;
+	_execute_charp_hashtable_callbacks
+			(callbacks_pdp_context_status, status, properties);
 }
 
 static void
@@ -1339,6 +1412,36 @@ _get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 }
 
 static void
+_get_pdp_context_status_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	char *status;
+	GHashTable *properties;
+	struct _cb_charp_hashtable_pack *pack = data;
+
+	free_smartphone_gsm_pdp_get_context_status_finish
+				(fso.gsm_pdp, res, &status, &properties, &error);
+	if (error) {
+		g_message("_get_pdp_context_status_callback: error %d: %s",
+			  error->code, error->message);
+		g_error_free(error);
+	}
+	else if (pack->callback) {
+		pack->callback(pack->data, status, properties);
+	}
+	if (status) {
+		free(status);
+	}
+	if (properties) {
+		g_hash_table_destroy(properties);
+	}
+	if (pack) {
+		free(pack);
+	}
+}
+
+static void
 _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
@@ -1490,6 +1593,20 @@ _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2)
 
 	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
 		struct _cb_int_hashtable_pack *pack = cb->data;
+		pack->callback(pack->data, val1, val2);
+	}
+}
+
+static void
+_execute_charp_hashtable_callbacks(GList *cbs, const char *val1, GHashTable *val2)
+{
+	GList *cb;
+
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_charp_hashtable_pack *pack = cb->data;
 		pack->callback(pack->data, val1, val2);
 	}
 }
