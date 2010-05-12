@@ -54,6 +54,16 @@ struct _call_get_pack {
 	void (*callback)(GError *, GHashTable *, gpointer);
 	gpointer data;
 };
+struct _pdp_pack {
+	FreeSmartphoneGSMPDP *pdp;
+	void (*callback)(GError *, gpointer);
+	gpointer data;
+};
+struct _pdp_credentials_pack {
+	FreeSmartphoneGSMPDP *pdp;
+	void (*callback)(GError *, const char *, const char *, const char *, gpointer);
+	gpointer data;
+};
 
 int
 phoneui_utils_init(GKeyFile *keyfile)
@@ -546,6 +556,114 @@ phoneui_utils_call_get(const char *call_path,
 	g_debug("Getting data of call with path: %s", call_path);
 	free_smartphone_pim_call_get_content(pack->call, _call_get_callback, pack);
 	return (0);
+}
+
+static void
+_pdp_activate_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _pdp_pack *pack = data;
+
+	free_smartphone_gsm_pdp_activate_context_finish(pack->pdp, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+	if (error) {
+		g_error_free(error);
+	}
+	g_object_unref(pack->pdp);
+	free(pack);
+}
+
+static void
+_pdp_deactivate_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _pdp_pack *pack = data;
+
+	free_smartphone_gsm_pdp_deactivate_context_finish(pack->pdp, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+
+	if (error) {
+		g_error_free(error);
+	}
+	g_object_unref(pack->pdp);
+	free(pack);
+}
+
+void
+phoneui_utils_pdp_activate_context(void (*callback)(GError *, gpointer),
+			   gpointer userdata)
+{
+	struct _pdp_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	pack->pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
+					FSO_FRAMEWORK_GSM_ServiceDBusName,
+					FSO_FRAMEWORK_GSM_DeviceServicePath);
+
+	free_smartphone_gsm_pdp_activate_context
+				(pack->pdp, _pdp_activate_callback, pack);
+}
+
+void
+phoneui_utils_pdp_deactivate_context(void (*callback)(GError *, gpointer),
+			     gpointer userdata)
+{
+	struct _pdp_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	pack->pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
+					FSO_FRAMEWORK_GSM_ServiceDBusName,
+					FSO_FRAMEWORK_GSM_DeviceServicePath);
+
+	free_smartphone_gsm_pdp_deactivate_context
+				(pack->pdp, _pdp_deactivate_callback, pack);
+}
+
+static void
+_pdp_get_credentials_cb(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _pdp_credentials_pack *pack = data;
+	char *apn, *user, *pw;
+
+	free_smartphone_gsm_pdp_get_credentials_finish
+				(pack->pdp, res, &apn, &user, &pw, &error);
+	if (pack->callback) {
+		pack->callback(error, apn, user, pw, pack->data);
+	}
+	if (error) {
+		g_error_free(error);
+	}
+	g_object_unref(pack->pdp);
+	free(pack);
+}
+
+void
+phoneui_utils_pdp_get_credentials(void (*callback)(GError *, const char *,
+						   const char *, const char *,
+						   gpointer), gpointer data)
+{
+	struct _pdp_credentials_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	pack->pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
+					FSO_FRAMEWORK_GSM_ServiceDBusName,
+					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	free_smartphone_gsm_pdp_get_credentials
+				(pack->pdp, _pdp_get_credentials_cb, pack);
 }
 
 

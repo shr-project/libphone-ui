@@ -74,6 +74,10 @@ int phoneui_utils_call_get(const char *call_path, void (*callback)(GError *, GHa
 void phoneui_utils_set_offline_mode(gboolean onoff, void (*callback)(GError *, gpointer userdata), gpointer userdata);
 void phoneui_utils_get_offline_mode(void (*callback)(GError *, gboolean, gpointer userdata), gpointer userdata);
 
+void phoneui_utils_pdp_activate_context(void (*callback)(GError *, gpointer userdata), gpointer userdata);
+void phoneui_utils_pdp_deactivate_context(void (*callback)(GError *, gpointer userdata), gpointer userdata);
+void phoneui_utils_pdp_get_credentials(void (*callback)(GError *, const char *, const char *, const char *, gpointer), gpointer data);
+
 int phoneui_utils_init(GKeyFile *keyfile);
 void phoneui_utils_deinit();
 
