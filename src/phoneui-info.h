@@ -52,9 +52,9 @@ void phoneui_info_register_network_status(void (*_cb)(void *, GHashTable *), voi
 void phoneui_info_request_network_status(void (*_cb)(void *, GHashTable *), void *data);
 void phoneui_info_register_and_request_network_status(void (*_cb)(void *, GHashTable *), void *data);
 
-void phoneui_info_register_pdp_context_status(void (*_cb)(void *, const char *, GHashTable *), void *data);
-void phoneui_info_request_pdp_context_status(void (*_cb)(void *, const char *, GHashTable *), void *data);
-void phoneui_info_register_and_request_pdp_context_status(void (*_cb)(void *, const char *, GHashTable *), void *data);
+void phoneui_info_register_pdp_context_status(void (*_cb)(void *, FreeSmartphoneGSMContextStatus, GHashTable*), void *data);
+void phoneui_info_request_pdp_context_status(void (*_cb)(void *, FreeSmartphoneGSMContextStatus, GHashTable*), void *data);
+void phoneui_info_register_and_request_pdp_context_status(void (*_cb)(void *, FreeSmartphoneGSMContextStatus, GHashTable *), void *data);
 
 void phoneui_info_register_signal_strength(void (*_cb)(void *, int), void *data);
 void phoneui_info_request_signal_strength(void (*_cb)(void *, int), void *data);
