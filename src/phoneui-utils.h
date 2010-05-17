@@ -78,6 +78,9 @@ void phoneui_utils_pdp_activate_context(void (*callback)(GError *, gpointer user
 void phoneui_utils_pdp_deactivate_context(void (*callback)(GError *, gpointer userdata), gpointer userdata);
 void phoneui_utils_pdp_get_credentials(void (*callback)(GError *, const char *, const char *, const char *, gpointer), gpointer data);
 
+void phoneui_utils_network_start_connection_sharing(const char *iface, void (*callback)(GError *, gpointer), gpointer data);
+void phoneui_utils_network_stop_connection_sharing(const char *iface, void (*callback)(GError *, gpointer), gpointer data);
+
 int phoneui_utils_init(GKeyFile *keyfile);
 void phoneui_utils_deinit();
 

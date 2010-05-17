@@ -64,6 +64,19 @@ struct _pdp_credentials_pack {
 	void (*callback)(GError *, const char *, const char *, const char *, gpointer);
 	gpointer data;
 };
+struct _network_pack {
+	FreeSmartphoneNetwork *network;
+	void (*callback)(GError *, gpointer);
+	gpointer data;
+};
+struct _get_offline_mode_pack {
+	void (*callback)(GError *, gboolean, gpointer);
+	gpointer data;
+};
+struct _set_offline_mode_pack {
+	void (*callback)(GError *, gpointer);
+	gpointer data;
+};
 
 int
 phoneui_utils_init(GKeyFile *keyfile)
@@ -666,31 +679,142 @@ phoneui_utils_pdp_get_credentials(void (*callback)(GError *, const char *,
 				(pack->pdp, _pdp_get_credentials_cb, pack);
 }
 
+static void
+_network_start_sharing_cb(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _network_pack *pack = data;
 
+	free_smartphone_network_start_connection_sharing_with_interface_finish
+						(pack->network, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+}
 
-// void
-// phoneui_utils_get_offline_mode(void (*callback)(GError *, gboolean, gpointer),
-// 			       gpointer userdata)
-// {
-// 	GError *error = NULL;
-// 	DBusGProxy *phonefsod;
-// 	DBusGConnection *bus;
-// 	struct _get_offline_mode_pack *pack =
-// 			malloc(sizeof(struct _get_offline_mode_pack));
-// 	pack->callback = callback;
-// 	pack->data = userdata;
-//
-// 	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
-// 	if (error) {
-// 		callback(error, FALSE, userdata);
-// 		return;
-// 	}
-// 	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
-// 					      "/org/shr/phonefso/Usage",
-// 					      "org.shr.phonefso.Usage",
-// 					      "phonefso");
-// 	dbus_g_proxy_call_no_reply(phonefsod, "GetOfflineMode", );
-// 	dbus_g_proxy_begin_call()
-//
-//
-// }
+void
+phoneui_utils_network_start_connection_sharing(const char *iface,
+			void (*callback)(GError *, gpointer), gpointer data)
+{
+	struct _network_pack *pack;
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	pack->network = free_smartphone_get_network_proxy(_dbus(),
+					FSO_FRAMEWORK_NETWORK_ServiceDBusName,
+					FSO_FRAMEWORK_NETWORK_ServicePathPrefix);
+	free_smartphone_network_start_connection_sharing_with_interface
+			(pack->network, iface, _network_start_sharing_cb, pack);
+}
+
+static void
+_network_stop_sharing_cb(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _network_pack *pack = data;
+
+	free_smartphone_network_stop_connection_sharing_with_interface_finish
+						(pack->network, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+}
+
+void
+phoneui_utils_network_stop_connection_sharing(const char *iface,
+			void (*callback)(GError *, gpointer), gpointer data)
+{
+	struct _network_pack *pack;
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	pack->network = free_smartphone_get_network_proxy(_dbus(),
+					FSO_FRAMEWORK_NETWORK_ServiceDBusName,
+					FSO_FRAMEWORK_NETWORK_ServicePathPrefix);
+	free_smartphone_network_stop_connection_sharing_with_interface
+			(pack->network, iface, _network_stop_sharing_cb, pack);
+}
+
+static void
+_get_offline_mode_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+{
+	GError *error = NULL;
+	struct _get_offline_mode_pack *pack = data;
+	gboolean offline;
+
+	if (!dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_BOOLEAN,
+			      &offline, G_TYPE_INVALID)) {
+	}
+	if (pack->callback) {
+		pack->callback(error, offline, pack->data);
+	}
+	free(pack);
+}
+
+void
+phoneui_utils_get_offline_mode(void (*callback)(GError *, gboolean, gpointer),
+			       gpointer userdata)
+{
+	GError *error = NULL;
+	DBusGProxy *phonefsod;
+	DBusGConnection *bus;
+	struct _get_offline_mode_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+
+	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (error) {
+		callback(error, FALSE, userdata);
+		return;
+	}
+	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
+			"/org/shr/phonefso/Usage", "org.shr.phonefso.Usage");
+	dbus_g_proxy_begin_call(phonefsod, "GetOfflineMode",
+				_get_offline_mode_callback, pack, NULL,
+				G_TYPE_INVALID);
+}
+
+static void
+_set_offline_mode_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+{
+	GError *error = NULL;
+	struct _set_offline_mode_pack *pack = data;
+
+	if (!dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_INVALID)) {
+	}
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+	free(pack);
+}
+
+void
+phoneui_utils_set_offline_mode(gboolean offline,
+			       void (*callback)(GError *, gpointer),
+			       gpointer userdata)
+{
+	GError *error = NULL;
+	DBusGProxy *phonefsod;
+	DBusGConnection *bus;
+	struct _set_offline_mode_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+
+	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (error) {
+		callback(error, userdata);
+		return;
+	}
+	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
+			"/org/shr/phonefso/Usage", "org.shr.phonefso.Usage");
+	dbus_g_proxy_begin_call(phonefsod, "SetOfflineMode",
+				_set_offline_mode_callback, pack, NULL,
+				G_TYPE_BOOLEAN, offline, G_TYPE_INVALID);
+
+}
