@@ -100,9 +100,8 @@ phoneui_utils_call_release(int call_id, void (*callback)(GError *, gpointer),
 	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
 					FSO_FRAMEWORK_GSM_ServiceDBusName,
 					FSO_FRAMEWORK_GSM_DeviceServicePath);
-/*	free_smartphone_gsm_call_release(pack->call, call_id,
-					 _call_release_callback, pack);*/
-        free_smartphone_gsm_call_release_all(pack->call, _call_release_callback, pack);
+	free_smartphone_gsm_call_release(pack->call, call_id,
+					 _call_release_callback, pack);
 	return 0;
 }
 
