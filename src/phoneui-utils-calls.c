@@ -48,19 +48,22 @@ _call_initiate_callback(GObject *source, GAsyncResult *res, gpointer data)
 }
 
 int
-phoneui_utils_call_initiate(const char *number,
+phoneui_utils_call_initiate(const char *_number,
 			    void (*callback)(GError *, int, gpointer),
 			    gpointer userdata)
 {
 	struct _call_pack *pack;
+	char *number;
 
-	g_message("Inititating a call to %s\n", number);
+	g_message("Inititating a call to %s\n", _number);
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
 	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
 					FSO_FRAMEWORK_GSM_ServiceDBusName,
 					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	number = strdup(_number);
+	phone_utils_remove_filler_chars(number);
 	free_smartphone_gsm_call_initiate(pack->call, number, "voice",
 					  _call_initiate_callback, pack);
 	return 0;

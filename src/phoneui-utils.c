@@ -1,4 +1,3 @@
-
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,6 +8,7 @@
 #include <freesmartphone.h>
 #include <fsoframework.h>
 #include <frameworkd-glib-dbus.h>
+#include <phone-utils.h>
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 #include "phoneui-utils-device.h"
@@ -189,6 +189,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 	for (i = 0; i < recipients->len; i++) {
 		properties = g_ptr_array_index(recipients, i);
 		number = phoneui_utils_contact_display_phone_get(properties);
+		phone_utils_remove_filler_chars(number);
 		if (!number) {
 			continue;
 		}
