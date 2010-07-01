@@ -1,5 +1,7 @@
 
 #include <stdlib.h>
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus.h>
 
 #include <freesmartphone.h>
 #include <fsoframework.h>
@@ -126,6 +128,8 @@ static void _get_pdp_context_status_callback(GObject *source, GAsyncResult *res,
 static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data);
 //static void _get_alarm_callback(GError *error, int time, gpointer userdata);
 
+static void _name_owner_changed(DBusGProxy *proxy, const char *name, const char *prev, const char *new, gpointer data);
+
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_pim_single_changed_callbacks(GList* cbs, int entryid, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
@@ -159,6 +163,19 @@ callbacks_list_free(GList *list)
 int
 phoneui_info_init()
 {
+	DBusGProxy *dbus_proxy;
+
+	/* register for NameOwnerChanged */
+	dbus_proxy = dbus_g_proxy_new_for_name (_dbus(), DBUS_SERVICE_DBUS,
+						DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
+
+	dbus_g_proxy_add_signal(dbus_proxy, "NameOwnerChanged", G_TYPE_STRING,
+				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+
+	dbus_g_proxy_connect_signal(dbus_proxy, "NameOwnerChanged",
+				    G_CALLBACK(_name_owner_changed), NULL, NULL);
+
+
 
 	fso.usage = free_smartphone_get_usage_proxy(_dbus(),
 				FSO_FRAMEWORK_USAGE_ServiceDBusName,
@@ -1476,6 +1493,22 @@ _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 //	}
 //	phoneui_idle_screen_update_alarm(time);
 //}
+
+static void
+_name_owner_changed(DBusGProxy *proxy, const char *name,
+		    const char *prev, const char *new, gpointer data)
+{
+	(void) proxy;
+	(void) new;
+	(void) data;
+	if (prev && *prev && !strcmp(name, FSO_FRAMEWORK_GSM_ServiceDBusName)) {
+		_execute_hashtable_callbacks(callbacks_network_status, NULL);
+		_execute_gsm_context_status_callbacks
+			(callbacks_pdp_context_status,
+			 FREE_SMARTPHONE_GSM_CONTEXT_STATUS_UNKNOWN, NULL);
+		_execute_int_callbacks(callbacks_signal_strength, 0);
+	}
+}
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path,
 				       enum PhoneuiInfoChangeType type)
