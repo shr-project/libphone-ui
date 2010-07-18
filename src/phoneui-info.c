@@ -1018,7 +1018,7 @@ _pim_new_call_handler(GObject *source, char *path, gpointer data)
 {
 	(void) source;
 	(void) data;
-	_execute_pim_changed_callbacks(callbacks_contact_changes,
+	_execute_pim_changed_callbacks(callbacks_call_changes,
 				       path, PHONEUI_INFO_CHANGE_NEW);
 }
 
