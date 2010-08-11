@@ -1,3 +1,25 @@
+/*
+ *  Copyright (C) 2009, 2010
+ *      Authors (alphabetical) :
+ * 		Tom "TAsn" Hacohen <tom@stosb.com>
+ * 		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ */
+
+
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
@@ -74,6 +96,10 @@ struct _get_offline_mode_pack {
 	gpointer data;
 };
 struct _set_offline_mode_pack {
+	void (*callback)(GError *, gpointer);
+	gpointer data;
+};
+struct _set_pin_pack {
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
@@ -818,4 +844,45 @@ phoneui_utils_set_offline_mode(gboolean offline,
 				_set_offline_mode_callback, pack, NULL,
 				G_TYPE_BOOLEAN, offline, G_TYPE_INVALID);
 
+}
+
+static void
+_set_pin_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+{
+	GError *error = NULL;
+	struct _set_pin_pack *pack = data;
+
+	dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_INVALID);
+	if (pack) {
+		if (pack->callback) {
+			pack->callback(error, pack->data);
+		}
+		free(pack);
+	}
+}
+
+void
+phoneui_utils_set_pin(const char *pin, gboolean save,
+		      void (*callback)(GError *, gpointer),
+		      gpointer userdata)
+{
+	GError *error = NULL;
+	DBusGProxy *phonefsod;
+	DBusGConnection *bus;
+	struct _set_pin_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+
+	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (error) {
+		callback(error, userdata);
+		return;
+	}
+	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
+			"/org/shr/phonefso/Usage", "org.shr.phonefso.Usage");
+	dbus_g_proxy_begin_call(phonefsod, "SetPin", _set_pin_callback, pack,
+				NULL, G_TYPE_STRING, pin, G_TYPE_BOOLEAN, save,
+				G_TYPE_INVALID);
 }

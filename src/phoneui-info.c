@@ -1,3 +1,25 @@
+/*
+ *  Copyright (C) 2009, 2010
+ *      Authors (alphabetical) :
+ * 		Tom "TAsn" Hacohen <tom@stosb.com>
+ * 		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ */
+
+
 
 #include <stdlib.h>
 #include <dbus/dbus-glib.h>
@@ -1414,10 +1436,11 @@ _get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
 	GError *error = NULL;
-	GHashTable *properties;
+	GHashTable *properties = NULL;
 
 	properties = free_smartphone_gsm_network_get_status_finish
 					(fso.gsm_network, res, &error);
+	g_debug("_get_network_status_callback");
 	if (error) {
 		g_message("_get_network_status_callback: error %d: %s",
 				error->code, error->message);
@@ -1429,6 +1452,7 @@ _get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 		pack->callback(pack->data, properties);
 		free(pack);
 	}
+	g_debug("_get_network_status_callback DONE");
 }
 
 static void
@@ -1437,9 +1461,10 @@ _get_pdp_context_status_callback(GObject *source, GAsyncResult *res, gpointer da
 	(void) source;
 	GError *error = NULL;
 	FreeSmartphoneGSMContextStatus status;
-	GHashTable *properties;
+	GHashTable *properties = NULL;
 	struct _cb_gsm_context_status_pack *pack = data;
 
+	g_debug("_get_pdp_context_status_callback");
 	free_smartphone_gsm_pdp_get_context_status_finish
 				(fso.gsm_pdp, res, &status, &properties, &error);
 	if (error) {
@@ -1456,6 +1481,7 @@ _get_pdp_context_status_callback(GObject *source, GAsyncResult *res, gpointer da
 	if (pack) {
 		free(pack);
 	}
+	g_debug("_get_pdp_context_status_callback DONE");
 }
 
 static void
@@ -1465,6 +1491,7 @@ _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 	GError *error = NULL;
 	int signal;
 
+	g_debug("_get_signal_strength_callback");
 	signal = free_smartphone_gsm_network_get_signal_strength_finish
 						(fso.gsm_network, res, &error);
 	if (error) {
@@ -1475,9 +1502,12 @@ _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 	}
 	if (data) {
 		struct _cb_int_pack *pack = data;
+		g_debug("calling signal callback");
 		pack->callback(pack->data, signal);
 		free(pack);
 	}
+	g_debug("_get_signal_strength_callback DONE");
+
 }
 
 
