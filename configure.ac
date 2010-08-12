@@ -1,5 +1,5 @@
 AC_PREREQ(2.53)
-AC_INIT(libphone-ui, 0.1, http://www.openmoko.org/)
+AC_INIT(libphone-ui, 0.0.1, http://www.shr-project.org/)
 AM_INIT_AUTOMAKE()
 AM_CONFIG_HEADER(config.h)
 AM_MAINTAINER_MODE
