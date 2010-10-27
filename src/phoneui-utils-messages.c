@@ -112,12 +112,21 @@ phoneui_utils_message_set_read_status(const char *path, int read,
 					NULL, _helpers_free_gvalue);
 	if (!options)
 		return 1;
-	message_read = _helpers_new_gvalue_boolean(read);
+
+	if (read) {
+		message_read = _helpers_new_gvalue_string("");
+	}
+	else {
+		message_read = _helpers_new_gvalue_boolean(1);
+	}
+	
 	if (!message_read) {
 		g_hash_table_destroy(options);
 		return 1;
 	}
-	g_hash_table_insert(options, "MessageRead", message_read);
+	
+	g_hash_table_insert(options, "New", message_read);
+	
 	pack = malloc(sizeof(struct _message_pack));
 	pack->callback = callback;
 	pack->data = data;
