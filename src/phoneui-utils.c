@@ -153,8 +153,8 @@ _add_opimd_message(const char *number, const char *message)
 	tmp = _helpers_new_gvalue_string(message);
 	g_hash_table_insert(message_opimd, "Content", tmp);
 
-	tmp = _helpers_new_gvalue_boolean(1);
-	g_hash_table_insert(message_opimd, "MessageSent", tmp);
+	tmp = _helpers_new_gvalue_boolean(FALSE);
+	g_hash_table_insert(message_opimd, "New", tmp);
 
 	tmp = _helpers_new_gvalue_int(time(NULL));
 	g_hash_table_insert(message_opimd, "Timestamp", tmp);
