@@ -536,7 +536,9 @@ _calls_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 }
 
 void
-phoneui_utils_calls_get(int *count,
+phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc,
+			int limit_start, int limit, gboolean resolve_number,
+			const char *direction, int answered, int *count,
 			void (*callback) (GError *, GHashTable **, int, gpointer),
 			gpointer data)
 {
@@ -552,13 +554,48 @@ phoneui_utils_calls_get(int *count,
 
 	GHashTable *qry = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, _helpers_free_gvalue);
-	g_hash_table_insert(qry, "_sortby",
-			    _helpers_new_gvalue_string("Timestamp"));
-	g_hash_table_insert(qry, "_sortdesc",
-			    _helpers_new_gvalue_boolean(TRUE));
+
+	if (sortby && strlen(sortby)) {
+		g_hash_table_insert(qry, "_sortby",
+			    _helpers_new_gvalue_string(sortby));
+	}
+
+	if (sortdesc) {
+		g_hash_table_insert(qry, "_sortdesc",
+			    _helpers_new_gvalue_boolean(sortdesc));
+	}
+
+	if (resolve_number) {
+		g_hash_table_insert(qry, "_resolve_phonenumber",
+			    _helpers_new_gvalue_int(resolve_number));
+	}
+
+	g_hash_table_insert(qry, "_limit_start",
+		    _helpers_new_gvalue_int(limit_start));
+	g_hash_table_insert(qry, "_limit",
+		    _helpers_new_gvalue_int(limit));
+
+	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
+		g_hash_table_insert(qry, "Direction",
+		    _helpers_new_gvalue_string(direction));
+	}
+
+	if (answered > -1) {
+		g_hash_table_insert(qry, "Answered",
+			    _helpers_new_gvalue_boolean(answered));
+	}
+
 	free_smartphone_pim_calls_query(pack->calls, qry,
 					_calls_query_callback, pack);
 	g_hash_table_unref(qry);
+}
+
+void
+phoneui_utils_calls_get(int *count,
+			void (*callback) (GError *, GHashTable **, int, gpointer),
+			gpointer data)
+{
+	phoneui_utils_calls_get_full("Timestamp", TRUE, 0, -1, TRUE, NULL, -1, count, callback, data);
 }
 
 static void

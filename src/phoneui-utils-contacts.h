@@ -23,6 +23,7 @@
 
 #include <glib.h>
 
+void phoneui_utils_contacts_get_full(int limit_start, int limit, int *count, void (*callback)(gpointer , gpointer), gpointer data);
 void phoneui_utils_contacts_get(int *count, void (*callback)(gpointer , gpointer), gpointer data);
 void phoneui_utils_contacts_field_type_get(const char *name, void (*callback)(GError *, char *, gpointer), gpointer user_data);
 void phoneui_utils_contacts_fields_get(void (*callback)(GError *, GHashTable *, gpointer), gpointer data);

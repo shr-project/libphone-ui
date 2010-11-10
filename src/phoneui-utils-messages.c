@@ -231,8 +231,9 @@ _query_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
 }
 
 void
-phoneui_utils_messages_get(void (*callback)(GError *, GHashTable **, int, gpointer),
-			   gpointer data)
+phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit_start,
+			   int limit, gboolean resolve_number, const char *direction,
+			   void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
 {
 	struct _message_query_list_pack *pack;
 	GHashTable *query;
@@ -243,12 +244,30 @@ phoneui_utils_messages_get(void (*callback)(GError *, GHashTable **, int, gpoint
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
 						  NULL, _helpers_free_gvalue);
 
-	gval_tmp = _helpers_new_gvalue_string("Timestamp");
-	g_hash_table_insert(query, "_sortby", gval_tmp);
-	gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-	g_hash_table_insert(query, "_sortdesc", gval_tmp);
-	gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-	g_hash_table_insert(query, "_resolve_phonenumber", gval_tmp);
+	if (sortby && strlen(sortby)) {
+		gval_tmp = _helpers_new_gvalue_string(sortby);
+		g_hash_table_insert(query, "_sortby", gval_tmp);
+	}
+
+	if (sortdesc) {
+		gval_tmp = _helpers_new_gvalue_boolean(sortdesc);
+		g_hash_table_insert(query, "_sortdesc", gval_tmp);
+	}
+
+	if (resolve_number) {
+		gval_tmp = _helpers_new_gvalue_boolean(resolve_number);
+		g_hash_table_insert(query, "_resolve_phonenumber", gval_tmp);
+	}
+
+	gval_tmp = _helpers_new_gvalue_int(limit_start);
+	g_hash_table_insert(query, "_limit_start", gval_tmp);
+	gval_tmp = _helpers_new_gvalue_int(limit);
+	g_hash_table_insert(query, "_limit", gval_tmp);
+
+	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
+		gval_tmp = _helpers_new_gvalue_string(direction);
+		g_hash_table_insert(query, "Direction", gval_tmp);
+	}
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
@@ -261,4 +280,11 @@ phoneui_utils_messages_get(void (*callback)(GError *, GHashTable **, int, gpoint
 					   _query_messages_callback, pack);
 	g_hash_table_unref(query);
 	g_debug("Done");
+}
+
+void
+phoneui_utils_messages_get(void (*callback)(GError *, GHashTable **, int, gpointer),
+			   gpointer data)
+{
+	phoneui_utils_messages_get_full("Timestamp", TRUE, 0, -1, TRUE, NULL, callback, data);
 }

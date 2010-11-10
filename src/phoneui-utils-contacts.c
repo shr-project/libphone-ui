@@ -143,7 +143,7 @@ _query_callback(GError *error, char *path, gpointer data)
 }
 
 void
-phoneui_utils_contacts_get(int *count,
+phoneui_utils_contacts_get_full(int limit_start, int limit, int *count,
 			   void (*callback)(gpointer, gpointer),
 			   gpointer userdata)
 {
@@ -157,7 +157,20 @@ phoneui_utils_contacts_get(int *count,
 	qry = g_hash_table_new_full
 			(g_str_hash, g_str_equal, NULL, _helpers_free_gvalue);
 
+	g_hash_table_insert(qry, "_limit_start",
+		    _helpers_new_gvalue_int(limit_start));
+	g_hash_table_insert(qry, "_limit",
+		    _helpers_new_gvalue_int(limit));
+
 	opimd_contacts_query(qry, _query_callback, pack);
+}
+
+void
+phoneui_utils_contacts_get(int *count,
+			   void (*callback)(gpointer, gpointer),
+			   gpointer userdata)
+{
+	phoneui_utils_contacts_get_full(0, -1, count, callback, userdata);
 }
 
 static void
