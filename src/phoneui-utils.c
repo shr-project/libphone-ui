@@ -169,9 +169,9 @@ _sms_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
 	GError *error = NULL;
-	int reference;
-	char *timestamp;
+	char *timestamp = NULL;
 	struct _sms_send_pack *pack = data;
+	int reference;
 
 	free_smartphone_gsm_sms_send_text_message_finish(pack->sms, res,
 						&reference, &timestamp, &error);
@@ -184,15 +184,13 @@ _sms_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 	if (pack->callback) {
 		pack->callback(error, reference, timestamp, pack->data);
 	}
-	if (error) {
-		/*FIXME: print the error*/
-		g_error_free(error);
-		goto end;
-	}
 	if (timestamp) {
 		free(timestamp);
 	}
-end:
+	if (error) {
+		g_warning("Error %d sending message: %s\n", error->code, error->message);
+		g_error_free(error);
+	}
 	g_object_unref(pack->pim_messages);
 	g_object_unref(pack->sms);
 	free(pack->number);
@@ -216,6 +214,12 @@ _opimd_message_added(GObject *source_object, GAsyncResult *res, gpointer user_da
 
 	if (!error && msg_path)
 		pack->pim_path = msg_path;
+	else if (error) {
+		g_warning("Error %d saving message: %s\n", error->code, error->message);
+		g_error_free(error);
+		/*TODO redirect the error to the send_text_message function, adding it
+		 * to the pack; then do the proper callback. */
+	}
 
 	free_smartphone_gsm_sms_send_text_message(pack->sms, pack->number,
 				pack->message, FALSE, _sms_send_callback, pack);
