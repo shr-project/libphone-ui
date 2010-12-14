@@ -3,6 +3,7 @@
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *		Marco Trevisan (Treviño) <mail@3v1n0.net>
  *		Thomas Zimmermann <zimmermann@vdm-design.de>
  *
  * This library is free software; you can redistribute it and/or
@@ -37,6 +38,7 @@
 #include "phoneui-utils-device.h"
 #include "phoneui-utils-feedback.h"
 #include "phoneui-utils-contacts.h"
+#include "phoneui-utils-messages.h"
 #include "dbus.h"
 #include "helpers.h"
 
@@ -61,6 +63,10 @@ struct _idle_pack {
 
 struct _sms_send_pack {
 	FreeSmartphoneGSMSMS *sms;
+	FreeSmartphonePIMMessages *pim_messages;
+	char *number;
+	const char *message;
+	char *pim_path;
 	void (*callback)(GError *, int, const char *, gpointer);
 	gpointer data;
 };
@@ -127,15 +133,11 @@ phoneui_utils_deinit()
 	phoneui_utils_sound_deinit();
 }
 
-static void
-_add_opimd_message(const char *number, const char *message)
+GHashTable *
+_create_opimd_message(const char *number, const char *message)
 {
-	/*FIXME: ATM it just saves it as saved and tell the user everything
-	 * is ok, even if it didn't save. We really need to fix that,
-	 * we should verify if glib's callbacks work */
-	/*TODO: add timzone and handle messagesent correctly */
-	/* add to opimd */
-        FreeSmartphonePIMMessages *pim_messages;
+	/* TODO: add timzone */
+
 	GHashTable *message_opimd =
 		g_hash_table_new_full(g_str_hash, g_str_equal,
 				      NULL, _helpers_free_gvalue);
@@ -153,20 +155,13 @@ _add_opimd_message(const char *number, const char *message)
 	tmp = _helpers_new_gvalue_string(message);
 	g_hash_table_insert(message_opimd, "Content", tmp);
 
-	tmp = _helpers_new_gvalue_boolean(FALSE);
+	tmp = _helpers_new_gvalue_boolean(TRUE);
 	g_hash_table_insert(message_opimd, "New", tmp);
 
 	tmp = _helpers_new_gvalue_int(time(NULL));
 	g_hash_table_insert(message_opimd, "Timestamp", tmp);
 
-	/*FIXME: Add timezone!*/
-	pim_messages = free_smartphone_pim_get_messages_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_MessagesServicePath);
-	free_smartphone_pim_messages_add (pim_messages, message_opimd, NULL, NULL);
-
-	g_hash_table_unref(message_opimd);
-	g_object_unref(pim_messages);
+	return message_opimd;
 }
 
 static void
@@ -180,6 +175,12 @@ _sms_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 
 	free_smartphone_gsm_sms_send_text_message_finish(pack->sms, res,
 						&reference, &timestamp, &error);
+
+	if (pack->pim_path) {
+		phoneui_utils_message_set_sent_status(pack->pim_path, !error, NULL, NULL);
+		free(pack->pim_path);
+	}
+
 	if (pack->callback) {
 		pack->callback(error, reference, timestamp, pack->data);
 	}
@@ -192,8 +193,46 @@ _sms_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 		free(timestamp);
 	}
 end:
+	g_object_unref(pack->pim_messages);
 	g_object_unref(pack->sms);
+	free(pack->number);
 	free(pack);
+}
+
+static void
+_opimd_message_added(GObject *source_object, GAsyncResult *res, gpointer user_data)
+{
+	(void)source_object;
+	struct _sms_send_pack *pack = user_data;
+	char *msg_path = NULL;
+	GError *error = NULL;
+
+	/*FIXME: ATM it just saves it as saved and tell the user everything
+	 * is ok, even if it didn't save. We really need to fix that,
+	 * we should verify if glib's callbacks work */
+
+	msg_path = free_smartphone_pim_messages_add_finish(pack->pim_messages, res,
+				&error);
+
+	if (!error && msg_path)
+		pack->pim_path = msg_path;
+
+	free_smartphone_gsm_sms_send_text_message(pack->sms, pack->number,
+				pack->message, FALSE, _sms_send_callback, pack);
+}
+
+static void
+_opimd_message_send(struct _sms_send_pack *pack)
+{
+	if (pack->pim_messages) {
+		GHashTable *message_opimd = _create_opimd_message(pack->number, pack->message);
+		free_smartphone_pim_messages_add(pack->pim_messages, message_opimd,
+					_opimd_message_added, pack);
+		g_hash_table_unref(message_opimd);
+	} else {
+		free_smartphone_gsm_sms_send_text_message(pack->sms, pack->number,
+				pack->message, FALSE, _sms_send_callback, pack);
+	}
 }
 
 int
@@ -204,6 +243,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 	unsigned int i;
 	struct _sms_send_pack *pack;
 	FreeSmartphoneGSMSMS *sms;
+	FreeSmartphonePIMMessages *pim_messages;
 	GHashTable *properties;
 	char *number;
 
@@ -211,7 +251,13 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		return 1;
 	}
 
-	sms = free_smartphone_gsm_get_s_m_s_proxy(_dbus(), FSO_FRAMEWORK_GSM_ServiceDBusName, FSO_FRAMEWORK_GSM_DeviceServicePath);
+	sms = free_smartphone_gsm_get_s_m_s_proxy(_dbus(),
+					FSO_FRAMEWORK_GSM_ServiceDBusName,
+					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	pim_messages = free_smartphone_pim_get_messages_proxy(_dbus(),
+					FSO_FRAMEWORK_PIM_ServiceDBusName,
+					FSO_FRAMEWORK_PIM_MessagesServicePath);
+
 	/* cycle through all the recipients */
 	for (i = 0; i < recipients->len; i++) {
 		properties = g_ptr_array_index(recipients, i);
@@ -225,12 +271,14 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		pack->callback = callback;
 		pack->data = data;
 		pack->sms = g_object_ref(sms);
-		free_smartphone_gsm_sms_send_text_message(pack->sms, number,
-				message, FALSE, _sms_send_callback, pack);
-		_add_opimd_message(number, message);
-		free(number);
+		pack->pim_messages = g_object_ref(pim_messages);
+		pack->pim_path = NULL;
+		pack->message = message;
+		pack->number = number;
+		_opimd_message_send(pack);
 	}
 	g_object_unref(sms);
+	g_object_unref(pim_messages);
 
 	return 0;
 }
