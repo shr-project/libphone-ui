@@ -226,7 +226,7 @@ _opimd_message_added(GObject *source_object, GAsyncResult *res, gpointer user_da
 }
 
 static void
-_opimd_message_send(struct _sms_send_pack *pack)
+_sms_message_send(struct _sms_send_pack *pack)
 {
 	if (pack->pim_messages) {
 		GHashTable *message_opimd = _create_opimd_message(pack->number, pack->message);
@@ -279,7 +279,7 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		pack->pim_path = NULL;
 		pack->message = message;
 		pack->number = number;
-		_opimd_message_send(pack);
+		_sms_message_send(pack);
 	}
 	g_object_unref(sms);
 	g_object_unref(pim_messages);

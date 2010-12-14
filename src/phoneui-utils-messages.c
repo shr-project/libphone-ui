@@ -242,9 +242,25 @@ _query_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
 							       pack);
 }
 
+static void
+_options_hashtable_foreach_query(void *k, void *v, void *data) {
+	GHashTable *query = ((GHashTable *)data);
+	char *key = (char *)k;
+	GValue *value = (GValue *)v;
+	GValue *new_value;
+
+	if (key && key[0] != '_') {
+		new_value = malloc(sizeof(GValue));
+		bzero(new_value, sizeof(GValue));
+		g_value_init(new_value, G_VALUE_TYPE(value));
+		g_value_copy(value, new_value);
+		g_hash_table_insert(query, strdup(key), new_value);
+	}
+}
+
 void
-phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit_start,
-			   int limit, gboolean resolve_number, const char *direction,
+phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, int limit_start,
+			   int limit, gboolean resolve_number, const GHashTable *options,
 			   void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
 {
 	struct _message_query_list_pack *pack;
@@ -276,10 +292,7 @@ phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit
 	gval_tmp = _helpers_new_gvalue_int(limit);
 	g_hash_table_insert(query, "_limit", gval_tmp);
 
-	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
-		gval_tmp = _helpers_new_gvalue_string(direction);
-		g_hash_table_insert(query, "Direction", gval_tmp);
-	}
+	g_hash_table_foreach((GHashTable *)options, _options_hashtable_foreach_query, query);
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
@@ -292,6 +305,30 @@ phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit
 					   _query_messages_callback, pack);
 	g_hash_table_unref(query);
 	g_debug("Done");
+}
+
+void
+phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit_start,
+			   int limit, gboolean resolve_number, const char *direction,
+			   void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
+{
+	GHashTable *query;
+	GValue *gval_tmp;
+
+	g_debug("Retrieving messages");
+
+	query = g_hash_table_new_full(g_str_hash, g_str_equal,
+						  NULL, _helpers_free_gvalue);
+
+	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
+		gval_tmp = _helpers_new_gvalue_string(direction);
+		g_hash_table_insert(query, "Direction", gval_tmp);
+	}
+
+	phoneui_utils_messages_query(sortby, sortdesc, limit_start, limit,
+				resolve_number, query, callback, data);
+
+	g_hash_table_unref(query);
 }
 
 void
