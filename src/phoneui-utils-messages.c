@@ -3,6 +3,7 @@
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *		Marco Trevisan (Treviño) <mail@3v1n0.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -83,7 +84,7 @@ phoneui_utils_message_delete(const char *path,
 }
 
 static void
-_message_set_read_status_callback(GObject *source, GAsyncResult *res,
+_message_set_new_status_callback(GObject *source, GAsyncResult *res,
 				  gpointer data)
 {
 	(void) source;
@@ -100,12 +101,12 @@ _message_set_read_status_callback(GObject *source, GAsyncResult *res,
 }
 
 int
-phoneui_utils_message_set_read_status(const char *path, int read,
+phoneui_utils_message_set_new_status(const char *path, gboolean new,
 				void (*callback) (GError *, gpointer),
 				gpointer data)
 {
 	struct _message_pack *pack;
-	GValue *message_read;
+	GValue *message_new;
 	GHashTable *options;
 
 	options = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -113,19 +114,14 @@ phoneui_utils_message_set_read_status(const char *path, int read,
 	if (!options)
 		return 1;
 
-	if (read) {
-		message_read = _helpers_new_gvalue_string("");
-	}
-	else {
-		message_read = _helpers_new_gvalue_boolean(1);
-	}
-	
-	if (!message_read) {
+	message_new = _helpers_new_gvalue_boolean(new);
+
+	if (!message_new) {
 		g_hash_table_destroy(options);
 		return 1;
 	}
 	
-	g_hash_table_insert(options, "New", message_read);
+	g_hash_table_insert(options, "New", message_new);
 	
 	pack = malloc(sizeof(struct _message_pack));
 	pack->callback = callback;
@@ -133,11 +129,27 @@ phoneui_utils_message_set_read_status(const char *path, int read,
 	pack->message = free_smartphone_pim_get_message__proxy(_dbus(),
 				FSO_FRAMEWORK_PIM_ServiceDBusName, path);
 	free_smartphone_pim_message_update(pack->message, options,
-				_message_set_read_status_callback, pack);
-// 	_helpers_free_gvalue(message_read);
+				_message_set_new_status_callback, pack);
+// 	_helpers_free_gvalue(message_new);
 	g_hash_table_unref(options);
 
 	return 0;
+}
+
+int
+phoneui_utils_message_set_read_status(const char *path, int read,
+				void (*callback) (GError *, gpointer),
+				gpointer data)
+{
+	return phoneui_utils_message_set_new_status(path, !read, callback, data);
+}
+
+int
+phoneui_utils_message_set_sent_status(const char *path, int sent,
+				void (*callback) (GError *, gpointer),
+				gpointer data)
+{
+	return phoneui_utils_message_set_new_status(path, !sent, callback, data);
 }
 
 static void

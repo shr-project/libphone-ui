@@ -2,6 +2,7 @@
  *  Copyright (C) 2009, 2010
  *      Authors (alphabetical) :
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *		Marco Trevisan (Treviño) <mail@3v1n0.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,7 +25,9 @@
 #include <glib.h>
 
 int phoneui_utils_message_delete(const char *message_path, void (*callback)(GError *, gpointer), gpointer data);
+int phoneui_utils_message_set_new_status(const char *path, gboolean new, void (*callback) (GError *, gpointer), gpointer data);
 int phoneui_utils_message_set_read_status(const char *path, int read, void (*callback) (GError *, gpointer), gpointer data);
+int phoneui_utils_message_set_sent_status(const char *path, int sent, void (*callback) (GError *, gpointer), gpointer data);
 int phoneui_utils_message_get(const char *message_path, void (*callback)(GError *, GHashTable *, gpointer), gpointer data);
 void phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit_start, int limit, gboolean resolve_number, const char *direction, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
 void phoneui_utils_messages_get(void (*callback) (GError *, GHashTable **, int, void *), gpointer data);
