@@ -24,6 +24,7 @@
 
 #include <glib.h>
 
+int phoneui_utils_message_add(GHashTable *message, void (*callback)(GError *, char *msgpath, gpointer), gpointer data);
 int phoneui_utils_message_delete(const char *message_path, void (*callback)(GError *, gpointer), gpointer data);
 int phoneui_utils_message_set_new_status(const char *path, gboolean new, void (*callback) (GError *, gpointer), gpointer data);
 int phoneui_utils_message_set_read_status(const char *path, int read, void (*callback) (GError *, gpointer), gpointer data);

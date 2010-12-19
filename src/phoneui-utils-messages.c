@@ -37,6 +37,12 @@ struct _message_pack {
 	gpointer data;
 };
 
+struct _message_add_pack {
+	FreeSmartphonePIMMessages *messages;
+	void (*callback)(GError *, char *, gpointer);
+	gpointer data;
+};
+
 struct _message_get_pack {
 	FreeSmartphonePIMMessage *message;
 	void (*callback)(GError *, GHashTable *, gpointer);
@@ -49,6 +55,45 @@ struct _message_query_list_pack {
 	FreeSmartphonePIMMessageQuery *query;
 	FreeSmartphonePIMMessages *messages;
 };
+
+static void
+_message_add_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _message_add_pack *pack = data;
+	char *new_path;
+
+	new_path = free_smartphone_pim_messages_add_finish(pack->messages, res, &error);
+
+	if (pack->callback) {
+		pack->callback(error, new_path, pack->data);
+	}
+	if (error) {
+		g_error_free(error);
+	}
+	g_object_unref(pack->messages);
+	free(pack);
+}
+
+int
+phoneui_utils_message_add(GHashTable *message,
+			     void (*callback)(GError *, char *, gpointer), gpointer data)
+{
+	struct _message_add_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	pack->messages = free_smartphone_pim_get_messages_proxy(_dbus(),
+					FSO_FRAMEWORK_PIM_ServiceDBusName,
+					FSO_FRAMEWORK_PIM_MessagesServicePath);
+
+	//g_hash_table_ref(message);
+	free_smartphone_pim_messages_add(pack->messages, message,
+					_message_add_callback, pack);
+	return 0;
+}
 
 static void
 _message_delete_callback(GObject *source, GAsyncResult *res, gpointer data)
