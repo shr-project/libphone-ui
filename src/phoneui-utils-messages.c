@@ -95,6 +95,53 @@ phoneui_utils_message_add(GHashTable *message,
 	return 0;
 }
 
+int
+phoneui_utils_message_add_fields(const char *direction, long timestamp,
+			     const char *content, const char *source, gboolean is_new,
+			     const char *peer,
+			     void (*callback)(GError *, char *msgpath, gpointer),
+			     gpointer data)
+{
+	GHashTable *message;
+	GValue *gval_tmp;
+	int ret;
+
+	message = g_hash_table_new_full(g_str_hash, g_str_equal,
+						  NULL, _helpers_free_gvalue);
+
+	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
+		gval_tmp = _helpers_new_gvalue_string(direction);
+		g_hash_table_insert(message, "Direction", gval_tmp);
+	}
+
+	gval_tmp = _helpers_new_gvalue_int(timestamp);
+	g_hash_table_insert(message, "Timestamp", gval_tmp);
+
+	if (content) {
+		gval_tmp = _helpers_new_gvalue_string(content);
+		g_hash_table_insert(message, "Content", gval_tmp);
+	}
+
+	if (source) {
+		gval_tmp = _helpers_new_gvalue_string(source);
+		g_hash_table_insert(message, "Source", gval_tmp);
+	}
+
+	gval_tmp = _helpers_new_gvalue_boolean(is_new);
+	g_hash_table_insert(message, "New", gval_tmp);
+
+	if (peer) {
+		gval_tmp = _helpers_new_gvalue_string(peer);
+		g_hash_table_insert(message, "Peer", gval_tmp);
+	}
+
+	ret = phoneui_utils_message_add(message, callback, data);
+
+	g_hash_table_unref(message);
+
+	return ret;
+}
+
 static void
 _message_delete_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
