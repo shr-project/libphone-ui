@@ -2,6 +2,7 @@
  *  Copyright (C) 2009, 2010
  *      Authors (alphabetical) :
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *      Marco Trevisan (Treviño) <mail@3v1n0.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

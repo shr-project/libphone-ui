@@ -3,6 +3,7 @@
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *      Marco Trevisan (Treviño) <mail@3v1n0.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -35,7 +36,7 @@
 #include "phoneui-utils-contacts.h"
 
 
-struct _query_list_pack {
+struct _query_pack {
 	int *count;
 	void (*callback)(gpointer, gpointer);
 	gpointer data;
@@ -68,8 +69,6 @@ struct _field_pack {
 struct _contact_lookup_pack {
 	gpointer *data;
 	void (*callback)(GError *, GHashTable *, gpointer);
-	char *number;
-	FreeSmartphonePIMContacts *contacts;
 };
 
 struct _contact_add_pack {
@@ -127,7 +126,7 @@ _contacts_parse(GError *error, GHashTable **messages, int count, gpointer data)
 {
 	int i;
 	GPtrArray *contacts;
-	struct _query_list_pack *pack = data;
+	struct _query_pack *pack = data;
 
 	if (pack->count)
 		*pack->count = count;
@@ -153,7 +152,7 @@ phoneui_utils_contacts_get(int *count,
 			   void (*callback)(gpointer, gpointer),
 			   gpointer userdata)
 {
-	struct _query_list_pack *pack;
+	struct _query_pack *pack;
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
@@ -364,32 +363,21 @@ phoneui_utils_contacts_field_remove(const char *name,
 
 
 static void
-_contact_lookup_callback(GObject *source, GAsyncResult *res, gpointer data)
+_contact_lookup_callback(GError *error, GHashTable **messages, int count, gpointer data)
 {
-	(void) source;
-	GError *error = NULL;
-	char *path = NULL;
 	struct _contact_lookup_pack *pack = data;
-	g_debug("_contact_lookup_callback");
-	path = free_smartphone_pim_contacts_get_single_entry_single_field_finish
-					(pack->contacts, res, &error);
-        g_debug("got path %s", path);
-	if (error || !path || !*path) {
+	GValue *tmp;
+	const char *path;
+
+	if (count != 1 || !(tmp = g_hash_table_lookup(messages[0], "Path")) || error) {
 		pack->callback(error, NULL, pack->data);
-		if (error) {
-			g_warning("error: (%d) %s", error->code, error->message);
-			g_error_free(error);
-		}
+		return;
 	}
-	else {
-		g_debug("Found contact: %s", path);
-		phoneui_utils_contact_get(path, pack->callback, pack->data);
-	}
-	if (path) {
-		free(path);
-	}
-	free(pack->number);
-	g_object_unref(pack->contacts);
+
+	path = g_value_get_string(tmp);
+	phoneui_utils_contact_get(path, pack->callback, pack->data);
+	g_hash_table_unref(messages[0]);
+
 	free(pack);
 }
 
@@ -398,43 +386,37 @@ phoneui_utils_contact_lookup(const char *number,
 			void (*callback)(GError *, GHashTable *, gpointer),
 			gpointer data)
 {
-	struct _contact_lookup_pack *pack;
 	GValue *value;
 	GHashTable *query;
+	struct _contact_lookup_pack *pack;
 
 	/* makes no sense to continue without callback */
 	if (!callback) {
 		g_message("phoneui_utils_contact_lookup without callback?");
 		return 1;
 	}
+
 	pack = malloc(sizeof(*pack));
-	pack->data = data;
 	pack->callback = callback;
-	pack->number = strdup(number);
+	pack->data = data;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-		free, _helpers_free_gvalue);
+		NULL, _helpers_free_gvalue);
 
-	value = _helpers_new_gvalue_string(pack->number);
+	value = _helpers_new_gvalue_string(strdup(number));
 	if (!value) {
 		g_hash_table_destroy(query);
 		// FIXME: create a nice error and pass it
 		pack->callback(NULL, NULL, pack->data);
-		free(pack->number);
-		free(pack);
 		return 1;
 	}
 
-	g_hash_table_insert(query, strdup("$phonenumber"), value);
+	g_hash_table_insert(query, "$phonenumber", value);
+	phoneui_utils_contacts_query(NULL, FALSE, FALSE, 0, 1, query,
+				_contact_lookup_callback, pack);
 
-	pack->contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
-        free_smartphone_pim_contacts_get_single_entry_single_field
-		(pack->contacts, g_hash_table_ref(query), "Path",
-		 _contact_lookup_callback, pack);
+	g_hash_table_unref(query);
 
- 	g_hash_table_unref(query);
 	return 0;
 }
 
