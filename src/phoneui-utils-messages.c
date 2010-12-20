@@ -67,13 +67,18 @@ _message_hashtable_get(const char *direction, long timestamp,
 	message = g_hash_table_new_full(g_str_hash, g_str_equal,
 						  NULL, _helpers_free_gvalue);
 
+	if (!message)
+		return NULL;
+
 	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
 		gval_tmp = _helpers_new_gvalue_string(direction);
 		g_hash_table_insert(message, "Direction", gval_tmp);
 	}
 
-	gval_tmp = _helpers_new_gvalue_int(timestamp);
-	g_hash_table_insert(message, "Timestamp", gval_tmp);
+	if (timestamp > 0) {
+		gval_tmp = _helpers_new_gvalue_int(timestamp);
+		g_hash_table_insert(message, "Timestamp", gval_tmp);
+	}
 
 	if (content) {
 		gval_tmp = _helpers_new_gvalue_string(content);
@@ -129,7 +134,9 @@ phoneui_utils_message_add(GHashTable *message,
 					FSO_FRAMEWORK_PIM_ServiceDBusName,
 					FSO_FRAMEWORK_PIM_MessagesServicePath);
 
-	//g_hash_table_ref(message);
+	if (!message)
+		return 1;
+
 	free_smartphone_pim_messages_add(pack->messages, message,
 					_message_add_callback, pack);
 	return 0;
@@ -147,6 +154,10 @@ phoneui_utils_message_add_fields(const char *direction, long timestamp,
 
 	message = _message_hashtable_get(direction, timestamp, content, source,
 				     is_new, peer);
+
+	if (!message)
+		return 1;
+
 	ret = phoneui_utils_message_add(message, callback, data);
 	g_hash_table_unref(message);
 
@@ -176,6 +187,9 @@ phoneui_utils_message_update(const char *path, GHashTable *message,
 {
 	struct _message_pack *pack;
 
+	if (!message || !path)
+		return 1;
+
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
@@ -197,8 +211,14 @@ phoneui_utils_message_update_fields(const char *path, const char *direction,
 	GHashTable *message;
 	int ret;
 
+	if (!path) return 1;
+
 	message = _message_hashtable_get(direction, timestamp, content, source,
 				     is_new, peer);
+
+	if (!message)
+		return 1;
+
 	ret = phoneui_utils_message_update(path, message, callback, data);
 	g_hash_table_unref(message);
 
@@ -227,6 +247,9 @@ phoneui_utils_message_delete(const char *path,
 			     void (*callback)(GError *, gpointer), void *data)
 {
 	struct _message_pack *pack;
+
+	if (!path)
+		return 1;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
@@ -263,6 +286,9 @@ phoneui_utils_message_set_new_status(const char *path, gboolean new,
 	struct _message_pack *pack;
 	GValue *message_new;
 	GHashTable *options;
+
+	if (!path)
+		return 1;
 
 	options = g_hash_table_new_full(g_str_hash, g_str_equal,
 					NULL, _helpers_free_gvalue);
@@ -338,6 +364,9 @@ phoneui_utils_message_get(const char *message_path,
 			  gpointer data)
 {
 	struct _message_get_pack *pack;
+
+	if (!message_path)
+		return 1;
 
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
