@@ -27,6 +27,7 @@
 #include <freesmartphone.h>
 #include <fsoframework.h>
 
+#include "phoneui-utils.h"
 #include "phoneui-utils-messages.h"
 #include "dbus.h"
 #include "helpers.h"
@@ -332,68 +333,6 @@ phoneui_utils_message_get(const char *message_path,
 	return (0);
 }
 
-static void
-_result_callback(GObject *source, GAsyncResult *res, gpointer data)
-{
-	(void) source;
-	GError *error = NULL;
-	int count;
-	GHashTable **messages;
-	struct _message_query_list_pack *pack = data;
-
-	messages = free_smartphone_pim_message_query_get_multiple_results_finish
-					(pack->query, res, &count, &error);
-	pack->callback(error, messages, count, pack->data);
-	// FIXME: free messages !!!!
-	if (error) {
-		g_error_free(error);
-	}
-	g_object_unref(pack->query);
-	free(pack);
-}
-
-static void
-_query_messages_callback(GObject *source, GAsyncResult *res, gpointer data)
-{
-	(void) source;
-	GError *error = NULL;
-	char *query_path;
-	struct _message_query_list_pack *pack = data;
-
-	g_debug("Query callback!");
-	query_path = free_smartphone_pim_messages_query_finish
-						(pack->messages, res, &error);
-	g_object_unref(pack->messages);
-	if (error) {
-		g_warning("message query error: (%d) %s",
-			  error->code, error->message);
-		pack->callback(error, NULL, 0, pack->data);
-		g_error_free(error);
-		return;
-	}
-	pack->query = free_smartphone_pim_get_message_query_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, query_path);
-
-	free_smartphone_pim_message_query_get_multiple_results(pack->query, -1,
-							       _result_callback,
-							       pack);
-}
-
-static void
-_options_hashtable_foreach_query(void *k, void *v, void *data) {
-	GHashTable *query = ((GHashTable *)data);
-	char *key = (char *)k;
-	GValue *value = (GValue *)v;
-	GValue *new_value;
-
-	if (key && key[0] != '_') {
-		new_value = calloc(sizeof(GValue), 1);
-		g_value_init(new_value, G_VALUE_TYPE(value));
-		g_value_copy(value, new_value);
-		g_hash_table_insert(query, strdup(key), new_value);
-	}
-}
-
 void
 phoneui_utils_messages_query(const char *sortby, gboolean sortdesc,
 			   gboolean disjunction, int limit_start, int limit,
@@ -401,53 +340,9 @@ phoneui_utils_messages_query(const char *sortby, gboolean sortdesc,
 			   void (*callback)(GError *, GHashTable **, int, gpointer),
 			   gpointer data)
 {
-	struct _message_query_list_pack *pack;
-	GHashTable *query;
-	GValue *gval_tmp;
-
-	g_debug("Retrieving messages");
-
-	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-						  g_free, _helpers_free_gvalue);
-
-	if (sortby && strlen(sortby)) {
-		gval_tmp = _helpers_new_gvalue_string(sortby);
-		g_hash_table_insert(query, strdup("_sortby"), gval_tmp);
-	}
-
-	if (sortdesc) {
-		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, strdup("_sortdesc"), gval_tmp);
-	}
-
-	if (disjunction) {
-		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, strdup("_at_least_one"), gval_tmp);
-	}
-
-	if (resolve_number) {
-		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, strdup("_resolve_phonenumber"), gval_tmp);
-	}
-
-	gval_tmp = _helpers_new_gvalue_int(limit_start);
-	g_hash_table_insert(query, strdup("_limit_start"), gval_tmp);
-	gval_tmp = _helpers_new_gvalue_int(limit);
-	g_hash_table_insert(query, strdup("_limit"), gval_tmp);
-
-	g_hash_table_foreach((GHashTable *)options, _options_hashtable_foreach_query, query);
-
-	pack = malloc(sizeof(*pack));
-	pack->callback = callback;
-	pack->data = data;
-	pack->messages = free_smartphone_pim_get_messages_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_MessagesServicePath);
-	g_debug("Firing the message query");
-	free_smartphone_pim_messages_query(pack->messages, query,
-					   _query_messages_callback, pack);
-	g_hash_table_unref(query);
-	g_debug("Done");
+	phoneui_utils_pim_query(PHONEUI_PIM_DOMAIN_MESSAGES, sortby, sortdesc,
+				disjunction, limit_start, limit, resolve_number, options,
+				callback, data);
 }
 
 void

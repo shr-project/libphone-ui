@@ -80,7 +80,7 @@ enum PhoneUiPimDomain {
 	PHONEUI_PIM_DOMAIN_TASKS,
 };
 
-void phoneui_utils_query(enum PhoneUiPimDomain domain, const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
+void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
@@ -102,7 +102,8 @@ void phoneui_utils_idle_set_state(FreeSmartphoneDeviceIdleState state, void (*ca
 void phoneui_utils_resources_get_resource_policy(const char *name, void (*callback) (GError *, FreeSmartphoneUsageResourcePolicy, gpointer), gpointer userdata);
 void phoneui_utils_resources_set_resource_policy(const char *name, FreeSmartphoneUsageResourcePolicy policy, void (*callback) (GError *, gpointer), gpointer userdata);
 
-void phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc, int limit_start, int limit, gboolean resolve_number, const char *direction, int answered, int *count, void (*callback) (GError *, GHashTable **, int, gpointer), gpointer data);
+void phoneui_utils_calls_query(const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
+void phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc, int limit_start, int limit, gboolean resolve_number, const char *direction, int answered, void (*callback) (GError *, GHashTable **, int, gpointer), gpointer data);
 void phoneui_utils_calls_get(int *count, void (*callback) (GError *, GHashTable **, int, gpointer), void *_data);
 int phoneui_utils_call_get(const char *call_path, void (*callback)(GError *, GHashTable*, gpointer), void *data);
 

@@ -86,14 +86,6 @@ struct _query_pack {
 	gpointer data;
 };
 
-struct _calls_query_pack {
-	FreeSmartphonePIMCalls *calls;
-	FreeSmartphonePIMCallQuery *query;
-	int *count;
-	void (*callback)(GError *, GHashTable **, int, gpointer);
-	gpointer data;
-};
-
 struct _call_get_pack {
 	FreeSmartphonePIMCall *call;
 	void (*callback)(GError *, GHashTable *, gpointer);
@@ -150,7 +142,7 @@ phoneui_utils_deinit()
 }
 
 static void
-_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
+_pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
 	int count;
@@ -220,7 +212,7 @@ _query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 }
 
 static void
-_query_callback(GObject *source, GAsyncResult *res, gpointer data)
+_pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	(void) source;
 	char *query_path = NULL;
@@ -321,7 +313,7 @@ _query_callback(GObject *source, GAsyncResult *res, gpointer data)
 		goto exit;
 
 	pack->query = query_proxy(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, query_path);
-	results_func(pack->query, -1, _query_results_callback, pack);
+	results_func(pack->query, -1, _pim_query_results_callback, pack);
 	free(query_path);
 	return;
 
@@ -331,7 +323,7 @@ exit:
 }
 
 static void
-_query_hashtable_clone_foreach_callback(void *k, void *v, void *data) {
+_pim_query_hashtable_clone_foreach_callback(void *k, void *v, void *data) {
 	GHashTable *query = ((GHashTable *)data);
 	char *key = (char *)k;
 	GValue *value = (GValue *)v;
@@ -345,7 +337,7 @@ _query_hashtable_clone_foreach_callback(void *k, void *v, void *data) {
 	}
 }
 
-void phoneui_utils_query(enum PhoneUiPimDomain domain, const char *sortby,
+void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	gboolean sortdesc, gboolean disjunction, int limit_start, int limit,
 	gboolean resolve_number, const GHashTable *options,
 	void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
@@ -431,8 +423,10 @@ void phoneui_utils_query(enum PhoneUiPimDomain domain, const char *sortby,
 	gval_tmp = _helpers_new_gvalue_int(limit);
 	g_hash_table_insert(query, strdup("_limit"), gval_tmp);
 
-	g_hash_table_foreach((GHashTable *)options,
-		_query_hashtable_clone_foreach_callback, query);
+	if (options) {
+		g_hash_table_foreach((GHashTable *)options,
+			_pim_query_hashtable_clone_foreach_callback, query);
+	}
 
 	pack = malloc(sizeof(*pack));
 	pack->domain_type = domain;
@@ -443,7 +437,7 @@ void phoneui_utils_query(enum PhoneUiPimDomain domain, const char *sortby,
 
 	g_debug("Firing the query!");
 
-	query_function(pack->domain, query, _query_callback, pack);
+	query_function(pack->domain, query, _pim_query_callback, pack);
 	g_hash_table_unref(query);
 }
 
@@ -828,118 +822,27 @@ phoneui_utils_resources_set_resource_policy(const char *name,
 						  _set_policy_callback, pack);
 }
 
-
-static void
-_call_list_result_callback(GObject *source, GAsyncResult *res, gpointer data)
+void
+phoneui_utils_calls_query(const char *sortby, gboolean sortdesc,
+			gboolean disjunction, int limit_start, int limit,
+			gboolean resolve_number, const GHashTable *options,
+			void (*callback)(GError *, GHashTable **, int, gpointer),
+			gpointer data)
 {
-	(void) source;
-	GError *error = NULL;
-	GHashTable **calls;
-	int count;
-	struct _calls_query_pack *pack = data;
-
-	calls = free_smartphone_pim_call_query_get_multiple_results_finish
-					(pack->query, res, &count, &error);
-	if (pack->callback) {
-		pack->callback(error, calls, count, pack->data);
-	}
-	if (error) {
-		g_error_free(error);
-	}
-	// FIXME: free calls!!!
-	free_smartphone_pim_call_query_dispose_(pack->query, NULL, NULL);
-	g_object_unref(pack->query);
-	free(pack);
-}
-
-static void
-_calls_list_count_callback(GObject *source, GAsyncResult *res, gpointer data)
-{
-	(void) source;
-	GError *error = NULL;
-	int count;
-	struct _calls_query_pack *pack = data;
-
-	count = free_smartphone_pim_call_query_get_result_count_finish
-						(pack->query, res, &error);
-	if (error) {
-		pack->callback(error, NULL, 0, pack->data);
-		g_error_free(error);
-		free_smartphone_pim_call_query_dispose_(pack->query, NULL, NULL);
-		g_object_unref(pack->query);
-		free(pack);
-		return;
-	}
-
-	g_debug("Call query result gave %d entries", count);
-	// FIXME: what if no count is set??
-	if (count < *pack->count)
-		*pack->count = count;
-	free_smartphone_pim_call_query_get_multiple_results(pack->query,
-				*pack->count, _call_list_result_callback, pack);
-}
-
-static void
-_calls_query_callback(GObject *source, GAsyncResult *res, gpointer data)
-{
-	(void) source;
-	GError *error = NULL;
-	char *query_path;
-	struct _calls_query_pack *pack = data;
-
-	query_path = free_smartphone_pim_calls_query_finish
-						(pack->calls, res, &error);
-	g_object_unref(pack->calls);
-	if (error) {
-		pack->callback(error, NULL, 0, pack->data);
-		g_error_free(error);
-		return;
-	}
-	pack->query = free_smartphone_pim_get_call_query_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, query_path);
-	free_smartphone_pim_call_query_get_result_count(pack->query,
-					_calls_list_count_callback, pack);
+	phoneui_utils_pim_query(PHONEUI_PIM_DOMAIN_CALLS, sortby, sortdesc, disjunction,
+				limit_start, limit, resolve_number, options, callback, data);
 }
 
 void
 phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc,
 			int limit_start, int limit, gboolean resolve_number,
-			const char *direction, int answered, int *count,
+			const char *direction, int answered,
 			void (*callback) (GError *, GHashTable **, int, gpointer),
 			gpointer data)
 {
-	struct _calls_query_pack *pack;
-
-	pack = malloc(sizeof(*pack));
-	pack->callback = callback;
-	pack->data = data;
-	pack->count = count;
-	pack->calls = free_smartphone_pim_get_calls_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_CallsServicePath);
 
 	GHashTable *qry = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, _helpers_free_gvalue);
-
-	if (sortby && strlen(sortby)) {
-		g_hash_table_insert(qry, "_sortby",
-			    _helpers_new_gvalue_string(sortby));
-	}
-
-	if (sortdesc) {
-		g_hash_table_insert(qry, "_sortdesc",
-			    _helpers_new_gvalue_boolean(sortdesc));
-	}
-
-	if (resolve_number) {
-		g_hash_table_insert(qry, "_resolve_phonenumber",
-			    _helpers_new_gvalue_int(resolve_number));
-	}
-
-	g_hash_table_insert(qry, "_limit_start",
-		    _helpers_new_gvalue_int(limit_start));
-	g_hash_table_insert(qry, "_limit",
-		    _helpers_new_gvalue_int(limit));
 
 	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
 		g_hash_table_insert(qry, "Direction",
@@ -951,8 +854,9 @@ phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc,
 			    _helpers_new_gvalue_boolean(answered));
 	}
 
-	free_smartphone_pim_calls_query(pack->calls, qry,
-					_calls_query_callback, pack);
+	phoneui_utils_calls_query(sortby, sortdesc, FALSE, limit_start, limit,
+				resolve_number, qry, callback, data);
+
 	g_hash_table_unref(qry);
 }
 
@@ -961,7 +865,9 @@ phoneui_utils_calls_get(int *count,
 			void (*callback) (GError *, GHashTable **, int, gpointer),
 			gpointer data)
 {
-	phoneui_utils_calls_get_full("Timestamp", TRUE, 0, -1, TRUE, NULL, -1, count, callback, data);
+	int limit = (count && *count > 0) ? *count : -1;
+
+	phoneui_utils_calls_get_full("Timestamp", TRUE, 0, limit, TRUE, NULL, -1, callback, data);
 }
 
 static void

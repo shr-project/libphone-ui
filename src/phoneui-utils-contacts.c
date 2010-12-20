@@ -31,16 +31,14 @@
 #include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include "helpers.h"
 #include "dbus.h"
+#include "phoneui-utils.h"
 #include "phoneui-utils-contacts.h"
 
 
 struct _query_list_pack {
-	gpointer data;
 	int *count;
 	void (*callback)(gpointer, gpointer);
-	DBusGProxy *query;
-// 	FreeSmartphonePIMContactQuery *query;
-// 	FreeSmartphonePIMContacts *contacts;
+	gpointer data;
 };
 
 struct _field_type_pack {
@@ -103,66 +101,51 @@ static int _compare_func(gconstpointer a, gconstpointer b)
 	return phoneui_utils_contact_compare(*((GHashTable **)a), *((GHashTable **)b));
 }
 
-static void
-_result_callback(GError *error, GPtrArray *contacts, gpointer data)
+void phoneui_utils_contacts_query(const char *sortby, gboolean sortdesc,
+			   gboolean disjunction, int limit_start, int limit,
+			   const GHashTable *options,
+			   void (*callback)(GError *, GHashTable **, int, gpointer),
+			   gpointer data)
 {
-	struct _query_list_pack *pack = data;
-
-	if (error || !contacts)
-		return;
-	g_ptr_array_sort(contacts, _compare_func);
-	g_ptr_array_foreach(contacts, pack->callback, pack->data);
-	opimd_contact_query_dispose(pack->query, NULL, NULL);
-}
-
-static void
-_query_count_callback(GError *error, int count, gpointer data)
-{
-	struct _query_list_pack *pack = data;
-
-	if (error) {
-		return;
-	}
-
-	*pack->count = count;
-	opimd_contact_query_get_multiple_results
-				(pack->query, count, _result_callback, pack);
-}
-static void
-_query_callback(GError *error, char *path, gpointer data)
-{
-	struct _query_list_pack *pack = data;
-
-	if (error) {
-		return;
-	}
-
-	pack->query = dbus_connect_to_opimd_contact_query(path);
-	opimd_contact_query_get_result_count
-			(pack->query, _query_count_callback, pack);
+	phoneui_utils_pim_query(PHONEUI_PIM_DOMAIN_CONTACTS, sortby, sortdesc,
+				disjunction, limit_start, limit, FALSE, options,
+				callback, data);
 }
 
 void
-phoneui_utils_contacts_get_full(int limit_start, int limit, int *count,
-			   void (*callback)(gpointer, gpointer),
+phoneui_utils_contacts_get_full(const char *sortby, gboolean sortdesc,
+			   int limit_start, int limit,
+			   void (*callback)(GError *, GHashTable **, int, gpointer),
 			   gpointer userdata)
 {
-	GHashTable *qry;
-	struct _query_list_pack *pack;
+	phoneui_utils_contacts_query(sortby, sortdesc, FALSE, limit_start, limit,
+				NULL, callback, userdata);
+}
 
-	pack = malloc(sizeof(*pack));
-	pack->callback = callback;
-	pack->data = userdata;
-	pack->count = count;
-	qry = g_hash_table_new_full
-			(g_str_hash, g_str_equal, NULL, _helpers_free_gvalue);
+static void
+_contacts_parse(GError *error, GHashTable **messages, int count, gpointer data)
+{
+	int i;
+	GPtrArray *contacts;
+	struct _query_list_pack *pack = data;
 
-	g_hash_table_insert(qry, "_limit_start",
-		    _helpers_new_gvalue_int(limit_start));
-	g_hash_table_insert(qry, "_limit",
-		    _helpers_new_gvalue_int(limit));
+	if (pack->count)
+		*pack->count = count;
 
-	opimd_contacts_query(qry, _query_callback, pack);
+	if (error)
+		goto exit;
+
+	contacts = g_ptr_array_sized_new(count);
+
+	for (i = 0; i < count; i++)
+		g_ptr_array_add(contacts, messages[i]);
+
+	g_ptr_array_sort(contacts, _compare_func);
+	g_ptr_array_foreach(contacts, pack->callback, pack->data);
+	g_ptr_array_unref(contacts);
+
+exit:
+	free(pack);
 }
 
 void
@@ -170,7 +153,16 @@ phoneui_utils_contacts_get(int *count,
 			   void (*callback)(gpointer, gpointer),
 			   gpointer userdata)
 {
-	phoneui_utils_contacts_get_full(0, -1, count, callback, userdata);
+	struct _query_list_pack *pack;
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = userdata;
+	pack->count = count;
+
+	if (count)
+		*count = 0;
+
+	phoneui_utils_contacts_get_full(NULL, FALSE, 0, -1, _contacts_parse, pack);
 }
 
 static void
