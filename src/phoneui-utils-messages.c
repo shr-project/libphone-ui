@@ -261,60 +261,13 @@ phoneui_utils_message_delete(const char *path,
 	return 0;
 }
 
-static void
-_message_set_new_status_callback(GObject *source, GAsyncResult *res,
-				  gpointer data)
-{
-	(void) source;
-	GError *error = NULL;
-	struct _message_pack *pack = data;
-	free_smartphone_pim_message_update_finish(pack->message, res, &error);
-	if (pack->callback) {
-		pack->callback(error, pack->data);
-	}
-	free(pack);
-	if (error) {
-		g_error_free(error);
-	}
-}
-
 int
 phoneui_utils_message_set_new_status(const char *path, gboolean new,
 				void (*callback) (GError *, gpointer),
 				gpointer data)
 {
-	struct _message_pack *pack;
-	GValue *message_new;
-	GHashTable *options;
-
-	if (!path)
-		return 1;
-
-	options = g_hash_table_new_full(g_str_hash, g_str_equal,
-					NULL, _helpers_free_gvalue);
-	if (!options)
-		return 1;
-
-	message_new = _helpers_new_gvalue_boolean(new);
-
-	if (!message_new) {
-		g_hash_table_destroy(options);
-		return 1;
-	}
-	
-	g_hash_table_insert(options, "New", message_new);
-	
-	pack = malloc(sizeof(struct _message_pack));
-	pack->callback = callback;
-	pack->data = data;
-	pack->message = free_smartphone_pim_get_message__proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, path);
-	free_smartphone_pim_message_update(pack->message, options,
-				_message_set_new_status_callback, pack);
-// 	_helpers_free_gvalue(message_new);
-	g_hash_table_unref(options);
-
-	return 0;
+	return phoneui_utils_message_update_fields(path, NULL, 0, NULL, NULL, new,
+				     NULL, callback, data);
 }
 
 int
