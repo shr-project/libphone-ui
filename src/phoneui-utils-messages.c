@@ -56,6 +56,46 @@ struct _message_query_list_pack {
 	FreeSmartphonePIMMessages *messages;
 };
 
+static GHashTable *
+_message_hashtable_get(const char *direction, long timestamp,
+			     const char *content, const char *source, gboolean is_new,
+			     const char *peer)
+{
+	GHashTable *message;
+	GValue *gval_tmp;
+
+	message = g_hash_table_new_full(g_str_hash, g_str_equal,
+						  NULL, _helpers_free_gvalue);
+
+	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
+		gval_tmp = _helpers_new_gvalue_string(direction);
+		g_hash_table_insert(message, "Direction", gval_tmp);
+	}
+
+	gval_tmp = _helpers_new_gvalue_int(timestamp);
+	g_hash_table_insert(message, "Timestamp", gval_tmp);
+
+	if (content) {
+		gval_tmp = _helpers_new_gvalue_string(content);
+		g_hash_table_insert(message, "Content", gval_tmp);
+	}
+
+	if (source) {
+		gval_tmp = _helpers_new_gvalue_string(source);
+		g_hash_table_insert(message, "Source", gval_tmp);
+	}
+
+	gval_tmp = _helpers_new_gvalue_boolean(is_new);
+	g_hash_table_insert(message, "New", gval_tmp);
+
+	if (peer) {
+		gval_tmp = _helpers_new_gvalue_string(peer);
+		g_hash_table_insert(message, "Peer", gval_tmp);
+	}
+
+	return message;
+}
+
 static void
 _message_add_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
@@ -103,40 +143,63 @@ phoneui_utils_message_add_fields(const char *direction, long timestamp,
 			     gpointer data)
 {
 	GHashTable *message;
-	GValue *gval_tmp;
 	int ret;
 
-	message = g_hash_table_new_full(g_str_hash, g_str_equal,
-						  NULL, _helpers_free_gvalue);
-
-	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
-		gval_tmp = _helpers_new_gvalue_string(direction);
-		g_hash_table_insert(message, "Direction", gval_tmp);
-	}
-
-	gval_tmp = _helpers_new_gvalue_int(timestamp);
-	g_hash_table_insert(message, "Timestamp", gval_tmp);
-
-	if (content) {
-		gval_tmp = _helpers_new_gvalue_string(content);
-		g_hash_table_insert(message, "Content", gval_tmp);
-	}
-
-	if (source) {
-		gval_tmp = _helpers_new_gvalue_string(source);
-		g_hash_table_insert(message, "Source", gval_tmp);
-	}
-
-	gval_tmp = _helpers_new_gvalue_boolean(is_new);
-	g_hash_table_insert(message, "New", gval_tmp);
-
-	if (peer) {
-		gval_tmp = _helpers_new_gvalue_string(peer);
-		g_hash_table_insert(message, "Peer", gval_tmp);
-	}
-
+	message = _message_hashtable_get(direction, timestamp, content, source,
+				     is_new, peer);
 	ret = phoneui_utils_message_add(message, callback, data);
+	g_hash_table_unref(message);
 
+	return ret;
+}
+
+static void
+_message_update_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	struct _message_pack *pack = data;
+	free_smartphone_pim_message_update_finish(pack->message, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+	if (error) {
+		g_error_free(error);
+	}
+	g_object_unref(pack->message);
+	free(pack);
+}
+
+int
+phoneui_utils_message_update(const char *path, GHashTable *message,
+			     void (*callback)(GError *, gpointer), gpointer data)
+{
+	struct _message_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	pack->message = free_smartphone_pim_get_message__proxy(_dbus(),
+					FSO_FRAMEWORK_PIM_ServiceDBusName, path);
+
+	free_smartphone_pim_message_update(pack->message, message,
+					_message_update_callback, pack);
+	return 0;
+}
+
+int
+phoneui_utils_message_update_fields(const char *path, const char *direction,
+			     long timestamp, const char *content, const char *source,
+			     gboolean is_new, const char *peer,
+			     void (*callback)(GError *, gpointer),
+			     gpointer data)
+{
+	GHashTable *message;
+	int ret;
+
+	message = _message_hashtable_get(direction, timestamp, content, source,
+				     is_new, peer);
+	ret = phoneui_utils_message_update(path, message, callback, data);
 	g_hash_table_unref(message);
 
 	return ret;
