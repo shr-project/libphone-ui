@@ -396,8 +396,9 @@ _options_hashtable_foreach_query(void *k, void *v, void *data) {
 }
 
 void
-phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, int limit_start,
-			   int limit, gboolean resolve_number, const GHashTable *options,
+phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, gboolean disjunction,
+			   int limit_start, int limit, gboolean resolve_number,
+			   const GHashTable *options,
 			   void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
 {
 	struct _message_query_list_pack *pack;
@@ -415,12 +416,17 @@ phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, int limit_st
 	}
 
 	if (sortdesc) {
-		gval_tmp = _helpers_new_gvalue_boolean(sortdesc);
+		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
 		g_hash_table_insert(query, "_sortdesc", gval_tmp);
 	}
 
+	if (disjunction) {
+		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
+		g_hash_table_insert(query, "_at_least_one", gval_tmp);
+	}
+
 	if (resolve_number) {
-		gval_tmp = _helpers_new_gvalue_boolean(resolve_number);
+		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
 		g_hash_table_insert(query, "_resolve_phonenumber", gval_tmp);
 	}
 
@@ -462,7 +468,7 @@ phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit
 		g_hash_table_insert(query, "Direction", gval_tmp);
 	}
 
-	phoneui_utils_messages_query(sortby, sortdesc, limit_start, limit,
+	phoneui_utils_messages_query(sortby, sortdesc, FALSE, limit_start, limit,
 				resolve_number, query, callback, data);
 
 	g_hash_table_unref(query);
