@@ -396,10 +396,11 @@ _options_hashtable_foreach_query(void *k, void *v, void *data) {
 }
 
 void
-phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, gboolean disjunction,
-			   int limit_start, int limit, gboolean resolve_number,
-			   const GHashTable *options,
-			   void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
+phoneui_utils_messages_query(const char *sortby, gboolean sortdesc,
+			   gboolean disjunction, int limit_start, int limit,
+			   gboolean resolve_number, const GHashTable *options,
+			   void (*callback)(GError *, GHashTable **, int, gpointer),
+			   gpointer data)
 {
 	struct _message_query_list_pack *pack;
 	GHashTable *query;
@@ -448,6 +449,24 @@ phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, gboolean dis
 					   _query_messages_callback, pack);
 	g_hash_table_unref(query);
 	g_debug("Done");
+}
+
+void
+phoneui_utils_messages_query_full(const char *sortby, gboolean sortdesc,
+			   gboolean disjunction, int limit_start, int limit,
+			   gboolean resolve_number,
+			   const char *direction, long timestamp, const char *content,
+			   const char *source, gboolean is_new, const char *peer,
+			   void (*callback)(GError *, GHashTable **, int, gpointer),
+			   gpointer data)
+{
+	GHashTable *query;
+	query = _message_hashtable_get(direction, timestamp, content, source,
+				     is_new, peer);
+
+	phoneui_utils_messages_query(sortby, sortdesc, disjunction, limit_start,
+				   limit, resolve_number, query, callback, data);
+	g_hash_table_unref(query);
 }
 
 void

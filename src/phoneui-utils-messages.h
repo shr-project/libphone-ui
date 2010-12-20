@@ -36,6 +36,7 @@ int phoneui_utils_message_set_sent_status(const char *path, int sent, void (*cal
 int phoneui_utils_message_get(const char *message_path, void (*callback)(GError *, GHashTable *, gpointer), gpointer data);
 
 void phoneui_utils_messages_query(const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
+void phoneui_utils_messages_query_full(const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const char *direction, long timestamp, const char *content, const char *source, gboolean is_new, const char *peer, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
 
 void phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit_start, int limit, gboolean resolve_number, const char *direction, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
 void phoneui_utils_messages_get(void (*callback) (GError *, GHashTable **, int, void *), gpointer data);
