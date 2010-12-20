@@ -42,6 +42,13 @@
 #include "dbus.h"
 #include "helpers.h"
 
+#define PIM_DOMAIN_PROXY(func) (void *(*)(DBusGConnection*, const char*, const char*)) func
+#define PIM_QUERY_FUNCTION(func) (void (*)(void *, GHashTable *, GAsyncReadyCallback, gpointer)) func
+#define PIM_QUERY_RESULTS(func) (void (*)(void *, int, GAsyncReadyCallback, gpointer)) func
+#define PIM_QUERY_RESULTS_FINISH(func) (GHashTable** (*)(void*, GAsyncResult*, int*, GError**)) func
+#define PIM_QUERY_COUNT(func) (void (*)(void *, GAsyncReadyCallback, gpointer)) func
+#define PIM_QUERY_PROXY(func) (void *(*)(DBusGConnection*, const char*, const char*)) func
+#define PIM_QUERY_DISPOSE(func) (void (*)(void *query, GAsyncReadyCallback, gpointer)) func
 
 struct _usage_pack {
 	FreeSmartphoneUsage *usage;
@@ -71,6 +78,14 @@ struct _sms_send_pack {
 	gpointer data;
 };
 
+struct _query_pack {
+	enum PhoneUiPimDomain domain_type;
+	void *query;
+	void *domain;
+	void (*callback)(GError *, GHashTable **, int, gpointer);
+	gpointer data;
+};
+
 struct _calls_query_pack {
 	FreeSmartphonePIMCalls *calls;
 	FreeSmartphonePIMCallQuery *query;
@@ -78,6 +93,7 @@ struct _calls_query_pack {
 	void (*callback)(GError *, GHashTable **, int, gpointer);
 	gpointer data;
 };
+
 struct _call_get_pack {
 	FreeSmartphonePIMCall *call;
 	void (*callback)(GError *, GHashTable *, gpointer);
@@ -131,6 +147,304 @@ phoneui_utils_deinit()
 {
 	/*FIXME: stub*/
 	phoneui_utils_sound_deinit();
+}
+
+static void
+_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	int count;
+	GHashTable **results;
+	GError *error = NULL;
+	struct _query_pack *pack = data;
+	void (*dispose_func)(void *query, GAsyncReadyCallback, gpointer);
+	GHashTable** (*results_func)(void *query, GAsyncResult*, int* count, GError**);
+
+	dispose_func = NULL;
+	results_func = NULL;
+
+	switch(pack->domain_type) {
+		case PHONEUI_PIM_DOMAIN_CALLS:
+			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_call_query_dispose_);
+			results_func = PIM_QUERY_RESULTS_FINISH(
+					free_smartphone_pim_call_query_get_multiple_results_finish);
+			break;
+		case PHONEUI_PIM_DOMAIN_CONTACTS:
+			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_contact_query_dispose_);
+			results_func = PIM_QUERY_RESULTS_FINISH(
+				free_smartphone_pim_contact_query_get_multiple_results_finish);
+			break;
+		case PHONEUI_PIM_DOMAIN_DATES:
+			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_date_query_dispose_);
+			results_func = PIM_QUERY_RESULTS_FINISH(
+				free_smartphone_pim_date_query_get_multiple_results_finish);
+			break;
+		case PHONEUI_PIM_DOMAIN_MESSAGES:
+			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_message_query_dispose_);
+			results_func = PIM_QUERY_RESULTS_FINISH(
+				free_smartphone_pim_message_query_get_multiple_results_finish);
+			break;
+		case PHONEUI_PIM_DOMAIN_NOTES:
+			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_note_query_dispose_);
+			results_func = PIM_QUERY_RESULTS_FINISH(
+				free_smartphone_pim_note_query_get_multiple_results_finish);
+			break;
+/* FIXME, add the sync version in freesmartphone APIs
+		case PHONEUI_PIM_DOMAIN_TASKS:
+			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_task_query_dispose_);
+			results_func = PIM_QUERY_RESULTS_FINISH(
+				free_smartphone_pim_task_query_get_multiple_results_finish);
+			break;
+*/
+		default:
+			g_object_unref(pack->query);
+			free(pack);
+			return;
+	}
+
+	results = results_func(pack->query, res, &count, &error);
+	dispose_func(pack->query, NULL, NULL);
+	g_object_unref(pack->query);
+
+	g_debug("Query gave %d entries", count);
+
+	if (pack->callback) {
+		pack->callback(error, results, count, pack->data);
+	}
+
+	if (error) {
+		g_error_free(error);
+	}
+
+	free(pack);
+}
+
+static void
+_query_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	char *query_path = NULL;
+	GError *error = NULL;
+	void (*count_func)(void *query, GAsyncReadyCallback, gpointer);
+	void (*results_func)(void *query, int count, GAsyncReadyCallback, gpointer);
+	void *(*query_proxy)(DBusGConnection*, const char* busname, const char* path);
+	struct _query_pack *pack = data;
+
+	query_proxy = NULL;
+	count_func = NULL;
+
+	switch(pack->domain_type) {
+		case PHONEUI_PIM_DOMAIN_CALLS:
+			query_path = free_smartphone_pim_calls_query_finish
+								(pack->domain, res, &error);
+			break;
+		case PHONEUI_PIM_DOMAIN_CONTACTS:
+			query_path = free_smartphone_pim_contacts_query_finish
+								(pack->domain, res, &error);
+			break;
+		case PHONEUI_PIM_DOMAIN_DATES:
+			query_path = free_smartphone_pim_dates_query_finish
+								(pack->domain, res, &error);
+			break;
+		case PHONEUI_PIM_DOMAIN_MESSAGES:
+			query_path = free_smartphone_pim_messages_query_finish
+								(pack->domain, res, &error);
+			break;
+		case PHONEUI_PIM_DOMAIN_NOTES:
+			query_path = free_smartphone_pim_notes_query_finish
+								(pack->domain, res, &error);
+			break;
+/* FIXME, add the sync version in freesmartphone APIs
+		case PHONEUI_PIM_DOMAIN_TASKS:
+			query_path = free_smartphone_pim_tasks_query_finish
+								(pack->domain, res, &error);
+			break;
+*/
+		default:
+			goto exit;
+	}
+
+	g_object_unref(pack->domain);
+
+	if (error) {
+		g_warning("Query error: (%d) %s",
+			  error->code, error->message);
+		pack->callback(error, NULL, 0, pack->data);
+		g_error_free(error);
+		goto exit;
+	}
+
+	switch(pack->domain_type) {
+		case PHONEUI_PIM_DOMAIN_CALLS:
+			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_call_query_proxy);
+			count_func = PIM_QUERY_COUNT(free_smartphone_pim_call_query_get_result_count);
+			results_func = PIM_QUERY_RESULTS
+			               (free_smartphone_pim_call_query_get_multiple_results);
+			break;
+		case PHONEUI_PIM_DOMAIN_CONTACTS:
+			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_contact_query_proxy);
+			count_func = PIM_QUERY_COUNT(free_smartphone_pim_contact_query_get_result_count);
+			results_func = PIM_QUERY_RESULTS
+			               (free_smartphone_pim_contact_query_get_multiple_results);
+			break;
+		case PHONEUI_PIM_DOMAIN_DATES:
+			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_date_query_proxy);
+			count_func = PIM_QUERY_COUNT(free_smartphone_pim_date_query_get_result_count);
+			results_func = PIM_QUERY_RESULTS
+			               (free_smartphone_pim_date_query_get_multiple_results);
+			break;
+		case PHONEUI_PIM_DOMAIN_MESSAGES:
+			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_message_query_proxy);
+			count_func = PIM_QUERY_COUNT(free_smartphone_pim_message_query_get_result_count);
+			results_func = PIM_QUERY_RESULTS
+			               (free_smartphone_pim_message_query_get_multiple_results);
+			break;
+		case PHONEUI_PIM_DOMAIN_NOTES:
+			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_note_query_proxy);
+			count_func = PIM_QUERY_COUNT(free_smartphone_pim_note_query_get_result_count);
+			results_func = PIM_QUERY_RESULTS
+			               (free_smartphone_pim_note_query_get_multiple_results);
+			break;
+/* FIXME, add the sync version in freesmartphone APIs
+		case PHONEUI_PIM_DOMAIN_TASKS:
+			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_task_query_proxy);
+			count_func = PIM_QUERY_COUNT(free_smartphone_pim_task_query_get_result_count);
+			results_func = PIM_QUERY_RESULTS
+			               (free_smartphone_pim_task_query_get_multiple_results);
+			break;
+*/
+		default:
+			goto exit;
+	}
+
+	if (!query_proxy || !count_func || !query_path)
+		goto exit;
+
+	pack->query = query_proxy(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, query_path);
+	results_func(pack->query, -1, _query_results_callback, pack);
+	free(query_path);
+	return;
+
+exit:
+	if (query_path) free(query_path);
+	free(pack);
+}
+
+static void
+_query_hashtable_clone_foreach_callback(void *k, void *v, void *data) {
+	GHashTable *query = ((GHashTable *)data);
+	char *key = (char *)k;
+	GValue *value = (GValue *)v;
+	GValue *new_value;
+
+	if (key && key[0] != '_') {
+		new_value = calloc(sizeof(GValue), 1);
+		g_value_init(new_value, G_VALUE_TYPE(value));
+		g_value_copy(value, new_value);
+		g_hash_table_insert(query, strdup(key), new_value);
+	}
+}
+
+void phoneui_utils_query(enum PhoneUiPimDomain domain, const char *sortby,
+	gboolean sortdesc, gboolean disjunction, int limit_start, int limit,
+	gboolean resolve_number, const GHashTable *options,
+	void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data)
+{
+	struct _query_pack *pack;
+	GHashTable *query;
+	GValue *gval_tmp;
+
+	void *(*domain_get)(DBusGConnection*, const char* busname, const char* path);
+	const char *path;
+	void (*query_function)(void *domain, GHashTable *query, GAsyncReadyCallback, gpointer);
+
+	path = NULL;
+	query_function = NULL;
+
+	switch(domain) {
+		case PHONEUI_PIM_DOMAIN_CALLS:
+			path = FSO_FRAMEWORK_PIM_CallsServicePath;
+			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_calls_query);
+			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_calls_proxy);
+			break;
+		case PHONEUI_PIM_DOMAIN_CONTACTS:
+			path = FSO_FRAMEWORK_PIM_ContactsServicePath;
+			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_contacts_query);
+			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_contacts_proxy);
+			break;
+		case PHONEUI_PIM_DOMAIN_DATES:
+			path = FSO_FRAMEWORK_PIM_DatesServicePath;
+			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_dates_query);
+			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_dates_proxy);
+			break;
+		case PHONEUI_PIM_DOMAIN_MESSAGES:
+			path = FSO_FRAMEWORK_PIM_MessagesServicePath;
+			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_messages_query);
+			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_messages_proxy);
+			break;
+		case PHONEUI_PIM_DOMAIN_NOTES:
+			path = FSO_FRAMEWORK_PIM_NotesServicePath;
+			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_notes_query);
+			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_notes_proxy);
+			break;
+/* FIXME, add the sync version in freesmartphone APIs
+		case PHONEUI_PIM_DOMAIN_TASKS:
+			path = FSO_FRAMEWORK_PIM_TasksServicePath;
+			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_tasks_query);
+			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_tasks_proxy);
+			break;
+*/
+		default:
+			return;
+	}
+
+	if (!path || !query_function)
+		return;
+
+	query = g_hash_table_new_full(g_str_hash, g_str_equal,
+						  g_free, _helpers_free_gvalue);
+	if (!query)
+		return;
+
+	if (sortby && strlen(sortby)) {
+		gval_tmp = _helpers_new_gvalue_string(sortby);
+		g_hash_table_insert(query, strdup("_sortby"), gval_tmp);
+	}
+
+	if (sortdesc) {
+		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
+		g_hash_table_insert(query, strdup("_sortdesc"), gval_tmp);
+	}
+
+	if (disjunction) {
+		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
+		g_hash_table_insert(query, strdup("_at_least_one"), gval_tmp);
+	}
+
+	if (resolve_number) {
+		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
+		g_hash_table_insert(query, strdup("_resolve_phonenumber"), gval_tmp);
+	}
+
+	gval_tmp = _helpers_new_gvalue_int(limit_start);
+	g_hash_table_insert(query, strdup("_limit_start"), gval_tmp);
+	gval_tmp = _helpers_new_gvalue_int(limit);
+	g_hash_table_insert(query, strdup("_limit"), gval_tmp);
+
+	g_hash_table_foreach((GHashTable *)options,
+		_query_hashtable_clone_foreach_callback, query);
+
+	pack = malloc(sizeof(*pack));
+	pack->domain_type = domain;
+	pack->callback = callback;
+	pack->data = data;
+	pack->domain = domain_get(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, path);
+	pack->query = NULL;
+
+	g_debug("Firing the query!");
+
+	query_function(pack->domain, query, _query_callback, pack);
+	g_hash_table_unref(query);
 }
 
 GHashTable *

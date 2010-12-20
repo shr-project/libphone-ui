@@ -3,6 +3,7 @@
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *		Marco Trevisan (Treviño) <mail@3v1n0.net>
  *		Thomas Zimmermann <zimmermann@vdm-design.de>
  *
  * This library is free software; you can redistribute it and/or
@@ -37,12 +38,12 @@ enum PhoneUiDialogType {
 };
 
 enum PhoneuiSimStatus {
-        PHONEUI_SIM_UNKNOWN,
-        PHONEUI_SIM_READY,
-        PHONEUI_SIM_PIN_REQUIRED,
-        PHONEUI_SIM_PUK_REQUIRED,
-        PHONEUI_SIM_PIN2_REQUIRED,
-        PHONEUI_SIM_PUK2_REQUIRED
+	PHONEUI_SIM_UNKNOWN,
+	PHONEUI_SIM_READY,
+	PHONEUI_SIM_PIN_REQUIRED,
+	PHONEUI_SIM_PUK_REQUIRED,
+	PHONEUI_SIM_PIN2_REQUIRED,
+	PHONEUI_SIM_PUK2_REQUIRED
 };
 
 enum PhoneUiResource {
@@ -61,14 +62,25 @@ enum PhoneUiResourcePolicy {
 	PHONEUI_RESOURCE_POLICY_AUTO
 };
 enum PhoneUiDeviceIdleState {
-        PHONEUI_DEVICE_IDLE_STATE_BUSY,
-        PHONEUI_DEVICE_IDLE_STATE_IDLE,
-        PHONEUI_DEVICE_IDLE_STATE_IDLE_DIM,
-        PHONEUI_DEVICE_IDLE_STATE_PRELOCK,
-        PHONEUI_DEVICE_IDLE_STATE_LOCK,
-        PHONEUI_DEVICE_IDLE_STATE_SUSPEND,
-        PHONEUI_DEVICE_IDLE_STATE_AWAKE
+	PHONEUI_DEVICE_IDLE_STATE_BUSY,
+	PHONEUI_DEVICE_IDLE_STATE_IDLE,
+	PHONEUI_DEVICE_IDLE_STATE_IDLE_DIM,
+	PHONEUI_DEVICE_IDLE_STATE_PRELOCK,
+	PHONEUI_DEVICE_IDLE_STATE_LOCK,
+	PHONEUI_DEVICE_IDLE_STATE_SUSPEND,
+	PHONEUI_DEVICE_IDLE_STATE_AWAKE
 };
+
+enum PhoneUiPimDomain {
+	PHONEUI_PIM_DOMAIN_CALLS,
+	PHONEUI_PIM_DOMAIN_CONTACTS,
+	PHONEUI_PIM_DOMAIN_DATES,
+	PHONEUI_PIM_DOMAIN_MESSAGES,
+	PHONEUI_PIM_DOMAIN_NOTES,
+	PHONEUI_PIM_DOMAIN_TASKS,
+};
+
+void phoneui_utils_query(enum PhoneUiPimDomain domain, const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
