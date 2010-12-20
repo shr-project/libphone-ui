@@ -403,11 +403,12 @@ phoneui_utils_contact_lookup(const char *number,
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
 		NULL, _helpers_free_gvalue);
 
-	value = _helpers_new_gvalue_string(strdup(number));
+	value = _helpers_new_gvalue_string(number);
 	if (!value) {
 		g_hash_table_destroy(query);
 		// FIXME: create a nice error and pass it
 		pack->callback(NULL, NULL, pack->data);
+		free(pack);
 		return 1;
 	}
 
