@@ -387,8 +387,7 @@ _options_hashtable_foreach_query(void *k, void *v, void *data) {
 	GValue *new_value;
 
 	if (key && key[0] != '_') {
-		new_value = malloc(sizeof(GValue));
-		bzero(new_value, sizeof(GValue));
+		new_value = calloc(sizeof(GValue), 1);
 		g_value_init(new_value, G_VALUE_TYPE(value));
 		g_value_copy(value, new_value);
 		g_hash_table_insert(query, strdup(key), new_value);
@@ -409,32 +408,32 @@ phoneui_utils_messages_query(const char *sortby, gboolean sortdesc,
 	g_debug("Retrieving messages");
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-						  NULL, _helpers_free_gvalue);
+						  g_free, _helpers_free_gvalue);
 
 	if (sortby && strlen(sortby)) {
 		gval_tmp = _helpers_new_gvalue_string(sortby);
-		g_hash_table_insert(query, "_sortby", gval_tmp);
+		g_hash_table_insert(query, strdup("_sortby"), gval_tmp);
 	}
 
 	if (sortdesc) {
 		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, "_sortdesc", gval_tmp);
+		g_hash_table_insert(query, strdup("_sortdesc"), gval_tmp);
 	}
 
 	if (disjunction) {
 		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, "_at_least_one", gval_tmp);
+		g_hash_table_insert(query, strdup("_at_least_one"), gval_tmp);
 	}
 
 	if (resolve_number) {
 		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, "_resolve_phonenumber", gval_tmp);
+		g_hash_table_insert(query, strdup("_resolve_phonenumber"), gval_tmp);
 	}
 
 	gval_tmp = _helpers_new_gvalue_int(limit_start);
-	g_hash_table_insert(query, "_limit_start", gval_tmp);
+	g_hash_table_insert(query, strdup("_limit_start"), gval_tmp);
 	gval_tmp = _helpers_new_gvalue_int(limit);
-	g_hash_table_insert(query, "_limit", gval_tmp);
+	g_hash_table_insert(query, strdup("_limit"), gval_tmp);
 
 	g_hash_table_foreach((GHashTable *)options, _options_hashtable_foreach_query, query);
 
