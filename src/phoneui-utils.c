@@ -166,11 +166,13 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 			results_func = PIM_QUERY_RESULTS_FINISH(
 				free_smartphone_pim_contact_query_get_multiple_results_finish);
 			break;
+/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
 			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_date_query_dispose_);
 			results_func = PIM_QUERY_RESULTS_FINISH(
 				free_smartphone_pim_date_query_get_multiple_results_finish);
 			break;
+*/
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
 			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_message_query_dispose_);
 			results_func = PIM_QUERY_RESULTS_FINISH(
@@ -181,7 +183,7 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 			results_func = PIM_QUERY_RESULTS_FINISH(
 				free_smartphone_pim_note_query_get_multiple_results_finish);
 			break;
-/* FIXME, add the sync version in freesmartphone APIs
+/* FIXME, wait the async version in freesmartphone APIs
 		case PHONEUI_PIM_DOMAIN_TASKS:
 			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_task_query_dispose_);
 			results_func = PIM_QUERY_RESULTS_FINISH(
@@ -234,10 +236,12 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 			query_path = free_smartphone_pim_contacts_query_finish
 								(pack->domain, res, &error);
 			break;
+/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
 			query_path = free_smartphone_pim_dates_query_finish
 								(pack->domain, res, &error);
 			break;
+*/
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
 			query_path = free_smartphone_pim_messages_query_finish
 								(pack->domain, res, &error);
@@ -246,7 +250,7 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 			query_path = free_smartphone_pim_notes_query_finish
 								(pack->domain, res, &error);
 			break;
-/* FIXME, add the sync version in freesmartphone APIs
+/* FIXME, wait the async version in freesmartphone APIs
 		case PHONEUI_PIM_DOMAIN_TASKS:
 			query_path = free_smartphone_pim_tasks_query_finish
 								(pack->domain, res, &error);
@@ -279,12 +283,14 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 			results_func = PIM_QUERY_RESULTS
 			               (free_smartphone_pim_contact_query_get_multiple_results);
 			break;
+/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
 			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_date_query_proxy);
 			count_func = PIM_QUERY_COUNT(free_smartphone_pim_date_query_get_result_count);
 			results_func = PIM_QUERY_RESULTS
 			               (free_smartphone_pim_date_query_get_multiple_results);
 			break;
+*/
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
 			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_message_query_proxy);
 			count_func = PIM_QUERY_COUNT(free_smartphone_pim_message_query_get_result_count);
@@ -297,7 +303,7 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 			results_func = PIM_QUERY_RESULTS
 			               (free_smartphone_pim_note_query_get_multiple_results);
 			break;
-/* FIXME, add the sync version in freesmartphone APIs
+/* FIXME, wait the async version in freesmartphone APIs
 		case PHONEUI_PIM_DOMAIN_TASKS:
 			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_task_query_proxy);
 			count_func = PIM_QUERY_COUNT(free_smartphone_pim_task_query_get_result_count);
@@ -345,9 +351,8 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	struct _query_pack *pack;
 	GHashTable *query;
 	GValue *gval_tmp;
-
-	void *(*domain_get)(DBusGConnection*, const char* busname, const char* path);
 	const char *path;
+	void *(*domain_get)(DBusGConnection*, const char* busname, const char* path);
 	void (*query_function)(void *domain, GHashTable *query, GAsyncReadyCallback, gpointer);
 
 	path = NULL;
@@ -364,11 +369,13 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_contacts_query);
 			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_contacts_proxy);
 			break;
+/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
 			path = FSO_FRAMEWORK_PIM_DatesServicePath;
 			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_dates_query);
 			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_dates_proxy);
 			break;
+*/
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
 			path = FSO_FRAMEWORK_PIM_MessagesServicePath;
 			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_messages_query);
@@ -394,7 +401,7 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 		return;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-						  g_free, _helpers_free_gvalue);
+						   g_free, _helpers_free_gvalue);
 	if (!query)
 		return;
 
@@ -441,7 +448,7 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	g_hash_table_unref(query);
 }
 
-GHashTable *
+static GHashTable *
 _create_opimd_message(const char *number, const char *message)
 {
 	/* TODO: add timzone */
