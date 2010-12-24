@@ -15,13 +15,14 @@ libphone_ui_la_SOURCES = phoneui.c phoneui.h phoneui-utils.h phoneui-utils.c \
 			 phoneui-utils-messages.c phoneui-utils-messages.h \
 			 phoneui-utils-sim.c phoneui-utils-sim.h \
 			 phoneui-utils-calls.c phoneui-utils-calls.h \
+			 phoneui-utils-calendar.c phoneui-utils-calendar.h \
 			 phoneui-info.c phoneui-info.h \
 			 dbus.c dbus.h helpers.c helpers.h
 libphone_ui_HEADERS = phoneui.h phoneui-utils.h phoneui-utils-sound.h \
 		      phoneui-utils-device.h phoneui-utils-feedback.h \
 		      phoneui-utils-contacts.h phoneui-utils-messages.h \
 		      phoneui-utils-calls.h phoneui-utils-sim.h \
-		      phoneui-info.h
+		      phoneui-utils-calendar.h phoneui-info.h
 
 
 libphone_uidir = $(includedir)/phoneui
