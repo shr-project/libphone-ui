@@ -96,6 +96,12 @@ static void (*_phoneui_phone_log_hide) () = NULL;
 static void (*_phoneui_sim_manager_show) () = NULL;
 static void (*_phoneui_sim_manager_hide) () = NULL;
 
+/* Calendar */
+static void (*_phoneui_calendar_month_show) (const int month) = NULL;
+static void (*_phoneui_calendar_day_show) (const char *day) = NULL;
+static void (*_phoneui_calendar_date_show) (const char *path) = NULL;
+static void (*_phoneui_calendar_date_new) (GHashTable *options) = NULL;
+
 /* got to be in the same order as in the backends array */
 enum BackendType {
 	BACKEND_DIALER = 0,
@@ -106,6 +112,7 @@ enum BackendType {
 	BACKEND_NOTIFICATION,
 	BACKEND_IDLE_SCREEN,
 	BACKEND_SETTINGS,
+	BACKEND_CALENDAR,
 	BACKEND_NO /* must be last, means the null */
 };
 
@@ -123,6 +130,7 @@ static struct BackendInfo backends[] = {
 					{NULL, "notification"},
 					{NULL, "idle_screen"},
 					{NULL, "settings"},
+					{NULL, "calendar"},
 					{NULL, NULL}
 					};
 
@@ -242,6 +250,10 @@ phoneui_connect()
 	CONNECT_HELPER(phone_log_show, BACKEND_PHONELOG);
 	CONNECT_HELPER(phone_log_hide, BACKEND_PHONELOG);
 
+	CONNECT_HELPER(calendar_month_show, BACKEND_CALENDAR);
+	CONNECT_HELPER(calendar_day_show, BACKEND_CALENDAR);
+	CONNECT_HELPER(calendar_date_show, BACKEND_CALENDAR);
+	CONNECT_HELPER(calendar_date_new, BACKEND_CALENDAR);
 }
 
 static void
@@ -478,4 +490,30 @@ void
 phoneui_sim_manager_hide()
 {
 	PHONEUI_FUNCTION_CONTENT(sim_manager_hide);
+}
+
+
+/* Calendar */
+void
+phoneui_calendar_month_show(const int month)
+{
+	PHONEUI_FUNCTION_CONTENT(calendar_month_show, month);
+}
+
+void
+phoneui_calendar_day_show(const char *day)
+{
+	PHONEUI_FUNCTION_CONTENT(calendar_day_show, day);
+}
+
+void
+phoneui_calendar_date_show(const char *path)
+{
+	PHONEUI_FUNCTION_CONTENT(calendar_date_show, path);
+}
+
+void
+phoneui_calendar_date_new(GHashTable *options)
+{
+	PHONEUI_FUNCTION_CONTENT(calendar_date_new, options);
 }

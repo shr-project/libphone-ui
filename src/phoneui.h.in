@@ -91,5 +91,11 @@ void phoneui_phone_log_hide();
 void phoneui_sim_manager_show();
 void phoneui_sim_manager_hide();
 
+/* Calendar */
+void phoneui_calendar_month_show(const int month);
+void phoneui_calendar_day_show(const char *day);
+void phoneui_calendar_date_show(const char *path);
+void phoneui_calendar_date_new(GHashTable *options);
+
 #endif
 
