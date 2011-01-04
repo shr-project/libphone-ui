@@ -27,8 +27,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus-glib-bindings.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
 #include <phone-utils.h>
