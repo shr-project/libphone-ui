@@ -30,6 +30,7 @@
 #include <freesmartphone.h>
 #include <fsoframework.h>
 #include <phone-utils.h>
+#include <shr-bindings.h>
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 #include "phoneui-utils-device.h"
@@ -1094,18 +1095,19 @@ phoneui_utils_network_stop_connection_sharing(const char *iface,
 }
 
 static void
-_get_offline_mode_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+_get_offline_mode_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	GError *error = NULL;
 	struct _get_offline_mode_pack *pack = data;
 	gboolean offline;
 
-	if (!dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_BOOLEAN,
-			      &offline, G_TYPE_INVALID)) {
-	}
+	phonefso_usage_call_get_offline_mode_finish
+				((PhonefsoUsage *)source, &offline, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, offline, pack->data);
 	}
+	if (error) g_error_free(error);
 	free(pack);
 }
 
@@ -1113,38 +1115,38 @@ void
 phoneui_utils_get_offline_mode(void (*callback)(GError *, gboolean, gpointer),
 			       gpointer userdata)
 {
-	GError *error = NULL;
-	DBusGProxy *phonefsod;
-	DBusGConnection *bus;
+	PhonefsoUsage *proxy;
 	struct _get_offline_mode_pack *pack;
+	GError *error = NULL;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
+	proxy = _phonefso(&error);
 
-	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (error) {
 		callback(error, FALSE, userdata);
+		g_error_free(error);
 		return;
 	}
-	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
-			"/org/shr/phonefso/Usage", "org.shr.phonefso.Usage");
-	dbus_g_proxy_begin_call(phonefsod, "GetOfflineMode",
-				_get_offline_mode_callback, pack, NULL,
-				G_TYPE_INVALID);
+
+	phonefso_usage_call_get_offline_mode
+			(proxy, NULL, _get_offline_mode_callback, pack);
 }
 
 static void
-_set_offline_mode_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+_set_offline_mode_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	GError *error = NULL;
 	struct _set_offline_mode_pack *pack = data;
 
-	if (!dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_INVALID)) {
-	}
+	phonefso_usage_call_set_offline_mode_finish
+				((PhonefsoUsage *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
+	if (error) g_error_free(error);
 	free(pack);
 }
 
@@ -1153,41 +1155,37 @@ phoneui_utils_set_offline_mode(gboolean offline,
 			       void (*callback)(GError *, gpointer),
 			       gpointer userdata)
 {
+	PhonefsoUsage *proxy;
 	GError *error = NULL;
-	DBusGProxy *phonefsod;
-	DBusGConnection *bus;
 	struct _set_offline_mode_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
+	proxy = _phonefso(&error);
 
-	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (error) {
 		callback(error, userdata);
+		g_error_free(error);
 		return;
 	}
-	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
-			"/org/shr/phonefso/Usage", "org.shr.phonefso.Usage");
-	dbus_g_proxy_begin_call(phonefsod, "SetOfflineMode",
-				_set_offline_mode_callback, pack, NULL,
-				G_TYPE_BOOLEAN, offline, G_TYPE_INVALID);
 
+	phonefso_usage_call_set_offline_mode
+			(proxy, offline, NULL, _set_offline_mode_callback, pack);
 }
 
 static void
-_set_pin_callback(DBusGProxy *proxy, DBusGProxyCall *call, gpointer data)
+_set_pin_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
 	GError *error = NULL;
 	struct _set_pin_pack *pack = data;
 
-	dbus_g_proxy_end_call(proxy, call, &error, G_TYPE_INVALID);
-	if (pack) {
-		if (pack->callback) {
-			pack->callback(error, pack->data);
-		}
-		free(pack);
+	phonefso_usage_call_set_pin_finish((PhonefsoUsage *)source, res, &error);
+	if (pack->callback) {
+		pack->callback(error, pack->data);
 	}
+	if (error) g_error_free(error);
+	free(pack);
 }
 
 void
@@ -1195,23 +1193,20 @@ phoneui_utils_set_pin(const char *pin, gboolean save,
 		      void (*callback)(GError *, gpointer),
 		      gpointer userdata)
 {
+	(void) save;
+	PhonefsoUsage *proxy;
 	GError *error = NULL;
-	DBusGProxy *phonefsod;
-	DBusGConnection *bus;
 	struct _set_pin_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-
-	bus = dbus_g_bus_get(DBUS_BUS_SYSTEM, &error);
+	proxy = _phonefso(&error);
 	if (error) {
 		callback(error, userdata);
+		g_error_free(error);
 		return;
 	}
-	phonefsod = dbus_g_proxy_new_for_name(bus, "org.shr.phonefso",
-			"/org/shr/phonefso/Usage", "org.shr.phonefso.Usage");
-	dbus_g_proxy_begin_call(phonefsod, "SetPin", _set_pin_callback, pack,
-				NULL, G_TYPE_STRING, pin, G_TYPE_BOOLEAN, save,
-				G_TYPE_INVALID);
+
+	phonefso_usage_call_set_pin(proxy, pin, NULL, _set_pin_callback, pack);
 }

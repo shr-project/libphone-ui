@@ -46,5 +46,6 @@ gpointer _fso_preferences();
 
 gpointer _fso_usage();
 
+gpointer _phonefso();
 
 #endif

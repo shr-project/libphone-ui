@@ -23,6 +23,7 @@
 #include <gio/gio.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
+#include <shr-bindings.h>
 #include "dbus.h"
 
 gpointer
@@ -188,4 +189,12 @@ _fso_usage()
 		     FSO_FRAMEWORK_USAGE_ServiceDBusName,
 		     FSO_FRAMEWORK_USAGE_ServicePathPrefix,
 		     FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+}
+
+gpointer
+_phonefso(GError **error)
+{
+	return phonefso_usage_proxy_new_for_bus_sync
+		(G_BUS_TYPE_SYSTEM, G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START,
+		 "org.shr.phonefso", "/org/shr/phonefso/Usage", NULL, error);
 }
