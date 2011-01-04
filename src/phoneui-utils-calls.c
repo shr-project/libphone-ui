@@ -32,19 +32,16 @@
 #include "helpers.h"
 
 struct _call_pack {
-	FreeSmartphoneGSMCall *call;
 	void (*callback)(GError *, int, gpointer);
 	gpointer data;
 };
 
 struct _empty_pack {
-	FreeSmartphoneGSMCall *call;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
 
 struct _network_pack {
-	FreeSmartphoneGSMNetwork *net;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
@@ -52,20 +49,19 @@ struct _network_pack {
 static void
 _call_initiate_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	int callid;
 	struct _call_pack *pack = data;
 
         callid = free_smartphone_gsm_call_initiate_finish
-					(pack->call, res, &error);
+				((FreeSmartphoneGSMCall *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, callid, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->call);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -74,6 +70,7 @@ phoneui_utils_call_initiate(const char *_number,
 			    void (*callback)(GError *, int, gpointer),
 			    gpointer userdata)
 {
+	FreeSmartphoneGSMCall *proxy;
 	struct _call_pack *pack;
 	char *number;
 
@@ -81,25 +78,23 @@ phoneui_utils_call_initiate(const char *_number,
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso_gsm_call();
 	number = strdup(_number);
 	phone_utils_remove_filler_chars(number);
-	free_smartphone_gsm_call_initiate(pack->call, number, "voice",
-					  _call_initiate_callback, pack);
+	free_smartphone_gsm_call_initiate
+			(proxy, number, "voice", _call_initiate_callback, pack);
 	return 0;
 }
 
 static void
 _call_release_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _empty_pack *pack = data;
 
 // 	free_smartphone_gsm_call_release_finish(pack->call, res, &error);
-	free_smartphone_gsm_call_release_all_finish(pack->call, res, &error);
+	free_smartphone_gsm_call_release_all_finish
+			((FreeSmartphoneGSMCall *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
@@ -108,7 +103,7 @@ _call_release_callback(GObject *source, GAsyncResult *res, gpointer data)
 			   error->code, error->message);
 		g_error_free(error);
 	}
-	g_object_unref(pack->call);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -117,34 +112,33 @@ phoneui_utils_call_release(int call_id, void (*callback)(GError *, gpointer),
 			   gpointer data)
 {
 	(void) call_id;
+	FreeSmartphoneGSMCall *proxy;
 	struct _empty_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_call_release(pack->call, call_id,
-					 _call_release_callback, pack);
+	proxy = _fso_gsm_call();
+	free_smartphone_gsm_call_release
+			(proxy, call_id, _call_release_callback, pack);
 	return 0;
 }
 
 static void
 _call_activate_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _empty_pack *pack = data;
 
-	free_smartphone_gsm_call_activate_finish(pack->call, res, &error);
+	free_smartphone_gsm_call_activate_finish
+			((FreeSmartphoneGSMCall *)source, res, &error);
 	if (pack->callback)  {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->call);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -152,16 +146,15 @@ int
 phoneui_utils_call_activate(int call_id,
 			    void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneGSMCall *proxy;
 	struct _empty_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_call_activate(pack->call, call_id,
-					  _call_activate_callback, pack);
+	proxy = _fso_gsm_call();
+	free_smartphone_gsm_call_activate
+			(proxy, call_id, _call_activate_callback, pack);
 	return 0;
 }
 
@@ -169,11 +162,11 @@ phoneui_utils_call_activate(int call_id,
 static void
 _send_dtmf_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _empty_pack *pack = data;
 
-	free_smartphone_gsm_call_send_dtmf_finish(pack->call, res, &error);
+	free_smartphone_gsm_call_send_dtmf_finish
+			((FreeSmartphoneGSMCall *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
@@ -181,7 +174,7 @@ _send_dtmf_callback(GObject *source, GAsyncResult *res, gpointer data)
 		g_warning("Sending DMF failed: (%d) %s", error->code, error->message);
 		g_error_free(error);
 	}
-	g_object_unref(pack->call);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -189,16 +182,15 @@ int
 phoneui_utils_call_send_dtmf(const char *tones,
 			     void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneGSMCall *proxy;
 	struct _empty_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->call = free_smartphone_gsm_get_call_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_call_send_dtmf(pack->call, tones,
-					   _send_dtmf_callback, pack);
+	proxy = _fso_gsm_call();
+	free_smartphone_gsm_call_send_dtmf
+			(proxy, tones, _send_dtmf_callback, pack);
 	return 0;
 }
 
@@ -253,19 +245,18 @@ phoneui_utils_dial(const char *number,
 static void
 _ussd_initiate_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _network_pack *pack = data;
 
 	free_smartphone_gsm_network_send_ussd_request_finish
-						(pack->net, res, &error);
+				((FreeSmartphoneGSMNetwork *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->net);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -274,17 +265,16 @@ phoneui_utils_ussd_initiate(const char *request,
 				void (*callback)(GError *, gpointer),
 				void *data)
 {
+	FreeSmartphoneGSMNetwork *proxy;
 	struct _network_pack *pack;
 
 	g_message("Inititating a USSD request %s\n", request);
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->net = free_smartphone_gsm_get_network_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_network_send_ussd_request (pack->net, request,
-						_ussd_initiate_callback, pack);
+	proxy = _fso_gsm_network();
+	free_smartphone_gsm_network_send_ussd_request
+			(proxy, request, _ussd_initiate_callback, pack);
 	return 0;
 }
 

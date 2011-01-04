@@ -33,19 +33,16 @@
 #include "helpers.h"
 
 struct _message_pack {
-	FreeSmartphonePIMMessage *message;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
 
 struct _message_add_pack {
-	FreeSmartphonePIMMessages *messages;
 	void (*callback)(GError *, char *, gpointer);
 	gpointer data;
 };
 
 struct _message_get_pack {
-	FreeSmartphonePIMMessage *message;
 	void (*callback)(GError *, GHashTable *, gpointer);
 	gpointer data;
 };
@@ -110,7 +107,8 @@ _message_add_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _message_add_pack *pack = data;
 	char *new_path;
 
-	new_path = free_smartphone_pim_messages_add_finish(pack->messages, res, &error);
+	new_path = free_smartphone_pim_messages_add_finish
+			((FreeSmartphonePIMMessages *)source, res, &error);
 
 	if (pack->callback) {
 		pack->callback(error, new_path, pack->data);
@@ -118,7 +116,7 @@ _message_add_callback(GObject *source, GAsyncResult *res, gpointer data)
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->messages);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -126,20 +124,19 @@ int
 phoneui_utils_message_add(GHashTable *message,
 			     void (*callback)(GError *, char *, gpointer), gpointer data)
 {
+	FreeSmartphonePIMMessages *proxy;
 	struct _message_add_pack *pack;
-
-	pack = malloc(sizeof(*pack));
-	pack->callback = callback;
-	pack->data = data;
-	pack->messages = free_smartphone_pim_get_messages_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_MessagesServicePath);
 
 	if (!message)
 		return 1;
 
-	free_smartphone_pim_messages_add(pack->messages, message,
-					_message_add_callback, pack);
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	proxy = _fso_pim_messages();
+
+	free_smartphone_pim_messages_add
+			(proxy, message, _message_add_callback, pack);
 	return 0;
 }
 
@@ -168,17 +165,19 @@ phoneui_utils_message_add_fields(const char *direction, long timestamp,
 static void
 _message_update_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _message_pack *pack = data;
-	free_smartphone_pim_message_update_finish(pack->message, res, &error);
+
+	free_smartphone_pim_message_update_finish
+			((FreeSmartphonePIMMessage *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->message);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -186,6 +185,7 @@ int
 phoneui_utils_message_update(const char *path, GHashTable *message,
 			     void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphonePIMMessage *proxy;
 	struct _message_pack *pack;
 
 	if (!message || !path)
@@ -194,11 +194,10 @@ phoneui_utils_message_update(const char *path, GHashTable *message,
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->message = free_smartphone_pim_get_message__proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName, path);
+	proxy = _fso_pim_message(path);
 
-	free_smartphone_pim_message_update(pack->message, message,
-					_message_update_callback, pack);
+	free_smartphone_pim_message_update
+			(proxy, message, _message_update_callback, pack);
 	return 0;
 }
 
@@ -229,17 +228,19 @@ phoneui_utils_message_update_fields(const char *path, const char *direction,
 static void
 _message_delete_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _message_pack *pack = data;
-	free_smartphone_pim_message_delete_finish(pack->message, res, &error);
+
+	free_smartphone_pim_message_delete_finish
+			((FreeSmartphonePIMMessage *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->message);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -247,6 +248,7 @@ int
 phoneui_utils_message_delete(const char *path,
 			     void (*callback)(GError *, gpointer), void *data)
 {
+	FreeSmartphonePIMMessage *proxy;
 	struct _message_pack *pack;
 
 	if (!path)
@@ -255,10 +257,10 @@ phoneui_utils_message_delete(const char *path,
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->message = free_smartphone_pim_get_message__proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, path);
-	free_smartphone_pim_message_delete(pack->message,
-					   _message_delete_callback, pack);
+	proxy = _fso_pim_message(path);
+
+	free_smartphone_pim_message_delete
+			(proxy, _message_delete_callback, pack);
 	return 0;
 }
 
@@ -290,12 +292,11 @@ phoneui_utils_message_set_sent_status(const char *path, int sent,
 static void
 _message_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	GHashTable *message_data;
 	struct _message_get_pack *pack = data;
 	message_data = free_smartphone_pim_message_get_content_finish
-						(pack->message, res, &error);
+				((FreeSmartphonePIMMessage *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, message_data, pack->data);
 	}
@@ -308,7 +309,7 @@ _message_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 		g_hash_table_unref(message_data);
 	}
 end:
-	g_object_unref(pack->message);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -317,6 +318,7 @@ phoneui_utils_message_get(const char *message_path,
 			  void (*callback)(GError *, GHashTable *, gpointer),
 			  gpointer data)
 {
+	FreeSmartphonePIMMessage *proxy;
 	struct _message_get_pack *pack;
 
 	if (!message_path)
@@ -325,11 +327,10 @@ phoneui_utils_message_get(const char *message_path,
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
 	pack->callback = callback;
-	pack->message = free_smartphone_pim_get_message__proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, message_path);
+	proxy = _fso_pim_message(message_path);
 	g_debug("Getting data of message with path: %s", message_path);
-	free_smartphone_pim_message_get_content(pack->message,
-						_message_get_callback, pack);
+	free_smartphone_pim_message_get_content
+				(proxy, _message_get_callback, pack);
 	return (0);
 }
 

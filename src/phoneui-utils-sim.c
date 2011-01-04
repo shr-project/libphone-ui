@@ -29,31 +29,26 @@
 #include "helpers.h"
 
 struct _sim_pack {
-	FreeSmartphoneGSMSIM *sim;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
 
 struct _sim_pb_info_pack {
-	FreeSmartphoneGSMSIM *sim;
 	void (*callback)(GError *, int, int, int, gpointer);
 	gpointer data;
 };
 
 struct _sim_contact_get_pack {
-	FreeSmartphoneGSMSIM *sim;
 	void (*callback)(GError *, const char *, const char *, gpointer);
 	gpointer data;
 };
 
 struct _sim_contacts_get_pack {
-	FreeSmartphoneGSMSIM *sim;
 	void (*callback)(GError *, FreeSmartphoneGSMSIMEntry *, int, gpointer);
 	gpointer data;
 };
 
 struct _sim_auth_status_pack {
-	FreeSmartphoneGSMSIM *sim;
 	gpointer data;
 	void (*callback)(GError *, FreeSmartphoneGSMSIMAuthStatus, gpointer);
 };
@@ -61,18 +56,19 @@ struct _sim_auth_status_pack {
 static void
 _sim_contact_delete_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _sim_pack *pack = data;
 
-	free_smartphone_gsm_sim_delete_entry_finish(pack->sim, res, &error);
+	free_smartphone_gsm_sim_delete_entry_finish
+			((FreeSmartphoneGSMSIM *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -84,34 +80,34 @@ phoneui_utils_sim_contact_delete(const char *category, const int index,
 				void (*callback)(GError *, gpointer),
 				gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_sim_delete_entry(pack->sim, category, index,
-					     _sim_contact_delete_callback, data);
+	proxy = _fso_gsm_sim();
+	free_smartphone_gsm_sim_delete_entry
+		(proxy, category, index, _sim_contact_delete_callback, data);
+
 	return 0;
 }
 
 static void
 _sim_contact_store_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _sim_pack *pack = data;
 
-	free_smartphone_gsm_sim_store_entry_finish(pack->sim, res, &error);
+	free_smartphone_gsm_sim_store_entry_finish
+			((FreeSmartphoneGSMSIM *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -124,37 +120,35 @@ phoneui_utils_sim_contact_store(const char *category, const int index,
 				void (*callback) (GError *, gpointer),
 				gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_sim_store_entry(pack->sim, category, index,
-					    name, number,
-					    _sim_contact_store_callback, pack);
+	proxy = _fso_gsm_sim();
+
+	free_smartphone_gsm_sim_store_entry(proxy, category, index, name, number,
+						 _sim_contact_store_callback, pack);
 	return 0;
 }
 
 static void
 _sim_retrieve_phonebook_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	int count;
 	FreeSmartphoneGSMSIMEntry *contacts;
 	struct _sim_contacts_get_pack *pack = data;
 
 	contacts = free_smartphone_gsm_sim_retrieve_phonebook_finish
-						(pack->sim, res, &count, &error);
+			((FreeSmartphoneGSMSIM *)source, res, &count, &error);
 	pack->callback(error, contacts, count, pack->data);
 	// FIXME: free contacts !!!
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -163,6 +157,7 @@ phoneui_utils_sim_contacts_get(const char *category,
 	void (*callback) (GError *, FreeSmartphoneGSMSIMEntry *, int, gpointer),
 			       gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_contacts_get_pack *pack;
 
 	if (!callback) {
@@ -172,32 +167,31 @@ phoneui_utils_sim_contacts_get(const char *category,
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso_gsm_sim();
 
 	g_message("Probing for contacts");
 	/* as we don't know the exact max index... we just cheat and assume
 	there won't be SIMs with more than 1000 entries */
-	free_smartphone_gsm_sim_retrieve_phonebook(pack->sim, category, 1, 1000,
+	free_smartphone_gsm_sim_retrieve_phonebook(proxy, category, 1, 1000,
 					_sim_retrieve_phonebook_callback, pack);
 }
 
 static void
 _sim_pb_info_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	int slots, number_length, name_length;
 	struct _sim_pb_info_pack *pack = data;
 
-	free_smartphone_gsm_sim_get_phonebook_info_finish(pack->sim, res,
-				&slots, &number_length, &name_length, &error);
+	free_smartphone_gsm_sim_get_phonebook_info_finish
+			((FreeSmartphoneGSMSIM *)source, res, &slots,
+			 &number_length, &name_length, &error);
+
 	pack->callback(error, slots, number_length, name_length, pack->data);
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -212,31 +206,32 @@ void
 phoneui_utils_sim_phonebook_info_get(const char *category,
 	void (*callback) (GError *, int, int, int, gpointer), gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_pb_info_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_sim_get_phonebook_info(pack->sim, category,
-						   _sim_pb_info_callback, pack);
+	proxy = _fso_gsm_sim();
+
+	free_smartphone_gsm_sim_get_phonebook_info
+				(proxy, category, _sim_pb_info_callback, pack);
 }
 
 static void
 _sim_contact_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	int count;
 	FreeSmartphoneGSMSIMEntry *contacts;
 	struct _sim_contact_get_pack *pack = data;
 
 	contacts = free_smartphone_gsm_sim_retrieve_phonebook_finish
-						(pack->sim, res, &count, &error);
+			((FreeSmartphoneGSMSIM *)source, res, &count, &error);
+
 	if (contacts) {
-		pack->callback(error, contacts[0].name, contacts[0].number, pack->data);
+		pack->callback(error, contacts[0].name,
+				 contacts[0].number, pack->data);
 	}
 	else {
 		pack->callback(error, NULL, NULL, pack->data);
@@ -244,7 +239,7 @@ _sim_contact_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -256,26 +251,26 @@ phoneui_utils_sim_phonebook_entry_get(const char *category, const int index,
 		void (*callback) (GError *, const char *name, const char *number, gpointer),
 		gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_contact_get_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	free_smartphone_gsm_sim_retrieve_phonebook(pack->sim, category, index,
-					index, _sim_contact_get_callback, pack);
+	proxy = _fso_gsm_sim();
+
+	free_smartphone_gsm_sim_retrieve_phonebook
+		(proxy, category, index, index, _sim_contact_get_callback, pack);
 }
 
 static void
 _pin_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _sim_pack *pack = data;
 
-	free_smartphone_gsm_sim_send_auth_code_finish(pack->sim, res, &error);
+	free_smartphone_gsm_sim_send_auth_code_finish
+			((FreeSmartphoneGSMSIM *)source, res, &error);
 	g_debug("_auth_send_callback(%s)", error ? "ERROR" : "OK");
 	if (pack->callback) {
 		pack->callback(error, pack->data);
@@ -285,7 +280,7 @@ _pin_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 			error->code, error->message);
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -293,27 +288,27 @@ void
 phoneui_utils_sim_pin_send(const char *pin,
 		void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_pack *pack;
 
 	g_message("Trying PIN");
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
 	pack->callback = callback;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso_gsm_sim();
+
 	free_smartphone_gsm_sim_send_auth_code
-				(pack->sim, pin, _pin_send_callback, pack);
+			(proxy, pin, _pin_send_callback, pack);
 }
 
 static void
 _puk_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _sim_pack *pack = data;
 
-	free_smartphone_gsm_sim_unlock_finish(pack->sim, res, &error);
+	free_smartphone_gsm_sim_unlock_finish
+			((FreeSmartphoneGSMSIM *)source, res, &error);
 
 	if (pack->callback) {
 		pack->callback(error, pack->data);
@@ -323,7 +318,7 @@ _puk_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 			  error->code, error->message);
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -331,29 +326,27 @@ void
 phoneui_utils_sim_puk_send(const char *puk, const char *new_pin,
 		void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_pack *pack;
 
 	g_debug("Trying PUK");
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
 	pack->callback = callback;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso_gsm_sim();
 	free_smartphone_gsm_sim_unlock
-			(pack->sim, puk, new_pin, _puk_send_callback, pack);
+			(proxy, puk, new_pin, _puk_send_callback, pack);
 }
 
 static void
 _get_auth_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _sim_auth_status_pack *pack = data;
 	FreeSmartphoneGSMSIMAuthStatus status;
 
 	status = free_smartphone_gsm_sim_get_auth_status_finish
-						(pack->sim, res, &error);
+				((FreeSmartphoneGSMSIM *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, status, pack->data);
 	}
@@ -363,7 +356,7 @@ _get_auth_status_callback(GObject *source, GAsyncResult *res, gpointer data)
 			   error->code, error->message);
 		g_error_free(error);
 	}
-	g_object_unref(pack->sim);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -371,14 +364,13 @@ void
 phoneui_utils_sim_auth_status_get(void (*callback)(GError *,
 		FreeSmartphoneGSMSIMAuthStatus, gpointer), gpointer data)
 {
+	FreeSmartphoneGSMSIM *proxy;
 	struct _sim_auth_status_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
 	pack->callback = callback;
-	pack->sim = free_smartphone_gsm_get_s_i_m_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso_gsm_sim();
 	free_smartphone_gsm_sim_get_auth_status
-				(pack->sim, _get_auth_status_callback, pack);
+				(proxy, _get_auth_status_callback, pack);
 }

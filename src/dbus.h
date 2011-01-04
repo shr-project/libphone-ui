@@ -21,8 +21,30 @@
 #ifndef _DBUS_H
 #define _DBUS_H
 
-#include <dbus/dbus-glib.h>
+#include <gio/gio.h>
 
-DBusGConnection *_dbus();
+gpointer _fso(GType type, const gchar *obj, const gchar *path, const gchar *iface);
+
+gpointer _fso_pim_contacts();
+gpointer _fso_pim_contact(const gchar *path);
+gpointer _fso_pim_messages();
+gpointer _fso_pim_message(const gchar *path);
+gpointer _fso_pim_tasks();
+gpointer _fso_pim_calls();
+gpointer _fso_pim_fields(const gchar *path);
+
+gpointer _fso_gsm_sim();
+gpointer _fso_gsm_call();
+gpointer _fso_gsm_network();
+gpointer _fso_gsm_pdp();
+
+gpointer _fso_device_power_supply();
+gpointer _fso_device_input();
+gpointer _fso_device_idle_notifier();
+
+gpointer _fso_preferences();
+
+gpointer _fso_usage();
+
 
 #endif

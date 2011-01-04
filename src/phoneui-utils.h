@@ -71,6 +71,7 @@ enum PhoneUiDeviceIdleState {
 	PHONEUI_DEVICE_IDLE_STATE_AWAKE
 };
 
+
 enum PhoneUiPimDomain {
 	PHONEUI_PIM_DOMAIN_CALLS,
 	PHONEUI_PIM_DOMAIN_CONTACTS,
@@ -80,7 +81,7 @@ enum PhoneUiPimDomain {
 	PHONEUI_PIM_DOMAIN_TASKS,
 };
 
-void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
+void phoneui_utils_pim_query(enum PhoneUiPimDomain, const char *sortby, gboolean sortdesc, gboolean disjunction, int limit_start, int limit, gboolean resolve_number, const GHashTable *options, void (*callback)(GError *, GHashTable **, int, gpointer), gpointer data);
 
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();

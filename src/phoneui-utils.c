@@ -31,7 +31,6 @@
 #include <dbus/dbus-glib-bindings.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
-#include <frameworkd-glib-dbus.h>
 #include <phone-utils.h>
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
@@ -51,19 +50,16 @@
 #define PIM_QUERY_DISPOSE(func) (void (*)(void *query, GAsyncReadyCallback, gpointer)) func
 
 struct _usage_pack {
-	FreeSmartphoneUsage *usage;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
 
 struct _usage_policy_pack {
-	FreeSmartphoneUsage *usage;
 	void (*callback)(GError *, FreeSmartphoneUsageResourcePolicy, gpointer);
 	gpointer data;
 };
 
 struct _idle_pack {
-	FreeSmartphoneDeviceIdleNotifier *idle;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
@@ -81,7 +77,6 @@ struct _sms_send_pack {
 struct _query_pack {
 	enum PhoneUiPimDomain domain_type;
 	void *query;
-	void *domain;
 	void (*callback)(GError *, GHashTable **, int, gpointer);
 	gpointer data;
 };
@@ -92,12 +87,10 @@ struct _call_get_pack {
 	gpointer data;
 };
 struct _pdp_pack {
-	FreeSmartphoneGSMPDP *pdp;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
 struct _pdp_credentials_pack {
-	FreeSmartphoneGSMPDP *pdp;
 	void (*callback)(GError *, const char *, const char *, const char *, gpointer);
 	gpointer data;
 };
@@ -127,10 +120,6 @@ phoneui_utils_init(GKeyFile *keyfile)
 	ret = phoneui_utils_device_init(keyfile);
 	ret = phoneui_utils_feedback_init(keyfile);
 
-	// FIXME: remove when vala learned to handle multi-field contacts !!!
-	g_debug("Initing libframeworkd-glib :(");
-	frameworkd_handler_connect(NULL);
-
 	return 0;
 }
 
@@ -155,50 +144,54 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 	dispose_func = NULL;
 	results_func = NULL;
 
-	switch(pack->domain_type) {
+	switch (pack->domain_type) {
 		case PHONEUI_PIM_DOMAIN_CALLS:
-			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_call_query_dispose_);
-			results_func = PIM_QUERY_RESULTS_FINISH(
-					free_smartphone_pim_call_query_get_multiple_results_finish);
+			results = free_smartphone_pim_call_query_get_multiple_results_finish
+				((FreeSmartphonePIMCallQuery *)source, res, &count, &error);
+			free_smartphone_pim_call_query_dispose_
+				((FreeSmartphonePIMCallQuery *)source, NULL, NULL);
 			break;
 		case PHONEUI_PIM_DOMAIN_CONTACTS:
-			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_contact_query_dispose_);
-			results_func = PIM_QUERY_RESULTS_FINISH(
-				free_smartphone_pim_contact_query_get_multiple_results_finish);
+			results = free_smartphone_pim_contact_query_get_multiple_results_finish
+				((FreeSmartphonePIMContactQuery *)source, res, &count, &error);
+			free_smartphone_pim_contact_query_dispose_
+				((FreeSmartphonePIMContactQuery *)source, NULL, NULL);
 			break;
 /* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
-			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_date_query_dispose_);
-			results_func = PIM_QUERY_RESULTS_FINISH(
-				free_smartphone_pim_date_query_get_multiple_results_finish);
+			results = free_smartphone_pim_date_query_get_multiple_results_finish
+				((FreeSmartphonePIMDateQuery *)source, res, &count, &error);
+			free_smartphone_pim_date_query_dispose_
+				((FreeSmartphonePIMDateQuery *)source, NULL, NULL);
 			break;
 */
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
-			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_message_query_dispose_);
-			results_func = PIM_QUERY_RESULTS_FINISH(
-				free_smartphone_pim_message_query_get_multiple_results_finish);
+			results = free_smartphone_pim_message_query_get_multiple_results_finish
+				((FreeSmartphonePIMMessageQuery *)source, res, &count, &error);
+			free_smartphone_pim_message_query_dispose_
+				((FreeSmartphonePIMMessageQuery *)source, NULL, NULL);
 			break;
 		case PHONEUI_PIM_DOMAIN_NOTES:
-			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_note_query_dispose_);
-			results_func = PIM_QUERY_RESULTS_FINISH(
-				free_smartphone_pim_note_query_get_multiple_results_finish);
+			results = free_smartphone_pim_note_query_get_multiple_results_finish
+				((FreeSmartphonePIMNoteQuery *)source, res, &count, &error);
+			free_smartphone_pim_note_query_dispose_
+				((FreeSmartphonePIMNoteQuery *)source, NULL, NULL);
 			break;
 /* FIXME, wait the async version in freesmartphone APIs
 		case PHONEUI_PIM_DOMAIN_TASKS:
-			dispose_func = PIM_QUERY_DISPOSE(free_smartphone_pim_task_query_dispose_);
-			results_func = PIM_QUERY_RESULTS_FINISH(
-				free_smartphone_pim_task_query_get_multiple_results_finish);
+			results = free_smartphone_pim_task_query_get_multiple_results_finish
+				((FreeSmartphonePIMTaskQuery *)source, res, &count, &error);
+			free_smartphone_pim_task_query_dispose_
+				((FreeSmartphonePIMTaskQuery *)source, NULL, NULL);
 			break;
 */
 		default:
-			g_object_unref(pack->query);
+			g_object_unref(source);
 			free(pack);
 			return;
 	}
 
-	results = results_func(pack->query, res, &count, &error);
-	dispose_func(pack->query, NULL, NULL);
-	g_object_unref(pack->query);
+	g_object_unref(source);
 
 	g_debug("Query gave %d entries", count);
 
@@ -216,51 +209,40 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 static void
 _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	char *query_path = NULL;
 	GError *error = NULL;
-	void (*count_func)(void *query, GAsyncReadyCallback, gpointer);
-	void (*results_func)(void *query, int count, GAsyncReadyCallback, gpointer);
-	void *(*query_proxy)(DBusGConnection*, const char* busname, const char* path);
 	struct _query_pack *pack = data;
 
-	query_proxy = NULL;
-	count_func = NULL;
-
-	switch(pack->domain_type) {
+	switch (pack->domain_type) {
 		case PHONEUI_PIM_DOMAIN_CALLS:
 			query_path = free_smartphone_pim_calls_query_finish
-								(pack->domain, res, &error);
+				((FreeSmartphonePIMCalls *)source, res, &error);
 			break;
 		case PHONEUI_PIM_DOMAIN_CONTACTS:
 			query_path = free_smartphone_pim_contacts_query_finish
-								(pack->domain, res, &error);
+				((FreeSmartphonePIMContacts *)source, res, &error);
 			break;
-/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
 			query_path = free_smartphone_pim_dates_query_finish
-								(pack->domain, res, &error);
+				((FreeSmartphonePIMDates *)source, res, &error);
 			break;
-*/
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
 			query_path = free_smartphone_pim_messages_query_finish
-								(pack->domain, res, &error);
+				((FreeSmartphonePIMMessages *)source, res, &error);
 			break;
 		case PHONEUI_PIM_DOMAIN_NOTES:
 			query_path = free_smartphone_pim_notes_query_finish
-								(pack->domain, res, &error);
+				((FreeSmartphonePIMNotes *)source, res, &error);
 			break;
-/* FIXME, wait the async version in freesmartphone APIs
 		case PHONEUI_PIM_DOMAIN_TASKS:
 			query_path = free_smartphone_pim_tasks_query_finish
-								(pack->domain, res, &error);
+				((FreeSmartphonePIMTasks *)source, res, &error);
 			break;
-*/
 		default:
 			goto exit;
 	}
 
-	g_object_unref(pack->domain);
+	g_object_unref(source);
 
 	if (error) {
 		g_warning("Query error: (%d) %s",
@@ -270,57 +252,60 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 		goto exit;
 	}
 
-	switch(pack->domain_type) {
-		case PHONEUI_PIM_DOMAIN_CALLS:
-			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_call_query_proxy);
-			count_func = PIM_QUERY_COUNT(free_smartphone_pim_call_query_get_result_count);
-			results_func = PIM_QUERY_RESULTS
-			               (free_smartphone_pim_call_query_get_multiple_results);
-			break;
-		case PHONEUI_PIM_DOMAIN_CONTACTS:
-			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_contact_query_proxy);
-			count_func = PIM_QUERY_COUNT(free_smartphone_pim_contact_query_get_result_count);
-			results_func = PIM_QUERY_RESULTS
-			               (free_smartphone_pim_contact_query_get_multiple_results);
-			break;
+	if (pack->domain_type == PHONEUI_PIM_DOMAIN_CALLS) {
+		FreeSmartphonePIMCallQuery *proxy =
+			_fso(FREE_SMARTPHONE_PIM_TYPE_CALL_QUERY_PROXY,
+			     FSO_FRAMEWORK_PIM_ServiceDBusName,
+			     query_path,
+			     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".CallQuery");
+		free_smartphone_pim_call_query_get_multiple_results
+				(proxy, -1, _pim_query_results_callback, pack);
+	}
+	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_CONTACTS) {
+		FreeSmartphonePIMContactQuery *proxy =
+			_fso(FREE_SMARTPHONE_PIM_TYPE_CONTACT_QUERY_PROXY,
+			     FSO_FRAMEWORK_PIM_ServiceDBusName,
+			     query_path,
+			     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".ContactQuery");
+		free_smartphone_pim_contact_query_get_multiple_results
+				(proxy, -1, _pim_query_results_callback, pack);
+	}
+	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_DATES) {
 /* FIXME, re-enable it when libfsoframework supports it again
-		case PHONEUI_PIM_DOMAIN_DATES:
 			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_date_query_proxy);
 			count_func = PIM_QUERY_COUNT(free_smartphone_pim_date_query_get_result_count);
 			results_func = PIM_QUERY_RESULTS
 			               (free_smartphone_pim_date_query_get_multiple_results);
-			break;
 */
-		case PHONEUI_PIM_DOMAIN_MESSAGES:
-			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_message_query_proxy);
-			count_func = PIM_QUERY_COUNT(free_smartphone_pim_message_query_get_result_count);
-			results_func = PIM_QUERY_RESULTS
-			               (free_smartphone_pim_message_query_get_multiple_results);
-			break;
-		case PHONEUI_PIM_DOMAIN_NOTES:
-			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_note_query_proxy);
-			count_func = PIM_QUERY_COUNT(free_smartphone_pim_note_query_get_result_count);
-			results_func = PIM_QUERY_RESULTS
-			               (free_smartphone_pim_note_query_get_multiple_results);
-			break;
+	}
+	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_MESSAGES) {
+		FreeSmartphonePIMMessageQuery *proxy =
+			_fso(FREE_SMARTPHONE_PIM_TYPE_MESSAGE_QUERY_PROXY,
+			     FSO_FRAMEWORK_PIM_ServiceDBusName,
+			     query_path,
+			     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".MessageQuery");
+		free_smartphone_pim_message_query_get_multiple_results
+				(proxy, -1, _pim_query_results_callback, pack);
+	}
+	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_NOTES) {
+		FreeSmartphonePIMNoteQuery *proxy =
+			_fso(FREE_SMARTPHONE_PIM_TYPE_NOTE_QUERY_PROXY,
+			     FSO_FRAMEWORK_PIM_ServiceDBusName,
+			     query_path,
+			     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".NoteQuery");
+		free_smartphone_pim_note_query_get_multiple_results
+				(proxy, -1, _pim_query_results_callback, pack);
+	}
+	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_TASKS) {
 /* FIXME, wait the async version in freesmartphone APIs
-		case PHONEUI_PIM_DOMAIN_TASKS:
 			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_task_query_proxy);
 			count_func = PIM_QUERY_COUNT(free_smartphone_pim_task_query_get_result_count);
 			results_func = PIM_QUERY_RESULTS
 			               (free_smartphone_pim_task_query_get_multiple_results);
-			break;
 */
-		default:
-			goto exit;
 	}
 
-	if (!query_proxy || !count_func || !query_path)
-		goto exit;
-
-	pack->query = query_proxy(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, query_path);
-	results_func(pack->query, -1, _pim_query_results_callback, pack);
-	free(query_path);
+	if (query_path) free(query_path);
 	return;
 
 exit:
@@ -351,57 +336,9 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	struct _query_pack *pack;
 	GHashTable *query;
 	GValue *gval_tmp;
-	const char *path;
-	void *(*domain_get)(DBusGConnection*, const char* busname, const char* path);
-	void (*query_function)(void *domain, GHashTable *query, GAsyncReadyCallback, gpointer);
-
-	path = NULL;
-	query_function = NULL;
-
-	switch(domain) {
-		case PHONEUI_PIM_DOMAIN_CALLS:
-			path = FSO_FRAMEWORK_PIM_CallsServicePath;
-			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_calls_query);
-			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_calls_proxy);
-			break;
-		case PHONEUI_PIM_DOMAIN_CONTACTS:
-			path = FSO_FRAMEWORK_PIM_ContactsServicePath;
-			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_contacts_query);
-			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_contacts_proxy);
-			break;
-/* FIXME, re-enable it when libfsoframework supports it again
-		case PHONEUI_PIM_DOMAIN_DATES:
-			path = FSO_FRAMEWORK_PIM_DatesServicePath;
-			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_dates_query);
-			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_dates_proxy);
-			break;
-*/
-		case PHONEUI_PIM_DOMAIN_MESSAGES:
-			path = FSO_FRAMEWORK_PIM_MessagesServicePath;
-			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_messages_query);
-			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_messages_proxy);
-			break;
-		case PHONEUI_PIM_DOMAIN_NOTES:
-			path = FSO_FRAMEWORK_PIM_NotesServicePath;
-			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_notes_query);
-			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_notes_proxy);
-			break;
-/* FIXME, add the sync version in freesmartphone APIs
-		case PHONEUI_PIM_DOMAIN_TASKS:
-			path = FSO_FRAMEWORK_PIM_TasksServicePath;
-			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_tasks_query);
-			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_tasks_proxy);
-			break;
-*/
-		default:
-			return;
-	}
-
-	if (!path || !query_function)
-		return;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-						   g_free, _helpers_free_gvalue);
+					  g_free, _helpers_free_gvalue);
 	if (!query)
 		return;
 
@@ -432,19 +369,58 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 
 	if (options) {
 		g_hash_table_foreach((GHashTable *)options,
-			_pim_query_hashtable_clone_foreach_callback, query);
+					_pim_query_hashtable_clone_foreach_callback, query);
 	}
 
 	pack = malloc(sizeof(*pack));
 	pack->domain_type = domain;
 	pack->callback = callback;
 	pack->data = data;
-	pack->domain = domain_get(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, path);
 	pack->query = NULL;
 
-	g_debug("Firing the query!");
+	if (domain == PHONEUI_PIM_DOMAIN_CALLS) {
+		FreeSmartphonePIMCalls *proxy =
+			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
+				      FSO_FRAMEWORK_PIM_CallsServicePath,
+				      FSO_FRAMEWORK_PIM_CallsServiceFace);
+		free_smartphone_pim_calls_query(proxy, query, _pim_query_callback, pack);
+	}
+	else if (domain == PHONEUI_PIM_DOMAIN_CONTACTS) {
+		FreeSmartphonePIMContacts *proxy =
+			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
+				      FSO_FRAMEWORK_PIM_ContactsServicePath,
+				      FSO_FRAMEWORK_PIM_ContactsServiceFace);
+		free_smartphone_pim_contacts_query(proxy, query, _pim_query_callback, pack);
+	}
+	else if (domain == PHONEUI_PIM_DOMAIN_DATES) {
+		/* FIXME, re-enable it when libfsoframework supports it again
+		 *			path = FSO_FRAMEWORK_PIM_DatesServicePath;
+		 *			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_dates_query);
+		 *			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_dates_proxy);
+		 */
+	}
+	else if (domain == PHONEUI_PIM_DOMAIN_MESSAGES) {
+		FreeSmartphonePIMMessages *proxy =
+			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
+				      FSO_FRAMEWORK_PIM_MessagesServicePath,
+				      FSO_FRAMEWORK_PIM_MessagesServiceFace);
+		free_smartphone_pim_messages_query(proxy, query, _pim_query_callback, pack);
+	}
+	else if (domain == PHONEUI_PIM_DOMAIN_NOTES) {
+		FreeSmartphonePIMNotes *proxy =
+			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
+				      FSO_FRAMEWORK_PIM_NotesServicePath,
+				      FSO_FRAMEWORK_PIM_NotesServiceFace);
+		free_smartphone_pim_notes_query(proxy, query, _pim_query_callback, pack);
+	}
+	else if (domain == PHONEUI_PIM_DOMAIN_TASKS) {
+		/* FIXME, add the sync version in freesmartphone APIs
+		 *			path = FSO_FRAMEWORK_PIM_TasksServicePath;
+		 *			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_tasks_query);
+		 *			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_tasks_proxy);
+		 */
+	}
 
-	query_function(pack->domain, query, _pim_query_callback, pack);
 	g_hash_table_unref(query);
 }
 
@@ -570,12 +546,15 @@ phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callb
 		return 1;
 	}
 
-	sms = free_smartphone_gsm_get_s_m_s_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
-	pim_messages = free_smartphone_pim_get_messages_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_MessagesServicePath);
+	sms = _fso(FREE_SMARTPHONE_GSM_TYPE_SMS_PROXY,
+		    FSO_FRAMEWORK_GSM_ServiceDBusName,
+		    FSO_FRAMEWORK_GSM_DeviceServicePath,
+		    FSO_FRAMEWORK_GSM_ServiceFacePrefix ".SMS");
+
+	pim_messages = _fso(FREE_SMARTPHONE_PIM_TYPE_MESSAGES_PROXY,
+			      FSO_FRAMEWORK_PIM_ServiceDBusName,
+			      FSO_FRAMEWORK_PIM_MessagesServicePath,
+			      FSO_FRAMEWORK_PIM_MessagesServiceFace);
 
 	/* cycle through all the recipients */
 	for (i = 0; i < recipients->len; i++) {
@@ -661,65 +640,73 @@ phoneui_utils_fields_types_get(void *callback, void *userdata)
 static void
 _suspend_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _usage_pack *pack = data;
 
-	free_smartphone_usage_suspend_finish(pack->usage, res, &error);
+	free_smartphone_usage_suspend_finish
+			((FreeSmartphoneUsage *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->usage);
+	g_object_unref(source);
 	free(pack);
 }
 
 void
 phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneUsage *proxy;
 	struct _usage_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->usage = free_smartphone_get_usage_proxy(_dbus(),
-					FSO_FRAMEWORK_USAGE_ServiceDBusName,
-					FSO_FRAMEWORK_USAGE_ServicePathPrefix);
-	free_smartphone_usage_suspend(pack->usage, _suspend_callback, pack);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE,
+		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
+		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
+		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+
+	free_smartphone_usage_suspend(proxy, _suspend_callback, pack);
 }
 
 static void
 _shutdown_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _usage_pack *pack = data;
 
-	free_smartphone_usage_shutdown_finish(pack->usage, res, &error);
+	free_smartphone_usage_shutdown_finish
+			((FreeSmartphoneUsage *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->usage);
+	g_object_unref(source);
 	free(pack);
 }
 
 void
 phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneUsage *proxy;
 	struct _usage_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->usage = free_smartphone_get_usage_proxy(_dbus(),
-					FSO_FRAMEWORK_USAGE_ServiceDBusName,
-					FSO_FRAMEWORK_USAGE_ServicePathPrefix);
-	free_smartphone_usage_shutdown(pack->usage, _shutdown_callback, pack);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
+		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
+		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
+		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+
+	free_smartphone_usage_shutdown(proxy, _shutdown_callback, pack);
 }
 
 static void
@@ -730,14 +717,15 @@ _set_idle_state_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _idle_pack *pack = data;
 
 	free_smartphone_device_idle_notifier_set_state_finish
-						(pack->idle, res, &error);
+			((FreeSmartphoneDeviceIdleNotifier *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->idle);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -746,33 +734,36 @@ phoneui_utils_idle_set_state(FreeSmartphoneDeviceIdleState state,
 			     void (*callback) (GError *, gpointer),
 			     gpointer data)
 {
+	FreeSmartphoneDeviceIdleNotifier *proxy;
 	struct _idle_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->idle = free_smartphone_device_get_idle_notifier_proxy(_dbus(),
-				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-				FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath"/0");
-	free_smartphone_device_idle_notifier_set_state(pack->idle, state,
-						_set_idle_state_callback, pack);
+	proxy = _fso(FREE_SMARTPHONE_DEVICE_TYPE_IDLE_NOTIFIER_PROXY,
+		      FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+		      FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath"/0",
+		      FSO_FRAMEWORK_DEVICE_IdleNotifierServiceFace);
+
+	free_smartphone_device_idle_notifier_set_state
+				(proxy, state, _set_idle_state_callback, pack);
 }
 
 static void
 _get_policy_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	FreeSmartphoneUsageResourcePolicy policy;
 	struct _usage_policy_pack *pack = data;
 
 	policy = free_smartphone_usage_get_resource_policy_finish
-						(pack->usage, res, &error);
+					((FreeSmartphoneUsage *)source, res, &error);
+
 	pack->callback(error, policy, pack->data);
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->usage);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -781,34 +772,36 @@ phoneui_utils_resources_get_resource_policy(const char *name,
 	void (*callback) (GError *, FreeSmartphoneUsageResourcePolicy, gpointer),
 	gpointer data)
 {
+	FreeSmartphoneUsage *proxy;
 	struct _usage_policy_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->usage = free_smartphone_get_usage_proxy(_dbus(),
-					FSO_FRAMEWORK_USAGE_ServiceDBusName,
-					FSO_FRAMEWORK_USAGE_ServicePathPrefix);
-	free_smartphone_usage_get_resource_policy(pack->usage, name,
-						  _get_policy_callback, pack);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
+		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
+		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
+		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+
+	free_smartphone_usage_get_resource_policy
+				(proxy, name, _get_policy_callback, pack);
 }
 
 static void
 _set_policy_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _usage_pack *pack = data;
 
 	free_smartphone_usage_set_resource_policy_finish
-						(pack->usage, res, &error);
+					((FreeSmartphoneUsage *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->usage);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -817,16 +810,19 @@ phoneui_utils_resources_set_resource_policy(const char *name,
 			FreeSmartphoneUsageResourcePolicy policy,
 			void (*callback) (GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneUsage *proxy;
 	struct _usage_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->usage = free_smartphone_get_usage_proxy(_dbus(),
-					FSO_FRAMEWORK_USAGE_ServiceDBusName,
-					FSO_FRAMEWORK_USAGE_ServicePathPrefix);
-	free_smartphone_usage_set_resource_policy(pack->usage, name, policy,
-						  _set_policy_callback, pack);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
+		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
+		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
+		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+
+	free_smartphone_usage_set_resource_policy
+			(proxy, name, policy, _set_policy_callback, pack);
 }
 
 void
@@ -880,13 +876,13 @@ phoneui_utils_calls_get(int *count,
 static void
 _call_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	GHashTable *content;
 	struct _call_get_pack *pack = data;
 
 	content = free_smartphone_pim_call_get_content_finish
-						(pack->call, res, &error);
+				((FreeSmartphonePIMCall *)source, res, &error);
+
 	pack->callback(error, content, pack->data);
 	if (error) {
 		g_error_free(error);
@@ -894,7 +890,7 @@ _call_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 	if (content) {
 		g_hash_table_unref(content);
 	}
-	g_object_unref(pack->call);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -903,44 +899,49 @@ phoneui_utils_call_get(const char *call_path,
 		       void (*callback)(GError *, GHashTable*, gpointer),
 		       gpointer data)
 {
+	FreeSmartphonePIMCall *proxy;
 	struct _call_get_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
 	pack->callback = callback;
-	pack->call = free_smartphone_pim_get_call_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, call_path);
+	proxy = _fso(FREE_SMARTPHONE_PIM_TYPE_CALL_PROXY,
+		      FSO_FRAMEWORK_PIM_ServiceDBusName,
+		      call_path,
+		      FSO_FRAMEWORK_PIM_ServiceFacePrefix ".Call");
 	g_debug("Getting data of call with path: %s", call_path);
-	free_smartphone_pim_call_get_content(pack->call, _call_get_callback, pack);
+	free_smartphone_pim_call_get_content(proxy, _call_get_callback, pack);
 	return (0);
 }
 
 static void
 _pdp_activate_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _pdp_pack *pack = data;
 
-	free_smartphone_gsm_pdp_activate_context_finish(pack->pdp, res, &error);
+	free_smartphone_gsm_pdp_activate_context_finish
+			((FreeSmartphoneGSMPDP *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->pdp);
+	g_object_unref(source);
 	free(pack);
 }
 
 static void
 _pdp_deactivate_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _pdp_pack *pack = data;
 
-	free_smartphone_gsm_pdp_deactivate_context_finish(pack->pdp, res, &error);
+	free_smartphone_gsm_pdp_deactivate_context_finish
+			((FreeSmartphoneGSMPDP *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
@@ -948,7 +949,7 @@ _pdp_deactivate_callback(GObject *source, GAsyncResult *res, gpointer data)
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->pdp);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -956,53 +957,57 @@ void
 phoneui_utils_pdp_activate_context(void (*callback)(GError *, gpointer),
 			   gpointer userdata)
 {
+	FreeSmartphoneGSMPDP *proxy;
 	struct _pdp_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	pack->pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso(FREE_SMARTPHONE_GSM_TYPE_PDP_PROXY,
+		      FSO_FRAMEWORK_GSM_ServiceDBusName,
+		      FSO_FRAMEWORK_GSM_DeviceServicePath,
+		      FSO_FRAMEWORK_GSM_DeviceServiceFace);
 
 	free_smartphone_gsm_pdp_activate_context
-				(pack->pdp, _pdp_activate_callback, pack);
+				(proxy, _pdp_activate_callback, pack);
 }
 
 void
 phoneui_utils_pdp_deactivate_context(void (*callback)(GError *, gpointer),
 			     gpointer userdata)
 {
+	FreeSmartphoneGSMPDP *proxy;
 	struct _pdp_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	pack->pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso(FREE_SMARTPHONE_GSM_TYPE_PDP_PROXY,
+		      FSO_FRAMEWORK_GSM_ServiceDBusName,
+		      FSO_FRAMEWORK_GSM_DeviceServicePath,
+		      FSO_FRAMEWORK_GSM_DeviceServiceFace);
 
 	free_smartphone_gsm_pdp_deactivate_context
-				(pack->pdp, _pdp_deactivate_callback, pack);
+				(proxy, _pdp_deactivate_callback, pack);
 }
 
 static void
 _pdp_get_credentials_cb(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _pdp_credentials_pack *pack = data;
 	char *apn, *user, *pw;
 
 	free_smartphone_gsm_pdp_get_credentials_finish
-				(pack->pdp, res, &apn, &user, &pw, &error);
+		((FreeSmartphoneGSMPDP *)source, res, &apn, &user, &pw, &error);
+
 	if (pack->callback) {
 		pack->callback(error, apn, user, pw, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->pdp);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -1011,56 +1016,62 @@ phoneui_utils_pdp_get_credentials(void (*callback)(GError *, const char *,
 						   const char *, const char *,
 						   gpointer), gpointer data)
 {
+	FreeSmartphoneGSMPDP *proxy;
 	struct _pdp_credentials_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
-					FSO_FRAMEWORK_GSM_ServiceDBusName,
-					FSO_FRAMEWORK_GSM_DeviceServicePath);
+	proxy = _fso(FREE_SMARTPHONE_GSM_TYPE_PDP_PROXY,
+		      FSO_FRAMEWORK_GSM_ServiceDBusName,
+		      FSO_FRAMEWORK_GSM_DeviceServicePath,
+		      FSO_FRAMEWORK_GSM_ServiceFacePrefix ".PDP");
+
 	free_smartphone_gsm_pdp_get_credentials
-				(pack->pdp, _pdp_get_credentials_cb, pack);
+				(proxy, _pdp_get_credentials_cb, pack);
 }
 
 static void
 _network_start_sharing_cb(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _network_pack *pack = data;
 
 	free_smartphone_network_start_connection_sharing_with_interface_finish
-						(pack->network, res, &error);
+					((FreeSmartphoneNetwork *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
+
+	g_object_unref(source);
 }
 
 void
 phoneui_utils_network_start_connection_sharing(const char *iface,
 			void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneNetwork *proxy;
 	struct _network_pack *pack;
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->network = free_smartphone_get_network_proxy(_dbus(),
-					FSO_FRAMEWORK_NETWORK_ServiceDBusName,
-					FSO_FRAMEWORK_NETWORK_ServicePathPrefix);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_NETWORK_PROXY,
+		      FSO_FRAMEWORK_NETWORK_ServiceDBusName,
+		      FSO_FRAMEWORK_NETWORK_ServicePathPrefix,
+		      FSO_FRAMEWORK_NETWORK_ServiceFacePrefix);
+
 	free_smartphone_network_start_connection_sharing_with_interface
-			(pack->network, iface, _network_start_sharing_cb, pack);
+				(proxy, iface, _network_start_sharing_cb, pack);
 }
 
 static void
 _network_stop_sharing_cb(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _network_pack *pack = data;
 
 	free_smartphone_network_stop_connection_sharing_with_interface_finish
-						(pack->network, res, &error);
+					((FreeSmartphoneNetwork *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
@@ -1070,15 +1081,18 @@ void
 phoneui_utils_network_stop_connection_sharing(const char *iface,
 			void (*callback)(GError *, gpointer), gpointer data)
 {
+	FreeSmartphoneNetwork *proxy;
 	struct _network_pack *pack;
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->network = free_smartphone_get_network_proxy(_dbus(),
-					FSO_FRAMEWORK_NETWORK_ServiceDBusName,
-					FSO_FRAMEWORK_NETWORK_ServicePathPrefix);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_NETWORK_PROXY,
+		      FSO_FRAMEWORK_NETWORK_ServiceDBusName,
+		      FSO_FRAMEWORK_NETWORK_ServicePathPrefix,
+		      FSO_FRAMEWORK_NETWORK_ServiceFacePrefix);
+
 	free_smartphone_network_stop_connection_sharing_with_interface
-			(pack->network, iface, _network_stop_sharing_cb, pack);
+				(proxy, iface, _network_stop_sharing_cb, pack);
 }
 
 static void

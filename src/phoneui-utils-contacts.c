@@ -28,8 +28,6 @@
 #include <glib-object.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-dbus.h>
-#include <frameworkd-glib/opimd/frameworkd-glib-opimd-contacts.h>
 #include "helpers.h"
 #include "dbus.h"
 #include "phoneui-utils.h"
@@ -45,25 +43,21 @@ struct _query_pack {
 struct _field_type_pack {
 	gpointer data;
 	void (*callback)(GError *, char *, gpointer);
-	FreeSmartphonePIMFields *fields;
 };
 
 struct _fields_pack {
 	gpointer data;
 	void (*callback)(GError *, GHashTable *, gpointer);
-	FreeSmartphonePIMFields *fields;
 };
 
 struct _fields_with_type_pack {
 	gpointer data;
 	void (*callback)(GError *, char **, int, gpointer);
-	FreeSmartphonePIMFields *fields;
 };
 
 struct _field_pack {
 	gpointer data;
 	void (*callback)(GError *, gpointer);
-	FreeSmartphonePIMFields *fields;
 };
 
 struct _contact_lookup_pack {
@@ -72,25 +66,16 @@ struct _contact_lookup_pack {
 };
 
 struct _contact_add_pack {
-	FreeSmartphonePIMContacts *contacts;
 	void (*callback)(GError *, char *, gpointer);
 	gpointer data;
 };
 
-struct _contact_delete_pack {
-	FreeSmartphonePIMContact *contact;
-	void (*callback)(GError *, gpointer);
-	gpointer data;
-};
-
 struct _contact_pack {
-	FreeSmartphonePIMContact *contact;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
 
 struct _contact_get_pack {
-	FreeSmartphonePIMContact *contact;
 	gpointer data;
 	void (*callback)(GError *, GHashTable *, gpointer);
 };
@@ -167,14 +152,14 @@ phoneui_utils_contacts_get(int *count,
 static void
 _contacts_field_type_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	(void) res;
 	GError *error = NULL;
 	char *type = NULL;
 	struct _field_type_pack *pack = data;
 
 	type = free_smartphone_pim_fields_get_type__finish
-					(pack->fields, res, &error);
+				((FreeSmartphonePIMFields *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, type, pack->data);
 	}
@@ -184,7 +169,7 @@ _contacts_field_type_callback(GObject *source, GAsyncResult *res, gpointer data)
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->fields);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -192,16 +177,16 @@ void
 phoneui_utils_contacts_field_type_get(const char *name,
                 void (*callback)(GError *, char *, gpointer), gpointer data)
 {
+	FreeSmartphonePIMFields *proxy;
 	struct _field_type_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->fields = free_smartphone_pim_get_fields_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
-	free_smartphone_pim_fields_get_type_(pack->fields, name,
-					     _contacts_field_type_callback, pack);
+	proxy = _fso_pim_fields(FSO_FRAMEWORK_PIM_ContactsServicePath);
+
+	free_smartphone_pim_fields_get_type_
+		(proxy, name, _contacts_field_type_callback, pack);
 }
 
 static void
@@ -221,7 +206,7 @@ _fields_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 
 	g_debug("_fields_get_callback");
 	fields = free_smartphone_pim_fields_list_fields_finish
-						(pack->fields, res, &error);
+				((FreeSmartphonePIMFields *)source, res, &error);
 	if (pack->callback) {
 		if (fields) {
 			g_debug("Stripping system fields");
@@ -237,7 +222,7 @@ _fields_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 		g_error_free(error);
 	}
 	g_debug("Freeing stuff");
-	g_object_unref(pack->fields);
+	g_object_unref(source);
 	free(pack);
 	g_debug("_fields_get_callback done");
 }
@@ -247,31 +232,32 @@ phoneui_utils_contacts_fields_get(void (*callback)(GError *, GHashTable *, gpoin
 				  gpointer data)
 {
 	struct _fields_pack *pack;
+	FreeSmartphonePIMFields *proxy;
 
 	g_debug("phoneui_utils_contacts_fields_get START");
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->fields = free_smartphone_pim_get_fields_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
-	free_smartphone_pim_fields_list_fields(pack->fields,
-					       _fields_get_callback, pack);
+	proxy = _fso_pim_fields(FSO_FRAMEWORK_PIM_ContactsServicePath);
+
+	free_smartphone_pim_fields_list_fields
+			(proxy, _fields_get_callback, pack);
+
 	g_debug("phoneui_utils_contacts_fields_get DONE");
 }
 
 static void
 _fields_get_with_type_cb(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	char **fields;
 	int count;
 	struct _fields_with_type_pack *pack = data;
 
 	fields = free_smartphone_pim_fields_list_fields_with_type_finish
-					(pack->fields, res, &count, &error);
+			((FreeSmartphonePIMFields *)source, res, &count, &error);
+
 	if (pack->callback) {
 		pack->callback(error, fields, count, pack->data);
 	}
@@ -279,7 +265,7 @@ _fields_get_with_type_cb(GObject *source, GAsyncResult *res, gpointer data)
 		g_error_free(error);
 	}
 	// FIXME: free fields here?
-	g_object_unref(pack->fields);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -287,29 +273,30 @@ void
 phoneui_utils_contacts_fields_get_with_type(const char *type,
 		void (*callback)(GError *, char **, int, gpointer), gpointer data)
 {
+	FreeSmartphonePIMFields *proxy;
 	struct _fields_with_type_pack *pack =
 			malloc(sizeof(struct _fields_with_type_pack));
 	pack->data = data;
 	pack->callback = callback;
-	pack->fields = free_smartphone_pim_get_fields_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
-	free_smartphone_pim_fields_list_fields_with_type(pack->fields, type,
-						_fields_get_with_type_cb, pack);
+	proxy = _fso_pim_fields(FSO_FRAMEWORK_PIM_ContactsServicePath);
+
+	free_smartphone_pim_fields_list_fields_with_type
+			(proxy, type, _fields_get_with_type_cb, pack);
 }
 
 static void
 _field_add_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _field_pack *pack = data;
 
-	free_smartphone_pim_fields_add_field_finish(pack->fields, res, &error);
+	free_smartphone_pim_fields_add_field_finish
+		((FreeSmartphonePIMFields *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
-	g_object_unref(pack->fields);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -317,16 +304,16 @@ void
 phoneui_utils_contacts_field_add(const char *name, const char *type,
 			void (*callback)(GError *, gpointer), void *data)
 {
+	FreeSmartphonePIMFields *proxy;
 	struct _field_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->fields = free_smartphone_pim_get_fields_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
+	proxy = _fso_pim_fields(FSO_FRAMEWORK_PIM_ContactsServicePath);
 
-	free_smartphone_pim_fields_add_field(pack->fields, name, type, _field_add_callback, pack);
+	free_smartphone_pim_fields_add_field
+		(proxy, name, type, _field_add_callback, pack);
 }
 
 static void
@@ -336,11 +323,13 @@ _field_remove_callback(GObject *source, GAsyncResult *res, gpointer data)
 	GError *error = NULL;
 	struct _field_pack *pack = data;
 
-	free_smartphone_pim_fields_delete_field_finish(pack->fields, res, &error);
+	free_smartphone_pim_fields_delete_field_finish
+			((FreeSmartphonePIMFields *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
-	g_object_unref(pack->fields);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -349,16 +338,16 @@ phoneui_utils_contacts_field_remove(const char *name,
 				    void (*callback)(GError *, gpointer),
 				    gpointer data)
 {
+	FreeSmartphonePIMFields *proxy;
 	struct _field_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->fields = free_smartphone_pim_get_fields_proxy(_dbus(),
-					FSO_FRAMEWORK_PIM_ServiceDBusName,
-					FSO_FRAMEWORK_PIM_ContactsServicePath);
-	free_smartphone_pim_fields_delete_field(pack->fields, name,
-						_field_remove_callback, pack);
+	proxy = _fso_pim_fields(FSO_FRAMEWORK_PIM_ContactsServicePath);
+
+	free_smartphone_pim_fields_delete_field
+			(proxy, name, _field_remove_callback, pack);
 }
 
 
@@ -424,17 +413,18 @@ phoneui_utils_contact_lookup(const char *number,
 static void
 _contact_delete_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _contact_pack *pack = data;
-	free_smartphone_pim_contact_delete_finish(pack->contact, res, &error);
+	free_smartphone_pim_contact_delete_finish
+			((FreeSmartphonePIMContact *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
 	if (error) {
 		g_error_free(error);
 	}
-	g_object_unref(pack->contact);
+	g_object_unref(source);
 	free(pack);
 }
 
@@ -443,18 +433,36 @@ phoneui_utils_contact_delete(const char *path,
 				void (*callback) (GError *, gpointer),
 				void *data)
 {
+	FreeSmartphonePIMContact *proxy;
 	struct _contact_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	pack->contact = free_smartphone_pim_get_contact_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName, path);
-	free_smartphone_pim_contact_delete(pack->contact,
-					   _contact_delete_callback, pack);
+	proxy = _fso_pim_contact(path);
+
+	free_smartphone_pim_contact_delete(proxy, _contact_delete_callback, pack);
+
 	return 0;
 }
 
+static void
+_contact_update_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	GError *error = NULL;
+	struct _contact_pack *pack = data;
+
+	free_smartphone_pim_contact_update_finish
+			((FreeSmartphonePIMContact *)source, res, &error);
+
+	if (pack->callback) {
+		pack->callback(error, pack->data);
+	}
+
+	free(pack);
+	if (error) g_error_free(error);
+	g_object_unref(source);
+}
 
 int
 phoneui_utils_contact_update(const char *path,
@@ -462,8 +470,36 @@ phoneui_utils_contact_update(const char *path,
 			     void (*callback)(GError *, gpointer),
 			     void* data)
 {
-	opimd_contact_update(path, contact_data, callback, data);
+	FreeSmartphonePIMContact *proxy;
+	struct _contact_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->callback = callback;
+	pack->data = data;
+	proxy = _fso_pim_contact(path);
+
+	free_smartphone_pim_contact_update
+			(proxy, contact_data, _contact_update_callback, pack);
 	return 0;
+}
+
+static void
+_contact_add_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	GError *error = NULL;
+	struct _contact_add_pack *pack = data;
+	gchar *path;
+
+	path = free_smartphone_pim_contacts_add_finish
+			((FreeSmartphonePIMContacts *)source, res, &error);
+
+	if (pack->callback) {
+		pack->callback(error, path, pack->data);
+	}
+
+	if (path) g_free(path);
+	if (error) g_error_free(error);
+	g_object_unref(source);
 }
 
 int
@@ -471,21 +507,36 @@ phoneui_utils_contact_add(GHashTable *contact_data,
 			  void (*callback)(GError*, char *, gpointer),
 			  void* data)
 {
-	opimd_contacts_add(contact_data, callback, data);
+	FreeSmartphonePIMContacts *proxy;
+	struct _contact_add_pack *pack;
+
+	pack = malloc(sizeof(*pack));
+	pack->data = data;
+	pack->callback = callback;
+	proxy = _fso_pim_contacts();
+
+	free_smartphone_pim_contacts_add
+			(proxy, contact_data, _contact_add_callback, pack);
 	return 0;
 }
 
 
 static void
-_contact_get_callback(GError *error, GHashTable *contact, gpointer data)
+_contact_get_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
+	GError *error = NULL;
 	struct _contact_get_pack *pack = data;
+	GHashTable *contact;
+
+	contact = free_smartphone_pim_contact_get_content_finish
+			((FreeSmartphonePIMContact *)source, res, &error);
 
 	if (pack->callback) {
 		pack->callback(error, contact, pack->data);
 	}
 
 	free(pack);
+	g_object_unref(source);
 }
 
 int
@@ -493,13 +544,17 @@ phoneui_utils_contact_get(const char *contact_path,
 			  void (*callback)(GError *, GHashTable *, gpointer),
 			  gpointer data)
 {
+	FreeSmartphonePIMContact *proxy;
 	struct _contact_get_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
+	proxy = _fso_pim_contact(contact_path);
 
-	opimd_contact_get_content(contact_path, _contact_get_callback, pack);
+	free_smartphone_pim_contact_get_content
+			(proxy, _contact_get_callback, pack);
+
 	return 0;
 }
 
@@ -509,6 +564,7 @@ phoneui_utils_contact_get_fields_for_type(const char* contact_path,
 					  void (*callback)(GError *, GHashTable *, gpointer),
 					  void *data)
 {
+	FreeSmartphonePIMContact *proxy;
 	struct _contact_get_pack *pack;
 
 	char *_type = calloc(sizeof(char), strlen(type)+2);
@@ -517,8 +573,10 @@ phoneui_utils_contact_get_fields_for_type(const char* contact_path,
 	pack = malloc(sizeof(*pack));
 	pack->data = data;
 	pack->callback = callback;
-	opimd_contact_get_multiple_fields(contact_path, _type,
-					  _contact_get_callback, pack);
+	proxy = _fso_pim_contact(contact_path);
+
+	free_smartphone_pim_contact_get_multiple_fields
+			(proxy, _type, _contact_get_callback, pack);
 	free(_type);
 }
 

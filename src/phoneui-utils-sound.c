@@ -632,9 +632,12 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	/*Register for HEADPHONE insertion */
 	phoneui_info_register_input_events(_input_events_cb, NULL);
 
-	fso_audio = free_smartphone_device_get_audio_proxy(_dbus(),
-				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-				FSO_FRAMEWORK_DEVICE_AudioServicePath);
+	fso_audio = (FreeSmartphoneDeviceAudio *)_fso
+		(FREE_SMARTPHONE_DEVICE_TYPE_AUDIO_PROXY,
+		 FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+		 FSO_FRAMEWORK_DEVICE_AudioServicePath,
+		 FSO_FRAMEWORK_DEVICE_AudioServiceFace);
+
 	return err;
 }
 
@@ -796,7 +799,6 @@ phoneui_utils_sound_volume_mute_change_callback_set(void (*cb)(enum SoundControl
 }
 
 struct _list_profiles_pack {
-	FreeSmartphonePreferences *preferences;
 	void (*callback)(GError *, char **, int, gpointer);
 	gpointer data;
 };
@@ -804,14 +806,13 @@ struct _list_profiles_pack {
 static void
 _list_profiles_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	int count;
 	char **profiles;
 	struct _list_profiles_pack *pack = data;
 
 	profiles = free_smartphone_preferences_get_profiles_finish
-					(pack->preferences, res, &count, &error);
+			((FreeSmartphonePreferences *)source, res, &count, &error);
 	if (pack->callback) {
 		pack->callback(error, profiles, count, pack->data);
 	}
@@ -823,20 +824,21 @@ void
 phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpointer),
 				void *userdata)
 {
+	FreeSmartphonePreferences *proxy;
 	struct _list_profiles_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	pack->preferences = free_smartphone_get_preferences_proxy(_dbus(),
-				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
-				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_PREFERENCES_PROXY,
+				    FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+				    FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix,
+				    FSO_FRAMEWORK_PREFERENCES_ServiceFacePrefix);
 	free_smartphone_preferences_get_profiles
-			(pack->preferences, _list_profiles_callback, pack);
+			(proxy, _list_profiles_callback, pack);
 }
 
 struct _set_profile_pack {
-	FreeSmartphonePreferences *preferences;
 	void (*callback)(GError *, gpointer);
 	gpointer data;
 };
@@ -844,12 +846,11 @@ struct _set_profile_pack {
 static void
 _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	struct _set_profile_pack *pack = data;
 
 	free_smartphone_preferences_set_profile_finish
-					(pack->preferences, res, &error);
+				((FreeSmartphonePreferences *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
@@ -861,7 +862,7 @@ _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	else {
 		g_debug("Profile successfully set");
 	}
-	g_object_unref(pack->preferences);
+	g_object_unref(source);
 	free (pack);
 }
 
@@ -873,16 +874,18 @@ phoneui_utils_sound_profile_set(const char *profile,
 	(void) callback;
 	(void) userdata;
 	struct _set_profile_pack *pack;
+	FreeSmartphonePreferences *proxy;
 
 	g_debug("Setting profile to '%s'", profile);
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	pack->preferences = free_smartphone_get_preferences_proxy(_dbus(),
-				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
-				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_PREFERENCES_PROXY,
+		      FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+		      FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix,
+		      FSO_FRAMEWORK_PREFERENCES_ServiceFacePrefix);
 
-	free_smartphone_preferences_set_profile(pack->preferences, profile,
+	free_smartphone_preferences_set_profile(proxy, profile,
 						_set_profile_callback, pack);
 }
 
@@ -895,13 +898,12 @@ struct _get_profile_pack {
 static void
 _get_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 {
-	(void) source;
 	GError *error = NULL;
 	char *profile;
 	struct _get_profile_pack *pack = data;
 
 	profile = free_smartphone_preferences_get_profile_finish
-						(pack->preferences, res, &error);
+				((FreeSmartphonePreferences *)source, res, &error);
 	if (pack->callback) {
 		pack->callback(error, profile, pack->data);
 	}
@@ -912,16 +914,19 @@ void
 phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 				void *userdata)
 {
+	FreeSmartphonePreferences *proxy;
 	struct _get_profile_pack *pack;
 
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = userdata;
-	pack->preferences = free_smartphone_get_preferences_proxy(_dbus(),
-				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
-				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
-	free_smartphone_preferences_get_profile(pack->preferences,
-						_get_profile_callback, pack);
+	proxy = _fso(FREE_SMARTPHONE_TYPE_PREFERENCES_PROXY,
+		      FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
+		      FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix,
+		      FSO_FRAMEWORK_PREFERENCES_ServiceFacePrefix);
+
+	free_smartphone_preferences_get_profile
+				(proxy, _get_profile_callback, pack);
 }
 
 void phoneui_utils_sound_play(const char *name, int loop, int length,

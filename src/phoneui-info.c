@@ -23,9 +23,7 @@
 
 
 #include <stdlib.h>
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus.h>
-
+#include <gio/gio.h>
 #include <freesmartphone.h>
 #include <fsoframework.h>
 #include <phoneui.h>
@@ -151,7 +149,7 @@ static void _get_pdp_context_status_callback(GObject *source, GAsyncResult *res,
 static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data);
 //static void _get_alarm_callback(GError *error, int time, gpointer userdata);
 
-static void _name_owner_changed(DBusGProxy *proxy, const char *name, const char *prev, const char *new, gpointer data);
+// static void _name_owner_changed(DBusGProxy *proxy, const char *name, const char *prev, const char *new, gpointer data);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_pim_single_changed_callbacks(GList* cbs, int entryid, enum PhoneuiInfoChangeType type);
@@ -186,6 +184,7 @@ callbacks_list_free(GList *list)
 int
 phoneui_info_init()
 {
+#if 0
 	DBusGProxy *dbus_proxy;
 
 	/* register for NameOwnerChanged */
@@ -198,86 +197,50 @@ phoneui_info_init()
 	dbus_g_proxy_connect_signal(dbus_proxy, "NameOwnerChanged",
 				    G_CALLBACK(_name_owner_changed), NULL, NULL);
 
+#endif
 
+	fso.usage = _fso_usage();
+	g_signal_connect(fso.usage, "resource-changed", G_CALLBACK(_resource_changed_handler), NULL);
 
-	fso.usage = free_smartphone_get_usage_proxy(_dbus(),
-				FSO_FRAMEWORK_USAGE_ServiceDBusName,
-				FSO_FRAMEWORK_USAGE_ServicePathPrefix);
-	g_signal_connect(G_OBJECT(fso.usage), "resource-changed",
-			 G_CALLBACK(_resource_changed_handler), NULL);
+	fso.gsm_call = _fso_gsm_call();
+	g_signal_connect(fso.gsm_call, "call-status", G_CALLBACK(_call_status_handler), NULL);
 
-	fso.gsm_call = free_smartphone_gsm_get_call_proxy(_dbus(),
-				FSO_FRAMEWORK_GSM_ServiceDBusName,
-				FSO_FRAMEWORK_GSM_DeviceServicePath);
-	g_signal_connect(G_OBJECT(fso.gsm_call), "call-status",
-			 G_CALLBACK(_call_status_handler), NULL);
+	fso.gsm_network =_fso_gsm_network();
+	g_signal_connect(fso.gsm_network, "status", G_CALLBACK(_network_status_handler), NULL);
+	g_signal_connect(fso.gsm_network, "signal-strength", G_CALLBACK(_signal_strength_handler), NULL);
 
-	fso.gsm_network = free_smartphone_gsm_get_network_proxy(_dbus(),
-				FSO_FRAMEWORK_GSM_ServiceDBusName,
-				FSO_FRAMEWORK_GSM_DeviceServicePath);
-	g_signal_connect(G_OBJECT(fso.gsm_network), "status",
-			 G_CALLBACK(_network_status_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.gsm_network), "signal-strength",
-			 G_CALLBACK(_signal_strength_handler), NULL);
+	fso.gsm_pdp = _fso_gsm_pdp();
+	g_signal_connect(fso.gsm_pdp, "context-status", G_CALLBACK(_pdp_context_status_handler), NULL);
 
-	fso.gsm_pdp = free_smartphone_gsm_get_p_d_p_proxy(_dbus(),
-				FSO_FRAMEWORK_GSM_ServiceDBusName,
-				FSO_FRAMEWORK_GSM_DeviceServicePath);
-	g_signal_connect(G_OBJECT(fso.gsm_pdp), "context-status",
-			 G_CALLBACK(_pdp_context_status_handler), NULL);
+	fso.power_supply = _fso_device_power_supply();
+	g_signal_connect(fso.power_supply, "capacity", G_CALLBACK(_capacity_changed_handler), NULL);
 
-	fso.power_supply = free_smartphone_device_get_power_supply_proxy(_dbus(),
-				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-				FSO_FRAMEWORK_DEVICE_PowerSupplyServicePath);
-	g_signal_connect(G_OBJECT(fso.power_supply), "capacity",
-			 G_CALLBACK(_capacity_changed_handler), NULL);
-	fso.input = free_smartphone_device_get_input_proxy(_dbus(),
-				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-				FSO_FRAMEWORK_DEVICE_InputServicePath);
-	g_signal_connect(G_OBJECT(fso.input), "event",
-			 G_CALLBACK(_device_input_event_handler), NULL);
-	fso.idle_notifier = free_smartphone_device_get_idle_notifier_proxy(_dbus(),
-				FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-				FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath);
-	g_signal_connect(G_OBJECT(fso.idle_notifier), "state",
-			 G_CALLBACK(_idle_notifier_handler), NULL);
-	fso.preferences = free_smartphone_get_preferences_proxy(_dbus(),
-				FSO_FRAMEWORK_PREFERENCES_ServiceDBusName,
-				FSO_FRAMEWORK_PREFERENCES_ServicePathPrefix);
-	g_signal_connect(G_OBJECT(fso.preferences), "changed",
-			 G_CALLBACK(_profile_changed_handler), NULL);
-	fso.pim_contacts = free_smartphone_pim_get_contacts_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName,
-				FSO_FRAMEWORK_PIM_ContactsServicePath);
-        g_signal_connect(G_OBJECT(fso.pim_contacts), "new-contact",
-			 G_CALLBACK(_pim_contact_new_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.pim_contacts), "updated-contact",
-			 G_CALLBACK(_pim_contact_updated_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.pim_contacts), "deleted-contact",
-			 G_CALLBACK(_pim_contact_deleted_handler), NULL);
-	fso.pim_messages = free_smartphone_pim_get_messages_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName,
-				FSO_FRAMEWORK_PIM_MessagesServicePath);
-	g_signal_connect(G_OBJECT(fso.pim_messages), "unread-messages",
-			 G_CALLBACK(_pim_unread_messages_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.pim_messages), "new-message",
-			 G_CALLBACK(_pim_message_new_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.pim_messages), "updated-message",
-			 G_CALLBACK(_pim_message_updated_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.pim_messages), "deleted-message",
-			 G_CALLBACK(_pim_message_deleted_handler), NULL);
-	fso.pim_tasks = free_smartphone_pim_get_tasks_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName,
-				FSO_FRAMEWORK_PIM_TasksServicePath);
-	g_signal_connect(G_OBJECT(fso.pim_tasks), "unfinished-tasks",
-			 G_CALLBACK(_pim_unfinished_tasks_handler), NULL);
-        fso.pim_calls = free_smartphone_pim_get_calls_proxy(_dbus(),
-				FSO_FRAMEWORK_PIM_ServiceDBusName,
-				FSO_FRAMEWORK_PIM_CallsServicePath);
-	g_signal_connect(G_OBJECT(fso.pim_calls), "new-missed-calls",
-			 G_CALLBACK(_pim_missed_calls_handler), NULL);
-	g_signal_connect(G_OBJECT(fso.pim_calls), "new-call",
-			 G_CALLBACK(_pim_new_call_handler), NULL);
+	fso.input = _fso_device_input();
+	g_signal_connect(fso.input, "event", G_CALLBACK(_device_input_event_handler), NULL);
+
+	fso.idle_notifier = _fso_device_idle_notifier();
+	g_signal_connect(fso.idle_notifier, "state", G_CALLBACK(_idle_notifier_handler), NULL);
+
+	fso.preferences = _fso_preferences();
+	g_signal_connect(fso.preferences, "changed", G_CALLBACK(_profile_changed_handler), NULL);
+
+	fso.pim_contacts = _fso_pim_contacts();
+	g_signal_connect(fso.pim_contacts, "new-contact", G_CALLBACK(_pim_contact_new_handler), NULL);
+	g_signal_connect(fso.pim_contacts, "updated-contact", G_CALLBACK(_pim_contact_updated_handler), NULL);
+	g_signal_connect(fso.pim_contacts, "deleted-contact", G_CALLBACK(_pim_contact_deleted_handler), NULL);
+
+	fso.pim_messages = _fso_pim_messages();
+	g_signal_connect(fso.pim_messages, "unread-messages", G_CALLBACK(_pim_unread_messages_handler), NULL);
+	g_signal_connect(fso.pim_messages, "new-message", G_CALLBACK(_pim_message_new_handler), NULL);
+	g_signal_connect(fso.pim_messages, "updated-message", G_CALLBACK(_pim_message_updated_handler), NULL);
+	g_signal_connect(fso.pim_messages, "deleted-message", G_CALLBACK(_pim_message_deleted_handler), NULL);
+
+	fso.pim_tasks = _fso_pim_tasks();
+	g_signal_connect(fso.pim_tasks, "unfinished-tasks", G_CALLBACK(_pim_unfinished_tasks_handler), NULL);
+
+	fso.pim_calls = _fso_pim_calls();
+	g_signal_connect(fso.pim_calls, "new-missed-calls", G_CALLBACK(_pim_missed_calls_handler), NULL);
+	g_signal_connect(fso.pim_calls, "new-call", G_CALLBACK(_pim_new_call_handler), NULL);
 
 	return 0;
 }
@@ -286,7 +249,7 @@ void
 phoneui_info_deinit()
 {
 	/*FIXME: find out how to correctly clean up dbus proxies and the connection itself */
-	dbus_g_connection_unref(_dbus());
+	//dbus_g_connection_unref(_dbus());
 
 	callbacks_list_free(callbacks_contact_changes);
 
@@ -398,8 +361,7 @@ phoneui_info_register_single_contact_changes(int entryid, void (*callback)(void 
 		}
 		pack->entryid = entryid;
 		pack->callbacks = NULL;
-		pack->proxy = G_OBJECT(free_smartphone_pim_get_contact_proxy
-				(_dbus(), FSO_FRAMEWORK_PIM_ServiceDBusName, path));
+		pack->proxy = _fso_pim_contact(path);
 		g_signal_connect(pack->proxy, "contact-updated",
 				 G_CALLBACK(_pim_single_contact_updated_handler),
 				 GINT_TO_POINTER(entryid));
@@ -1524,7 +1486,7 @@ _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 //	}
 //	phoneui_idle_screen_update_alarm(time);
 //}
-
+#if 0
 static void
 _name_owner_changed(DBusGProxy *proxy, const char *name,
 		    const char *prev, const char *new, gpointer data)
@@ -1540,7 +1502,7 @@ _name_owner_changed(DBusGProxy *proxy, const char *name,
 		_execute_int_callbacks(callbacks_signal_strength, 0);
 	}
 }
-
+#endif
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path,
 				       enum PhoneuiInfoChangeType type)
 {
