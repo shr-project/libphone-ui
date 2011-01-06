@@ -355,7 +355,7 @@ static void
 _contact_lookup_callback(GError *error, GHashTable **messages, int count, gpointer data)
 {
 	struct _contact_lookup_pack *pack = data;
-	GValue *tmp;
+	GVariant *tmp;
 	const char *path;
 
 	if (count != 1 || !(tmp = g_hash_table_lookup(messages[0], "Path")) || error) {
@@ -363,7 +363,7 @@ _contact_lookup_callback(GError *error, GHashTable **messages, int count, gpoint
 		return;
 	}
 
-	path = g_value_get_string(tmp);
+	path = g_variant_get_string(tmp, NULL);
 	phoneui_utils_contact_get(path, pack->callback, pack->data);
 	g_hash_table_unref(messages[0]);
 
@@ -375,7 +375,7 @@ phoneui_utils_contact_lookup(const char *number,
 			void (*callback)(GError *, GHashTable *, gpointer),
 			gpointer data)
 {
-	GValue *value;
+	GVariant *value;
 	GHashTable *query;
 	struct _contact_lookup_pack *pack;
 
@@ -390,9 +390,9 @@ phoneui_utils_contact_lookup(const char *number,
 	pack->data = data;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-		NULL, _helpers_free_gvalue);
+		NULL, NULL);
 
-	value = _helpers_new_gvalue_string(number);
+	value = g_variant_new_string(number);
 	if (!value) {
 		g_hash_table_destroy(query);
 		// FIXME: create a nice error and pass it
@@ -401,7 +401,7 @@ phoneui_utils_contact_lookup(const char *number,
 		return 1;
 	}
 
-	g_hash_table_insert(query, "$phonenumber", value);
+	g_hash_table_insert(query, "$phonenumber", g_variant_ref_sink(value));
 	phoneui_utils_contacts_query(NULL, FALSE, FALSE, 0, 1, query,
 				_contact_lookup_callback, pack);
 
@@ -590,7 +590,7 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 	g_hash_table_iter_init(&iter, properties);
 	while (g_hash_table_iter_next(&iter, &_key, &_val)) {
 		const char *key = (const char *)_key;
-		const GValue *val = (const GValue *) _val;
+		GVariant *val = (GVariant *) _val;
 
 		if (!val) {
 			g_debug("  hmm... field has no value?");
@@ -601,20 +601,18 @@ phoneui_utils_contact_display_phone_get(GHashTable *properties)
 		/* sanitize phone numbers */
 		if (strstr(key, "Phone") || strstr(key, "phone")) {
 			const char *s_val;
-			char **strv;
-			if (!G_IS_VALUE(_val)) {
-				g_debug("it's NOT a gvalue!!!");
-				continue;
+			const gchar **strv;
+
+			if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING)) {
+				s_val = g_variant_get_string(val, NULL);
 			}
-			if (G_VALUE_HOLDS_BOXED(val)) {
-				strv = (char **)g_value_get_boxed(val);
+			else if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING_ARRAY)) {
+				strv = g_variant_get_strv(val, NULL);
 				s_val = strv[0];
-			}
-			else if (G_VALUE_HOLDS_STRING(val)) {
-				s_val = g_value_get_string(val);
+				free(strv);
 			}
 			else {
-				g_debug("Value for field %s is neither string nor boxed :(", key);
+				g_debug("Value for field %s is neither string nor strv :(", key);
 				continue;
 			}
 
@@ -647,7 +645,7 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 	g_hash_table_iter_init(&iter, properties);
 	while (g_hash_table_iter_next(&iter, &_key, &_val)) {
 		const char *key = (const char *)_key;
-		const GValue *val = (const GValue *) _val;
+		GVariant *val = (GVariant *) _val;
 
 		if (!val) {
 			g_debug("  hmm... field has no value?");
@@ -655,23 +653,23 @@ phoneui_utils_contact_display_name_get(GHashTable *properties)
 		}
 
 		if (!strcmp(key, "Name")) {
-			const char *s_val = g_value_get_string(val);
+			const char *s_val = g_variant_get_string(val, NULL);
 			name = s_val;
 		}
 		else if (!strcmp(key, "Surname")) {
-			const char *s_val = g_value_get_string(val);
+			const char *s_val = g_variant_get_string(val, NULL);
 			surname = s_val;
 		}
 		else if (!strcmp(key, "Middlename")) {
-			const char *s_val = g_value_get_string(val);
+			const char *s_val = g_variant_get_string(val, NULL);
 			middlename = s_val;
 		}
 		else if (!strcmp(key, "Nickname")) {
-			const char *s_val = g_value_get_string(val);
+			const char *s_val = g_variant_get_string(val, NULL);
 			nickname = s_val;
 		}
 		else if (!strcmp(key, "Affiliation")) {
-			affiliation = g_value_get_string(val);
+			affiliation = g_variant_get_string(val, NULL);
 		}
 	}
 

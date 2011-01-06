@@ -212,6 +212,7 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 	GError *error = NULL;
 	struct _query_pack *pack = data;
 
+	g_debug("_pim_query_callback");
 	switch (pack->domain_type) {
 		case PHONEUI_PIM_DOMAIN_CALLS:
 			query_path = free_smartphone_pim_calls_query_finish
@@ -316,14 +317,11 @@ static void
 _pim_query_hashtable_clone_foreach_callback(void *k, void *v, void *data) {
 	GHashTable *query = ((GHashTable *)data);
 	char *key = (char *)k;
-	GValue *value = (GValue *)v;
-	GValue *new_value;
+	GVariant *value = (GVariant *)v;
 
 	if (key && key[0] != '_') {
-		new_value = calloc(sizeof(GValue), 1);
-		g_value_init(new_value, G_VALUE_TYPE(value));
-		g_value_copy(value, new_value);
-		g_hash_table_insert(query, strdup(key), new_value);
+		g_debug("adding key %s to query", key);
+		g_hash_table_insert(query, strdup(key), g_variant_ref(value));
 	}
 }
 
@@ -334,37 +332,43 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 {
 	struct _query_pack *pack;
 	GHashTable *query;
-	GValue *gval_tmp;
+	GVariant *tmp;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-					  g_free, _helpers_free_gvalue);
+					  g_free, NULL);
 	if (!query)
 		return;
 
 	if (sortby && strlen(sortby)) {
-		gval_tmp = _helpers_new_gvalue_string(sortby);
-		g_hash_table_insert(query, strdup("_sortby"), gval_tmp);
+		tmp = g_variant_new_string(sortby);
+		g_hash_table_insert(query, strdup("_sortby"),
+				      g_variant_ref_sink(tmp));
 	}
 
 	if (sortdesc) {
-		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, strdup("_sortdesc"), gval_tmp);
+		tmp = g_variant_new_boolean(TRUE);
+		g_hash_table_insert(query, strdup("_sortdesc"),
+				      g_variant_ref_sink(tmp));
 	}
 
 	if (disjunction) {
-		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, strdup("_at_least_one"), gval_tmp);
+		tmp = g_variant_new_boolean(TRUE);
+		g_hash_table_insert(query, strdup("_at_least_one"),
+				      g_variant_ref_sink(tmp));
 	}
 
 	if (resolve_number) {
-		gval_tmp = _helpers_new_gvalue_boolean(TRUE);
-		g_hash_table_insert(query, strdup("_resolve_phonenumber"), gval_tmp);
+		tmp = g_variant_new_boolean(TRUE);
+		g_hash_table_insert(query, strdup("_resolve_phonenumber"),
+				      g_variant_ref_sink(tmp));
 	}
 
-	gval_tmp = _helpers_new_gvalue_int(limit_start);
-	g_hash_table_insert(query, strdup("_limit_start"), gval_tmp);
-	gval_tmp = _helpers_new_gvalue_int(limit);
-	g_hash_table_insert(query, strdup("_limit"), gval_tmp);
+	tmp = g_variant_new_int32(limit_start);
+	g_hash_table_insert(query, strdup("_limit_start"),
+			      g_variant_ref_sink(tmp));
+	tmp = g_variant_new_int32(limit);
+	g_hash_table_insert(query, strdup("_limit"),
+			      g_variant_ref_sink(tmp));
 
 	if (options) {
 		g_hash_table_foreach((GHashTable *)options,
@@ -377,19 +381,12 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	pack->data = data;
 	pack->query = NULL;
 
+	g_debug("Done constructing PIM query");
 	if (domain == PHONEUI_PIM_DOMAIN_CALLS) {
-		FreeSmartphonePIMCalls *proxy =
-			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
-				      FSO_FRAMEWORK_PIM_CallsServicePath,
-				      FSO_FRAMEWORK_PIM_CallsServiceFace);
-		free_smartphone_pim_calls_query(proxy, query, _pim_query_callback, pack);
+		free_smartphone_pim_calls_query(_fso_pim_calls(), query, _pim_query_callback, pack);
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_CONTACTS) {
-		FreeSmartphonePIMContacts *proxy =
-			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
-				      FSO_FRAMEWORK_PIM_ContactsServicePath,
-				      FSO_FRAMEWORK_PIM_ContactsServiceFace);
-		free_smartphone_pim_contacts_query(proxy, query, _pim_query_callback, pack);
+		free_smartphone_pim_contacts_query(_fso_pim_contacts(), query, _pim_query_callback, pack);
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_DATES) {
 		/* FIXME, re-enable it when libfsoframework supports it again
@@ -399,18 +396,11 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 		 */
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_MESSAGES) {
-		FreeSmartphonePIMMessages *proxy =
-			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
-				      FSO_FRAMEWORK_PIM_MessagesServicePath,
-				      FSO_FRAMEWORK_PIM_MessagesServiceFace);
-		free_smartphone_pim_messages_query(proxy, query, _pim_query_callback, pack);
+		g_debug("starting the message query");
+		free_smartphone_pim_messages_query(_fso_pim_messages(), query, _pim_query_callback, pack);
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_NOTES) {
-		FreeSmartphonePIMNotes *proxy =
-			_fso(domain, FSO_FRAMEWORK_PIM_ServiceDBusName,
-				      FSO_FRAMEWORK_PIM_NotesServicePath,
-				      FSO_FRAMEWORK_PIM_NotesServiceFace);
-		free_smartphone_pim_notes_query(proxy, query, _pim_query_callback, pack);
+		free_smartphone_pim_notes_query(_fso_pim_notes(), query, _pim_query_callback, pack);
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_TASKS) {
 		/* FIXME, add the sync version in freesmartphone APIs
@@ -419,7 +409,10 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 		 *			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_tasks_proxy);
 		 */
 	}
+	else
+		g_warning("unhandled PIM domain !!!");
 
+	g_debug("done... unrefing query");
 	g_hash_table_unref(query);
 }
 
@@ -430,26 +423,26 @@ _create_opimd_message(const char *number, const char *message)
 
 	GHashTable *message_opimd =
 		g_hash_table_new_full(g_str_hash, g_str_equal,
-				      NULL, _helpers_free_gvalue);
-	GValue *tmp;
+				      NULL, NULL);
+	GVariant *tmp;
 
-	tmp = _helpers_new_gvalue_string(number);
-	g_hash_table_insert(message_opimd, "Peer", tmp);
+	tmp = g_variant_new_string(number);
+	g_hash_table_insert(message_opimd, "Peer", g_variant_ref_sink(tmp));
 
-	tmp = _helpers_new_gvalue_string("out");
-	g_hash_table_insert(message_opimd, "Direction", tmp);
+	tmp = g_variant_new_string("out");
+	g_hash_table_insert(message_opimd, "Direction", g_variant_ref_sink(tmp));
 
-	tmp = _helpers_new_gvalue_string("SMS");
-	g_hash_table_insert(message_opimd, "Source", tmp);
+	tmp = g_variant_new_string("SMS");
+	g_hash_table_insert(message_opimd, "Source", g_variant_ref_sink(tmp));
 
-	tmp = _helpers_new_gvalue_string(message);
-	g_hash_table_insert(message_opimd, "Content", tmp);
+	tmp = g_variant_new_string(message);
+	g_hash_table_insert(message_opimd, "Content", g_variant_ref_sink(tmp));
 
-	tmp = _helpers_new_gvalue_boolean(TRUE);
-	g_hash_table_insert(message_opimd, "New", tmp);
+	tmp = g_variant_new_boolean(TRUE);
+	g_hash_table_insert(message_opimd, "New", g_variant_ref_sink(tmp));
 
-	tmp = _helpers_new_gvalue_int(time(NULL));
-	g_hash_table_insert(message_opimd, "Timestamp", tmp);
+	tmp = g_variant_new_int32(time(NULL));
+	g_hash_table_insert(message_opimd, "Timestamp", g_variant_ref_sink(tmp));
 
 	return message_opimd;
 }
@@ -844,16 +837,16 @@ phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc,
 {
 
 	GHashTable *qry = g_hash_table_new_full(g_str_hash, g_str_equal,
-						NULL, _helpers_free_gvalue);
+						NULL, NULL);
 
 	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
 		g_hash_table_insert(qry, "Direction",
-		    _helpers_new_gvalue_string(direction));
+		    g_variant_ref_sink(g_variant_new_string(direction)));
 	}
 
 	if (answered > -1) {
 		g_hash_table_insert(qry, "Answered",
-			    _helpers_new_gvalue_boolean(answered));
+			    g_variant_ref_sink(g_variant_new_boolean(answered)));
 	}
 
 	phoneui_utils_calls_query(sortby, sortdesc, FALSE, limit_start, limit,
