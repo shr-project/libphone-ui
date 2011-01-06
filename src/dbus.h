@@ -29,6 +29,7 @@ gpointer _fso_pim_contacts();
 gpointer _fso_pim_contact(const gchar *path);
 gpointer _fso_pim_messages();
 gpointer _fso_pim_message(const gchar *path);
+gpointer _fso_pim_notes();
 gpointer _fso_pim_tasks();
 gpointer _fso_pim_calls();
 gpointer _fso_pim_fields(const gchar *path);

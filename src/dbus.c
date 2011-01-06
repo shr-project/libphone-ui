@@ -84,6 +84,15 @@ _fso_pim_message(const gchar* path)
 }
 
 gpointer
+_fso_pim_notes()
+{
+	return _fso(FREE_SMARTPHONE_PIM_TYPE_NOTES_PROXY,
+		     FSO_FRAMEWORK_PIM_ServiceDBusName,
+		     FSO_FRAMEWORK_PIM_NotesServicePath,
+		     FSO_FRAMEWORK_PIM_NotesServiceFace);
+}
+
+gpointer
 _fso_pim_tasks()
 {
 	return _fso(FREE_SMARTPHONE_PIM_TYPE_TASKS_PROXY,
@@ -115,7 +124,7 @@ _fso_gsm_sim()
 {
 	return _fso(FREE_SMARTPHONE_GSM_TYPE_SIM_PROXY,
 		     FSO_FRAMEWORK_GSM_ServiceDBusName,
-		     FSO_FRAMEWORK_GSM_ServicePathPrefix "/SIM",
+		     FSO_FRAMEWORK_GSM_DeviceServicePath,
 		     FSO_FRAMEWORK_GSM_ServiceFacePrefix ".SIM");
 }
 
@@ -124,7 +133,7 @@ _fso_gsm_call()
 {
 	return _fso(FREE_SMARTPHONE_GSM_TYPE_CALL_PROXY,
 		     FSO_FRAMEWORK_GSM_ServiceDBusName,
-		     FSO_FRAMEWORK_GSM_ServicePathPrefix "/Call",
+		     FSO_FRAMEWORK_GSM_DeviceServicePath,
 		     FSO_FRAMEWORK_GSM_ServiceFacePrefix ".Call");
 }
 
@@ -133,7 +142,7 @@ _fso_gsm_network()
 {
 	return _fso(FREE_SMARTPHONE_GSM_TYPE_NETWORK_PROXY,
 		     FSO_FRAMEWORK_GSM_ServiceDBusName,
-		     FSO_FRAMEWORK_GSM_ServicePathPrefix "/Network",
+		     FSO_FRAMEWORK_GSM_DeviceServicePath,
 		     FSO_FRAMEWORK_GSM_ServiceFacePrefix ".Network");
 }
 
@@ -142,7 +151,7 @@ _fso_gsm_pdp()
 {
 	return _fso(FREE_SMARTPHONE_GSM_TYPE_PDP_PROXY,
 		     FSO_FRAMEWORK_GSM_ServiceDBusName,
-		     FSO_FRAMEWORK_GSM_ServicePathPrefix "/PDP",
+		     FSO_FRAMEWORK_GSM_DeviceServicePath,
 		     FSO_FRAMEWORK_GSM_ServiceFacePrefix ".PDP");
 }
 
