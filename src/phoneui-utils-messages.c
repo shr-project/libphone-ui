@@ -63,7 +63,7 @@ _message_hashtable_get(const char *direction, long timestamp,
 	GVariant *tmp;
 
 	message = g_hash_table_new_full(g_str_hash, g_str_equal,
-						  NULL, NULL);
+						  NULL, _helpers_free_gvariant);
 
 	if (!message)
 		return NULL;
@@ -375,7 +375,7 @@ phoneui_utils_messages_get_full(const char *sortby, gboolean sortdesc, int limit
 	g_debug("Retrieving messages");
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-						  NULL, NULL);
+						  NULL, _helpers_free_gvariant);
 
 	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
 		tmp = g_variant_new_string(direction);

@@ -70,3 +70,10 @@ _helpers_free_gvalue(gpointer val)
 	g_value_unset(value);
 	g_free(value);
 }
+
+void
+_helpers_free_gvariant(gpointer value)
+{
+	GVariant *val = (GVariant *)value;
+	g_variant_unref(val);
+}

@@ -335,7 +335,7 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	GVariant *tmp;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-					  g_free, NULL);
+					  g_free, _helpers_free_gvariant);
 	if (!query)
 		return;
 
@@ -423,7 +423,7 @@ _create_opimd_message(const char *number, const char *message)
 
 	GHashTable *message_opimd =
 		g_hash_table_new_full(g_str_hash, g_str_equal,
-				      NULL, NULL);
+				      NULL, _helpers_free_gvariant);
 	GVariant *tmp;
 
 	tmp = g_variant_new_string(number);
@@ -837,7 +837,7 @@ phoneui_utils_calls_get_full(const char *sortby, gboolean sortdesc,
 {
 
 	GHashTable *qry = g_hash_table_new_full(g_str_hash, g_str_equal,
-						NULL, NULL);
+						NULL, _helpers_free_gvariant);
 
 	if (direction && (!strcmp(direction, "in") || !strcmp(direction, "out"))) {
 		g_hash_table_insert(qry, "Direction",

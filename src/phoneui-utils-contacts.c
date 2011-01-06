@@ -390,7 +390,7 @@ phoneui_utils_contact_lookup(const char *number,
 	pack->data = data;
 
 	query = g_hash_table_new_full(g_str_hash, g_str_equal,
-		NULL, NULL);
+		NULL, _helpers_free_gvariant);
 
 	value = g_variant_new_string(number);
 	if (!value) {

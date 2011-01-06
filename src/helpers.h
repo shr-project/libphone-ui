@@ -28,5 +28,5 @@ GValue *_helpers_new_gvalue_string(const char *value);
 GValue *_helpers_new_gvalue_int(int value);
 GValue *_helpers_new_gvalue_boolean(gboolean value);
 void _helpers_free_gvalue(gpointer value);
-
+void _helpers_free_gvariant(gpointer value);
 #endif
