@@ -529,7 +529,7 @@ _sms_message_send(struct _sms_send_pack *pack)
 		g_hash_table_unref(message_opimd);
 	} else {
 		free_smartphone_gsm_sms_send_text_message(pack->sms, pack->number,
-				pack->message, FALSE, _sms_send_callback, pack);
+				pack->message, request_message_receipt, _sms_send_callback, pack);
 	}
 }
 
