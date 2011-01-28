@@ -86,6 +86,8 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain, const char *sortby, gboolean
 gchar *phoneui_utils_get_user_home_prefix();
 gchar *phoneui_utils_get_user_home_code();
 
+void phoneui_utils_set_message_receipt(gboolean _request_message_receipt);
+gboolean phoneui_utils_get_message_receipt(void);
 
 int phoneui_utils_sms_send(const char *message, GPtrArray * recipients, void (*callback)
 		(GError *, int transaction_index, const char *timestamp, gpointer),

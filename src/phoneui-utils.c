@@ -31,6 +31,7 @@
 #include <fsoframework.h>
 #include <phone-utils.h>
 #include <shr-bindings.h>
+#include "phoneui.h"
 #include "phoneui-utils.h"
 #include "phoneui-utils-sound.h"
 #include "phoneui-utils-device.h"
@@ -425,6 +426,63 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 
 	g_debug("done... unrefing query");
 	g_hash_table_unref(query);
+}
+
+static void 
+_write_config_value_boolean(const char *section, const char *name, gboolean value)
+{
+	GError *error = NULL;
+	GKeyFile *keyfile;
+	GKeyFileFlags flags;
+	gsize size;
+	char *config_data;
+	
+	keyfile = g_key_file_new();
+	flags = G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS;
+	
+	g_key_file_load_from_file(keyfile, PHONEUI_CONFIG, flags, &error);
+	if (error) {
+		g_message("failed loading the config to write [%s] %s: %s", 
+			   section, name, error->message);
+		g_error_free(error);
+		return;
+	}
+	
+	g_key_file_set_boolean(keyfile, section, name, value);
+	
+	config_data = g_key_file_to_data(keyfile, &size, &error);
+	if (error) {
+		g_message("could not convert config data to write [%s] %s: %s",
+			   section, name, error->message);
+		g_error_free(error);
+		return;
+	}
+	
+	g_file_set_contents(PHONEUI_CONFIG, config_data, size, &error);
+	if (error) {
+		g_message("failed writing [%s] %s: %s", section, name, error->message);
+		g_error_free(error);
+	}
+
+	if (config_data)
+		g_free(config_data);
+	
+	if (keyfile)
+		g_key_file_free(keyfile);
+}
+
+void 
+phoneui_utils_set_message_receipt(gboolean _request_message_receipt)
+{
+	request_message_receipt = _request_message_receipt;
+	_write_config_value_boolean("messages", "request_message_receipt", 
+					request_message_receipt);
+}
+
+gboolean 
+phoneui_utils_get_message_receipt(void)
+{
+	return request_message_receipt;
 }
 
 static GHashTable *
