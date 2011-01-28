@@ -111,10 +111,21 @@ struct _set_pin_pack {
 	gpointer data;
 };
 
+static gboolean request_message_receipt = FALSE;
+
 int
 phoneui_utils_init(GKeyFile *keyfile)
 {
+	GError *error = NULL;
 	int ret;
+
+	request_message_receipt = g_key_file_get_integer(keyfile, "messages", 
+						"request_message_receipt", &error);
+	if (error) {
+		request_message_receipt = FALSE;
+		g_error_free(error);
+	}
+	
 	ret = phoneui_utils_sound_init(keyfile);
 	ret = phoneui_utils_device_init(keyfile);
 	ret = phoneui_utils_feedback_init(keyfile);
@@ -505,7 +516,7 @@ _opimd_message_added(GObject *source_object, GAsyncResult *res, gpointer user_da
 	}
 
 	free_smartphone_gsm_sms_send_text_message(pack->sms, pack->number,
-				pack->message, FALSE, _sms_send_callback, pack);
+				pack->message, request_message_receipt, _sms_send_callback, pack);
 }
 
 static void
