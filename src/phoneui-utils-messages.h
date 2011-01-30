@@ -25,9 +25,9 @@
 #include <glib.h>
 
 int phoneui_utils_message_add(GHashTable *message, void (*callback)(GError *, char *msgpath, gpointer), gpointer data);
-int phoneui_utils_message_add_fields(const char *direction, long timestamp, const char *content, const char *source, gboolean is_new, const char *peer, void (*callback)(GError *, char *msgpath, gpointer), gpointer data);
+int phoneui_utils_message_add_fields(const char *direction, long timestamp, const char *content, const char *source, gboolean is_new, const char *peer, int reference, void (*callback)(GError *, char *msgpath, gpointer), gpointer data);
 int phoneui_utils_message_update(const char *path, GHashTable *message, void (*callback) (GError *, gpointer), gpointer data);
-int phoneui_utils_message_update_fields(const char *path, const char *direction, long timestamp, const char *content, const char *source, gboolean is_new, const char *peer, void (*callback) (GError *, gpointer), gpointer data);
+int phoneui_utils_message_update_fields(const char *path, const char *direction, long timestamp, const char *content, const char *source, gboolean is_new, const char *peer, int reference, void (*callback) (GError *, gpointer), gpointer data);
 
 int phoneui_utils_message_delete(const char *message_path, void (*callback)(GError *, gpointer), gpointer data);
 int phoneui_utils_message_set_new_status(const char *path, gboolean is_new, void (*callback) (GError *, gpointer), gpointer data);

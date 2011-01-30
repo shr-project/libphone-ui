@@ -529,7 +529,9 @@ _sms_send_callback(GObject *source, GAsyncResult *res, gpointer data)
 						&reference, &timestamp, &error);
 
 	if (pack->pim_path) {
-		phoneui_utils_message_set_sent_status(pack->pim_path, !error, NULL, NULL);
+		phoneui_utils_message_update_fields(pack->pim_path, NULL, 0, 
+							 NULL, NULL, FALSE, NULL, 
+					   reference, NULL, NULL);
 		free(pack->pim_path);
 	}
 

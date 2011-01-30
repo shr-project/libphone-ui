@@ -57,7 +57,7 @@ struct _message_query_list_pack {
 static GHashTable *
 _message_hashtable_get(const char *direction, long timestamp,
 			     const char *content, const char *source, gboolean is_new,
-			     const char *peer)
+			     const char *peer, int reference)
 {
 	GHashTable *message;
 	GVariant *tmp;
@@ -94,6 +94,12 @@ _message_hashtable_get(const char *direction, long timestamp,
 	if (peer) {
 		tmp = g_variant_new_string(peer);
 		g_hash_table_insert(message, "Peer", g_variant_ref_sink(tmp));
+	}
+	
+	if (reference > 0) {
+		tmp = g_variant_new_int32(reference);
+		g_hash_table_insert(message, "SMS-message-reference", 
+				      g_variant_ref_sink(tmp));
 	}
 
 	return message;
@@ -143,7 +149,7 @@ phoneui_utils_message_add(GHashTable *message,
 int
 phoneui_utils_message_add_fields(const char *direction, long timestamp,
 			     const char *content, const char *source, gboolean is_new,
-			     const char *peer,
+			     const char *peer, int reference,
 			     void (*callback)(GError *, char *msgpath, gpointer),
 			     gpointer data)
 {
@@ -151,7 +157,7 @@ phoneui_utils_message_add_fields(const char *direction, long timestamp,
 	int ret;
 
 	message = _message_hashtable_get(direction, timestamp, content, source,
-				     is_new, peer);
+				     is_new, peer, reference);
 
 	if (!message)
 		return 1;
@@ -204,7 +210,7 @@ phoneui_utils_message_update(const char *path, GHashTable *message,
 int
 phoneui_utils_message_update_fields(const char *path, const char *direction,
 			     long timestamp, const char *content, const char *source,
-			     gboolean is_new, const char *peer,
+			     gboolean is_new, const char *peer, int reference,
 			     void (*callback)(GError *, gpointer),
 			     gpointer data)
 {
@@ -214,7 +220,7 @@ phoneui_utils_message_update_fields(const char *path, const char *direction,
 	if (!path) return 1;
 
 	message = _message_hashtable_get(direction, timestamp, content, source,
-				     is_new, peer);
+				     is_new, peer, reference);
 
 	if (!message)
 		return 1;
@@ -270,7 +276,7 @@ phoneui_utils_message_set_new_status(const char *path, gboolean new,
 				gpointer data)
 {
 	return phoneui_utils_message_update_fields(path, NULL, 0, NULL, NULL, new,
-				     NULL, callback, data);
+				     NULL, 0, callback, data);
 }
 
 int
@@ -357,7 +363,7 @@ phoneui_utils_messages_query_full(const char *sortby, gboolean sortdesc,
 {
 	GHashTable *query;
 	query = _message_hashtable_get(direction, timestamp, content, source,
-				     is_new, peer);
+				     is_new, peer, 0);
 
 	phoneui_utils_messages_query(sortby, sortdesc, disjunction, limit_start,
 				   limit, resolve_number, query, callback, data);
