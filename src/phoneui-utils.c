@@ -728,7 +728,7 @@ phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), gpointer data
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE,
+	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
 		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
 		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
 		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
