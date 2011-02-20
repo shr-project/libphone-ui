@@ -728,10 +728,7 @@ phoneui_utils_usage_suspend(void (*callback) (GError *, gpointer), gpointer data
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
-		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
-		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
-		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+	proxy = _fso_usage();
 
 	free_smartphone_usage_suspend(proxy, _suspend_callback, pack);
 }
@@ -764,10 +761,7 @@ phoneui_utils_usage_shutdown(void (*callback) (GError *, gpointer), gpointer dat
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
-		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
-		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
-		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+	proxy = _fso_usage();
 
 	free_smartphone_usage_shutdown(proxy, _shutdown_callback, pack);
 }
@@ -841,10 +835,7 @@ phoneui_utils_resources_get_resource_policy(const char *name,
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
-		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
-		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
-		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+	proxy = _fso_usage();
 
 	free_smartphone_usage_get_resource_policy
 				(proxy, name, _get_policy_callback, pack);
@@ -879,10 +870,7 @@ phoneui_utils_resources_set_resource_policy(const char *name,
 	pack = malloc(sizeof(*pack));
 	pack->callback = callback;
 	pack->data = data;
-	proxy = _fso(FREE_SMARTPHONE_TYPE_USAGE_PROXY,
-		      FSO_FRAMEWORK_USAGE_ServiceDBusName,
-		      FSO_FRAMEWORK_USAGE_ServicePathPrefix,
-		      FSO_FRAMEWORK_USAGE_ServiceFacePrefix);
+	proxy = _fso_usage();
 
 	free_smartphone_usage_set_resource_policy
 			(proxy, name, policy, _set_policy_callback, pack);
