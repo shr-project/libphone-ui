@@ -67,6 +67,14 @@ _fso_pim_contact(const gchar* path)
 }
 
 gpointer
+_fso_pim_dates(const gchar* path)
+{
+	return _fso(FREE_SMARTPHONE_PIM_TYPE_DATE_PROXY,
+		     FSO_FRAMEWORK_PIM_ServiceDBusName, path,
+		     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".Date");
+}
+
+gpointer
 _fso_pim_messages()
 {
 	return _fso(FREE_SMARTPHONE_PIM_TYPE_MESSAGES_PROXY,

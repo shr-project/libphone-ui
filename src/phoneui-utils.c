@@ -168,14 +168,12 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 			free_smartphone_pim_contact_query_dispose_
 				((FreeSmartphonePIMContactQuery *)source, NULL, NULL);
 			break;
-/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_DATES:
 			results = free_smartphone_pim_date_query_get_multiple_results_finish
 				((FreeSmartphonePIMDateQuery *)source, res, &count, &error);
 			free_smartphone_pim_date_query_dispose_
 				((FreeSmartphonePIMDateQuery *)source, NULL, NULL);
 			break;
-*/
 		case PHONEUI_PIM_DOMAIN_MESSAGES:
 			results = free_smartphone_pim_message_query_get_multiple_results_finish
 				((FreeSmartphonePIMMessageQuery *)source, res, &count, &error);
@@ -188,14 +186,13 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 			free_smartphone_pim_note_query_dispose_
 				((FreeSmartphonePIMNoteQuery *)source, NULL, NULL);
 			break;
-/* FIXME, wait the async version in freesmartphone APIs
+		/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_TASKS:
 			results = free_smartphone_pim_task_query_get_multiple_results_finish
 				((FreeSmartphonePIMTaskQuery *)source, res, &count, &error);
 			free_smartphone_pim_task_query_dispose_
 				((FreeSmartphonePIMTaskQuery *)source, NULL, NULL);
-			break;
-*/
+			break; */
 		default:
 			g_object_unref(source);
 			free(pack);
@@ -246,10 +243,11 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 			query_path = free_smartphone_pim_notes_query_finish
 				((FreeSmartphonePIMNotes *)source, res, &error);
 			break;
+		/* FIXME, re-enable it when libfsoframework supports it again
 		case PHONEUI_PIM_DOMAIN_TASKS:
 			query_path = free_smartphone_pim_tasks_query_finish
 				((FreeSmartphonePIMTasks *)source, res, &error);
-			break;
+			break; */
 		default:
 			goto exit;
 	}
@@ -283,12 +281,13 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 				(proxy, -1, _pim_query_results_callback, pack);
 	}
 	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_DATES) {
-/* FIXME, re-enable it when libfsoframework supports it again
-			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_date_query_proxy);
-			count_func = PIM_QUERY_COUNT(free_smartphone_pim_date_query_get_result_count);
-			results_func = PIM_QUERY_RESULTS
-			               (free_smartphone_pim_date_query_get_multiple_results);
-*/
+		FreeSmartphonePIMDateQuery *proxy =
+			_fso(FREE_SMARTPHONE_PIM_TYPE_DATE_QUERY_PROXY,
+			     FSO_FRAMEWORK_PIM_ServiceDBusName,
+			     query_path,
+			     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".DateQuery");
+		free_smartphone_pim_date_query_get_multiple_results
+				(proxy, -1, _pim_query_results_callback, pack);
 	}
 	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_MESSAGES) {
 		FreeSmartphonePIMMessageQuery *proxy =
@@ -308,14 +307,16 @@ _pim_query_callback(GObject *source, GAsyncResult *res, gpointer data)
 		free_smartphone_pim_note_query_get_multiple_results
 				(proxy, -1, _pim_query_results_callback, pack);
 	}
+	/* FIXME, re-enable it when libfsoframework supports it again
 	else if (pack->domain_type == PHONEUI_PIM_DOMAIN_TASKS) {
-/* FIXME, wait the async version in freesmartphone APIs
-			query_proxy = PIM_QUERY_PROXY(free_smartphone_pim_get_task_query_proxy);
-			count_func = PIM_QUERY_COUNT(free_smartphone_pim_task_query_get_result_count);
-			results_func = PIM_QUERY_RESULTS
-			               (free_smartphone_pim_task_query_get_multiple_results);
-*/
-	}
+			FreeSmartphonePIMTaskQuery *proxy =
+			_fso(FREE_SMARTPHONE_PIM_TYPE_TASK_QUERY_PROXY,
+			     FSO_FRAMEWORK_PIM_ServiceDBusName,
+			     query_path,
+			     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".TaskQuery");
+		free_smartphone_pim_task_query_get_multiple_results
+				(proxy, -1, _pim_query_results_callback, pack);
+	} */
 
 	if (query_path) free(query_path);
 	return;
@@ -401,11 +402,7 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 		free_smartphone_pim_contacts_query(_fso_pim_contacts(), query, _pim_query_callback, pack);
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_DATES) {
-		/* FIXME, re-enable it when libfsoframework supports it again
-		 *			path = FSO_FRAMEWORK_PIM_DatesServicePath;
-		 *			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_dates_query);
-		 *			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_dates_proxy);
-		 */
+		free_smartphone_pim_dates_query(_fso_pim_dates(), query, _pim_query_callback, pack);
 	}
 	else if (domain == PHONEUI_PIM_DOMAIN_MESSAGES) {
 		g_debug("starting the message query");
@@ -414,13 +411,10 @@ void phoneui_utils_pim_query(enum PhoneUiPimDomain domain, const char *sortby,
 	else if (domain == PHONEUI_PIM_DOMAIN_NOTES) {
 		free_smartphone_pim_notes_query(_fso_pim_notes(), query, _pim_query_callback, pack);
 	}
+	/* FIXME, re-enable it when libfsoframework supports it again
 	else if (domain == PHONEUI_PIM_DOMAIN_TASKS) {
-		/* FIXME, add the sync version in freesmartphone APIs
-		 *			path = FSO_FRAMEWORK_PIM_TasksServicePath;
-		 *			query_function = PIM_QUERY_FUNCTION(free_smartphone_pim_tasks_query);
-		 *			domain_get = PIM_DOMAIN_PROXY(free_smartphone_pim_get_tasks_proxy);
-		 */
-	}
+		free_smartphone_pim_tasks_query(_fso_pim_tasks(), query, _pim_query_callback, pack);
+	}*/
 	else
 		g_warning("unhandled PIM domain !!!");
 
