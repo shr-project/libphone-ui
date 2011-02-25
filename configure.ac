@@ -23,7 +23,6 @@ EXPAND(LIBDIR, $libdir)
 
 AC_OUTPUT([
 Makefile
-data/Makefile
 src/Makefile
 src/phoneui.h
 libphone-ui.pc
