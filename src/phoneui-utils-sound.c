@@ -348,6 +348,11 @@ phoneui_utils_sound_volume_save(enum SoundControlType type)
 	const char *scenario="";
 	(void) type; /*FIXME: when it's possible to save only type, use it*/
 
+	if (!fso_audio) {
+		return -1;
+	}
+
+
 	scenario = scenario_name_from_state(sound_state, sound_state_type);
 	/*FIXME: handle failures*/
 	free_smartphone_device_audio_save_scenario(fso_audio, scenario,
@@ -672,6 +677,11 @@ phoneui_utils_sound_state_set(enum SoundState state, enum SoundStateType type)
 	if (state == sound_state && type == sound_state_type) {
 		return 0;
 	}
+
+	if (!fso_audio) {
+		return -1;
+	}
+
 	/* If NULL use current */
 	if (state == SOUND_STATE_NULL) {
 		state = sound_state;
