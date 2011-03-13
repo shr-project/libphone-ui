@@ -184,21 +184,6 @@ callbacks_list_free(GList *list)
 int
 phoneui_info_init()
 {
-#if 0
-	DBusGProxy *dbus_proxy;
-
-	/* register for NameOwnerChanged */
-	dbus_proxy = dbus_g_proxy_new_for_name (_dbus(), DBUS_SERVICE_DBUS,
-						DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
-
-	dbus_g_proxy_add_signal(dbus_proxy, "NameOwnerChanged", G_TYPE_STRING,
-				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-
-	dbus_g_proxy_connect_signal(dbus_proxy, "NameOwnerChanged",
-				    G_CALLBACK(_name_owner_changed), NULL, NULL);
-
-#endif
-
 	fso.usage = _fso_usage();
 	g_signal_connect(fso.usage, "resource-changed", G_CALLBACK(_resource_changed_handler), NULL);
 
