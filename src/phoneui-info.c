@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2009, 2010
+ *  Copyright (C) 2009, 2010, 2011
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>

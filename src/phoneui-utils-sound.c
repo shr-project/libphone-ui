@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2009, 2010
+ *  Copyright (C) 2009, 2010, 2011
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
@@ -84,7 +84,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 int
 phoneui_utils_sound_deinit()
 {
-	// FIXME: how to unregister from signals?
+	// FIXME: how to unregister from input events?
 	return 0;
 }
 
@@ -95,12 +95,15 @@ phoneui_utils_sound_mode_set(FreeSmartphoneAudioMode mode,
 	struct _cb_void_pack* pack;
 
 	if (!fso_audio) {
-		return; // FIXME: create some correct GError
+		/* FIXME: feed the callback with an appropriate error */
+		return;
 	}
 
 	pack = malloc(sizeof(*pack));
-	if (!pack)
-		return; // FIXME: create some correct GError
+	if (!pack) {
+		/* FIXME: feed the callback with an appropriate error */
+		return;
+	}
 
 	pack->callback = callback;
 	pack->data = data;
@@ -136,8 +139,7 @@ phoneui_utils_sound_device_set(FreeSmartphoneAudioDevice device,
 }
 
 void
-phoneui_utils_sound_volume_set(FreeSmartphoneAudioControl control,
-				   int percent,
+phoneui_utils_sound_volume_set(FreeSmartphoneAudioControl control, int percent,
 				   void (*callback)(void*, GError*),
 				   void* data)
 {
@@ -148,7 +150,7 @@ phoneui_utils_sound_volume_set(FreeSmartphoneAudioControl control,
 		return;
 	}
 
-	pack = malloc(sizeof(struct _cb_void_pack));
+	pack = malloc(sizeof(*pack));
 	if (!pack) {
 		/* FIXME: feed the callback with an appropriate error */
 		return;
@@ -159,8 +161,6 @@ phoneui_utils_sound_volume_set(FreeSmartphoneAudioControl control,
 
 	free_smartphone_audio_manager_set_volume(fso_audio, control, percent,
 						      _set_volume_cb, pack);
-
-	return;
 }
 
 void
@@ -176,7 +176,7 @@ phoneui_utils_sound_volume_mute_set(FreeSmartphoneAudioControl control,
 		return;
 	}
 
-	pack = malloc(sizeof(struct _cb_void_pack));
+	pack = malloc(sizeof(*pack));
 	if (!pack) {
 		/* FIXME: feed the callback with an appropriate error */
 		return;
@@ -187,8 +187,6 @@ phoneui_utils_sound_volume_mute_set(FreeSmartphoneAudioControl control,
 
 	free_smartphone_audio_manager_set_mute(fso_audio, control, mute,
 						    _set_mute_cb, pack);
-
-	return;
 }
 
 void
@@ -303,15 +301,19 @@ static void
 _set_mode_cb(GObject* source, GAsyncResult* res, gpointer data)
 {
 	GError* error = NULL;
-	struct _cb_void_pack* pack;
+	struct _cb_void_pack* pack = data;
 
 	free_smartphone_audio_manager_set_mode_finish
 			((FreeSmartphoneAudioManager*)source, res, &error);
-	pack = data;
-	if (pack->callback)
+
+	if (pack->callback) {
 		pack->callback(pack->data, error);
-	if (error)
+	}
+
+	if (error) {
 		g_error_free(error);
+	}
+
 	free(pack);
 }
 
@@ -323,10 +325,15 @@ _set_device_cb(GObject* source, GAsyncResult* res, gpointer data)
 
 	free_smartphone_audio_manager_set_device_finish
 			((FreeSmartphoneAudioManager*)source, res, &error);
-	if (pack->callback)
+
+	if (pack->callback) {
 		pack->callback(pack->data, error);
-	if (error)
+	}
+
+	if (error) {
 		g_error_free(error);
+	}
+
 	free(pack);
 }
 
@@ -338,10 +345,15 @@ _set_volume_cb(GObject* source, GAsyncResult* res, gpointer data)
 
 	free_smartphone_audio_manager_set_volume_finish
 			((FreeSmartphoneAudioManager*)source, res, &error);
-	if (pack->callback)
+
+	if (pack->callback) {
 		pack->callback(pack->data, error);
-	if (error)
+	}
+
+	if (error) {
 		g_error_free(error);
+	}
+
 	free(pack);
 }
 
@@ -353,10 +365,15 @@ _set_mute_cb(GObject* source, GAsyncResult* res, gpointer data)
 
 	free_smartphone_audio_manager_set_mute_finish
 			((FreeSmartphoneAudioManager*)source, res, &error);
-	if (pack->callback)
+
+	if (pack->callback) {
 		pack->callback(pack->data, error);
-	if (error)
+	}
+
+	if (error) {
 		g_error_free(error);
+	}
+
 	free(pack);
 }
 
@@ -369,11 +386,14 @@ _list_profiles_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _list_profiles_pack *pack = data;
 
 	profiles = free_smartphone_preferences_get_profiles_finish
-	((FreeSmartphonePreferences *)source, res, &count, &error);
+		((FreeSmartphonePreferences *)source, res, &count, &error);
+
 	if (pack->callback) {
 		pack->callback(error, profiles, count, pack->data);
 	}
+
 	// FIXME: free profiles
+
 	free(pack);
 }
 
@@ -385,10 +405,12 @@ _get_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _get_profile_pack *pack = data;
 
 	profile = free_smartphone_preferences_get_profile_finish
-	((FreeSmartphonePreferences *)source, res, &error);
+		((FreeSmartphonePreferences *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, profile, pack->data);
 	}
+
 	free(pack);
 }
 
