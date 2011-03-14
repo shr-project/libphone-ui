@@ -31,8 +31,8 @@
 #include "phoneui-info.h"
 #include "dbus.h"
 
-static FreeSmartphoneAudioManager *fso_audio = NULL;
-
+static FreeSmartphoneAudioManager* fso_audio = NULL;
+static FreeSmartphonePreferences* fso_pref = NULL;
 
 /* audio manager method callbacks */
 static void _set_mode_cb(GObject* source, GAsyncResult* res, gpointer data);
@@ -74,9 +74,16 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	/*Register for HEADPHONE insertion */
 	phoneui_info_register_input_events(_input_events_cb, NULL);
 
+	fso_pref = _fso_preferences();
+	if (!fso_pref) {
+		g_warning("Failed to get proxy for opreferencesd");
+	}
+
 	fso_audio = _fso_audio();
-	if (!fso_audio)
+	if (!fso_audio) {
+		g_warning("Failed to get proxy for oaudiod");
 		return -1;
+	}
 
 	return 0;
 }
@@ -193,11 +200,9 @@ void
 phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpointer),
 				void *userdata)
 {
-	FreeSmartphonePreferences *proxy;
 	struct _list_profiles_pack *pack;
 
-	proxy = _fso_preferences();
-	if (!proxy) {
+	if (!fso_pref) {
 		/* FIXME: feed the callback with an appropriate error */
 		return;
 	}
@@ -212,7 +217,7 @@ phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpoint
 	pack->data = userdata;
 
 	free_smartphone_preferences_get_profiles
-			(proxy, _list_profiles_callback, pack);
+			(fso_pref, _list_profiles_callback, pack);
 }
 
 void
@@ -223,12 +228,10 @@ phoneui_utils_sound_profile_set(const char *profile,
 	(void) callback;
 	(void) userdata;
 	struct _set_profile_pack *pack;
-	FreeSmartphonePreferences *proxy;
 
 	g_debug("Setting profile to '%s'", profile);
 
-	proxy = _fso_preferences();
-	if (!proxy) {
+	if (!fso_pref) {
 		/* FIXME: feed the callback with an appropriate error */
 		return;
 	}
@@ -242,7 +245,7 @@ phoneui_utils_sound_profile_set(const char *profile,
 	pack->callback = callback;
 	pack->data = userdata;
 
-	free_smartphone_preferences_set_profile(proxy, profile,
+	free_smartphone_preferences_set_profile(fso_pref, profile,
 						_set_profile_callback, pack);
 }
 
@@ -250,11 +253,9 @@ void
 phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 				void *userdata)
 {
-	FreeSmartphonePreferences *proxy;
 	struct _get_profile_pack *pack;
 
-	proxy = _fso_preferences();
-	if (!proxy) {
+	if (!fso_pref) {
 		/* FIXME: feed the callback with an appropriate error */
 		return;
 	}
@@ -269,7 +270,7 @@ phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 	pack->data = userdata;
 
 	free_smartphone_preferences_get_profile
-				(proxy, _get_profile_callback, pack);
+				(fso_pref, _get_profile_callback, pack);
 }
 
 void phoneui_utils_sound_play(const char *name, int loop, int length,
@@ -421,10 +422,12 @@ _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	struct _set_profile_pack *pack = data;
 
 	free_smartphone_preferences_set_profile_finish
-	((FreeSmartphonePreferences *)source, res, &error);
+		((FreeSmartphonePreferences *)source, res, &error);
+
 	if (pack->callback) {
 		pack->callback(error, pack->data);
 	}
+
 	if (error) {
 		g_critical("SetProfile error: (%d) %s",
 			    error->code, error->message);
@@ -433,7 +436,7 @@ _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 	else {
 		g_debug("Profile successfully set");
 	}
-	g_object_unref(source);
+
 	free (pack);
 }
 
