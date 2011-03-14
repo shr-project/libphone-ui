@@ -209,6 +209,15 @@ _fso_usage()
 }
 
 gpointer
+_fso_audio()
+{
+	return _fso(FREE_SMARTPHONE_AUDIO_TYPE_MANAGER_PROXY,
+		     FSO_FRAMEWORK_AUDIO_ServiceDBusName,
+		     FSO_FRAMEWORK_AUDIO_ServicePathPrefix "/Manager",
+	            FSO_FRAMEWORK_AUDIO_ServiceFacePrefix ".Manager");
+}
+
+gpointer
 _phonefso(GError **error)
 {
 	return phonefso_usage_proxy_new_for_bus_sync

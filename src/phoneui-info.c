@@ -44,29 +44,34 @@ struct _fso {
 	FreeSmartphonePIMContacts *pim_contacts;
 	FreeSmartphonePIMCalls *pim_calls;
 	FreeSmartphonePIMTasks *pim_tasks;
+	FreeSmartphoneAudioManager* audio;
 };
 static struct _fso fso;
 
 
-static GList *callbacks_contact_changes = NULL;
-static GList *callbacks_message_changes = NULL;
-static GList *callbacks_call_changes = NULL;
-static GList *callbacks_profile_changes = NULL;
-static GList *callbacks_capacity_changes = NULL;
-static GList *callbacks_missed_calls = NULL;
-static GList *callbacks_unread_messages = NULL;
-static GList *callbacks_unfinished_tasks = NULL;
-static GList *callbacks_resource_changes = NULL;
-static GList *callbacks_network_status = NULL;
-static GList *callbacks_pdp_context_status = NULL;
-static GList *callbacks_signal_strength = NULL;
-static GList *callbacks_input_events = NULL;
-static GList *callbacks_call_status = NULL;
-static GHashTable *single_contact_changes = NULL;
+static GList* callbacks_contact_changes = NULL;
+static GList* callbacks_message_changes = NULL;
+static GList* callbacks_call_changes = NULL;
+static GList* callbacks_profile_changes = NULL;
+static GList* callbacks_capacity_changes = NULL;
+static GList* callbacks_missed_calls = NULL;
+static GList* callbacks_unread_messages = NULL;
+static GList* callbacks_unfinished_tasks = NULL;
+static GList* callbacks_resource_changes = NULL;
+static GList* callbacks_network_status = NULL;
+static GList* callbacks_pdp_context_status = NULL;
+static GList* callbacks_signal_strength = NULL;
+static GList* callbacks_input_events = NULL;
+static GList* callbacks_audio_mode = NULL;
+static GList* callbacks_audio_device = NULL;
+static GList* callbacks_audio_volume = NULL;
+static GList* callbacks_audio_mute = NULL;
+static GList* callbacks_call_status = NULL;
+static GHashTable* single_contact_changes = NULL;
 
 struct _cb_pim_changes_pack {
-	void (*callback)(void *, const char *, enum PhoneuiInfoChangeType);
-	void *data;
+	void (*callback)(void*, const char*, enum PhoneuiInfoChangeType);
+	void* data;
 };
 
 struct _cb_pim_single_changes_pack {
@@ -112,7 +117,24 @@ struct _cb_gsm_context_status_pack {
 	void (*callback)(void *, FreeSmartphoneGSMContextStatus, GHashTable *);
 	void *data;
 };
-
+struct _cb_audio_mode_pack {
+	void (*callback)(void*, FreeSmartphoneAudioMode);
+	void* data;
+};
+struct _cb_audio_device_pack {
+	void (*callback)(void*, FreeSmartphoneAudioDevice);
+	void* data;
+};
+struct _cb_audio_volume_pack {
+	void (*callback)(void*, FreeSmartphoneAudioControl, int);
+	void* data;
+	FreeSmartphoneAudioControl control;
+};
+struct _cb_audio_mute_pack {
+	void (*callback)(void*, FreeSmartphoneAudioControl, gboolean);
+	void* data;
+	FreeSmartphoneAudioControl control;
+};
 
 static void _pim_missed_calls_handler(GObject *source, int amount, gpointer data);
 static void _pim_new_call_handler(GObject *source, char *path, gpointer data);
@@ -136,6 +158,10 @@ static void _pim_message_new_handler(GObject *source, const char *path, gpointer
 static void _pim_message_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
 static void _pim_message_deleted_handler(GObject *source, const char *path, gpointer data);
 static void _device_input_event_handler(GObject* source, char* input_source, FreeSmartphoneDeviceInputState state, int duration, gpointer data);
+static void _audio_mode_handler(GObject* source, FreeSmartphoneAudioMode mode, gpointer data);
+static void _audio_device_handler(GObject* source, FreeSmartphoneAudioDevice device, gpointer data);
+static void _audio_volume_handler(GObject* source, FreeSmartphoneAudioControl control, int volume, gpointer data);
+static void _audio_mute_handler(GObject* source, FreeSmartphoneAudioControl control, gboolean mute, gpointer data);
 
 static void _pim_missed_calls_callback( GObject* source, GAsyncResult* res, gpointer data);
 static void _pim_unread_messages_callback( GObject* source, GAsyncResult* res, gpointer data);
@@ -148,8 +174,11 @@ static void _get_network_status_callback(GObject *source, GAsyncResult *res, gpo
 static void _get_pdp_context_status_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data);
 //static void _get_alarm_callback(GError *error, int time, gpointer userdata);
+static void _get_audio_mode_callback(GObject* source, GAsyncResult* res, gpointer data);
+static void _get_audio_device_callback(GObject* source, GAsyncResult* res, gpointer data);
+static void _get_audio_volume_callback(GObject* source, GAsyncResult* res, gpointer data);
+static void _get_audio_mute_callback(GObject* source, GAsyncResult* res, gpointer data);
 
-// static void _name_owner_changed(DBusGProxy *proxy, const char *name, const char *prev, const char *new, gpointer data);
 
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_pim_single_changed_callbacks(GList* cbs, int entryid, enum PhoneuiInfoChangeType type);
@@ -160,6 +189,10 @@ static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
 static void _execute_resource_callbacks(GList *cbs, const char *resource, gboolean state, GHashTable *properties);
 static void _execute_int_hashtable_callbacks(GList *cbs, int val1, GHashTable *val2);
 static void _execute_gsm_context_status_callbacks(GList *cbs, FreeSmartphoneGSMContextStatus val1, GHashTable *val2);
+static void _execute_audio_mode_callbacks(GList* cbs, FreeSmartphoneAudioMode mode);
+static void _execute_audio_device_callbacks(GList* cbs, FreeSmartphoneAudioDevice device);
+static void _execute_audio_volume_callbacks(GList* cbs, FreeSmartphoneAudioControl control, int volume);
+static void _execute_audio_mute_callbacks(GList* cbs, FreeSmartphoneAudioControl control, gboolean mute);
 
 static void
 _callbacks_list_free_foreach(gpointer _data, gpointer userdata)
@@ -226,6 +259,12 @@ phoneui_info_init()
 	fso.pim_calls = _fso_pim_calls();
 	g_signal_connect(fso.pim_calls, "new-missed-calls", G_CALLBACK(_pim_missed_calls_handler), NULL);
 	g_signal_connect(fso.pim_calls, "new-call", G_CALLBACK(_pim_new_call_handler), NULL);
+
+	fso.audio = _fso_audio();
+	g_signal_connect(fso.audio, "mode-changed", G_CALLBACK(_audio_mode_handler), NULL);
+	g_signal_connect(fso.audio, "device-changed", G_CALLBACK(_audio_device_handler), NULL);
+	g_signal_connect(fso.audio, "volume-changed", G_CALLBACK(_audio_volume_handler), NULL);
+	g_signal_connect(fso.audio, "mute-changed", G_CALLBACK(_audio_mute_handler), NULL);
 
 	return 0;
 }
@@ -972,6 +1011,235 @@ phoneui_info_register_input_events(void (*callback)(void *, const char *,
 	}
 }
 
+void
+phoneui_info_register_audio_mode(void (*callback)(void*, FreeSmartphoneAudioMode), void* data)
+{
+	GList* l;
+	struct _cb_audio_mode_pack* pack;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (audio mode)");
+		return;
+	}
+
+	pack = malloc(sizeof(struct _cb_audio_mode_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (audio mode)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_audio_mode, pack);
+	if (!l) {
+		g_warning("Failed to register callback for audio mode");
+		free(pack);
+		return;
+	}
+
+	if (!callbacks_audio_mode)
+		callbacks_audio_mode = l;
+
+	g_debug("Registered a callback for audio mode");
+}
+
+void
+phoneui_info_request_audio_mode(void (*callback)(void*, FreeSmartphoneAudioMode), void* data)
+{
+	struct _cb_audio_mode_pack* pack;
+
+	pack = malloc(sizeof(struct _cb_audio_mode_pack));
+	if (!pack)
+		return;
+	pack->callback = callback;
+	pack->data = data;
+	free_smartphone_audio_manager_get_mode(fso.audio, _get_audio_mode_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_audio_mode(void (*callback)(void*, FreeSmartphoneAudioMode), void* data)
+{
+	phoneui_info_register_audio_mode(callback, data);
+	phoneui_info_request_audio_mode(callback, data);
+}
+
+void
+phoneui_info_register_audio_device(void (*callback)(void*, FreeSmartphoneAudioDevice), void* data)
+{
+	GList* l;
+	struct _cb_audio_device_pack* pack;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (audio device)");
+		return;
+	}
+
+	pack = malloc(sizeof(struct _cb_audio_device_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (audio device)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_audio_device, pack);
+	if (!l) {
+		g_warning("Failed to register callback for audio device");
+		free(pack);
+		return;
+	}
+
+	if (!callbacks_audio_device)
+		callbacks_audio_device = l;
+
+	g_debug("Registered a callback for audio device");
+
+}
+
+void
+phoneui_info_request_audio_device(void (*callback)(void*, FreeSmartphoneAudioDevice),
+				      void* data)
+{
+	struct _cb_audio_device_pack* pack;
+	pack = malloc(sizeof(*pack));
+	if (!pack)
+		return;
+	pack->callback = callback;
+	pack->data = data;
+	free_smartphone_audio_manager_get_device(fso.audio, _get_audio_device_callback, data);
+}
+
+void
+phoneui_info_register_and_request_audio_device(void (*callback)(void*, FreeSmartphoneAudioDevice),
+						     void* data)
+{
+	phoneui_info_register_audio_device(callback, data);
+	phoneui_info_request_audio_device(callback, data);
+}
+
+void
+phoneui_info_register_audio_volume(void (*callback)(void*, FreeSmartphoneAudioControl, int),
+					void* data)
+{
+	GList* l;
+	struct _cb_audio_volume_pack* pack;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (audio volume)");
+		return;
+	}
+
+	pack = malloc(sizeof(struct _cb_audio_volume_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (audio volume)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_audio_volume, pack);
+	if (!l) {
+		g_warning("Failed to register callback for audio volume");
+		free(pack);
+		return;
+	}
+
+	if (!callbacks_audio_volume)
+		callbacks_audio_volume = l;
+
+	g_debug("Registered a callback for audio volume");
+
+}
+
+static void
+_internal_request_audio_volume(FreeSmartphoneAudioControl control, void (*callback)(void*, FreeSmartphoneAudioControl, int), void* data)
+{
+	struct _cb_audio_volume_pack* pack;
+	pack = malloc(sizeof(*pack));
+	if (!pack)
+		return;
+	pack->callback = callback;
+	pack->data = data;
+	pack->control = control;
+	free_smartphone_audio_manager_get_volume(fso.audio, control,
+						      _get_audio_volume_callback, pack);
+}
+
+void
+phoneui_info_request_audio_volume(void (*callback)(void*, FreeSmartphoneAudioControl, int), void* data)
+{
+	_internal_request_audio_volume(FREE_SMARTPHONE_AUDIO_CONTROL_MICROPHONE,
+					   callback, data);
+	_internal_request_audio_volume(FREE_SMARTPHONE_AUDIO_CONTROL_SPEAKER,
+					   callback, data);
+}
+
+void
+phoneui_info_register_and_request_audio_volume(void (*callback)(void*, FreeSmartphoneAudioControl, int), void* data)
+{
+	phoneui_info_register_audio_volume(callback, data);
+	phoneui_info_request_audio_volume(callback, data);
+}
+
+void
+phoneui_info_register_audio_mute(void (*callback)(void*, FreeSmartphoneAudioControl, gboolean), void* data)
+{
+	GList* l;
+	struct _cb_audio_mute_pack* pack;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (audio mute)");
+		return;
+	}
+
+	pack = malloc(sizeof(struct _cb_audio_mute_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (audio mute)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_audio_mute, pack);
+	if (!l) {
+		g_warning("Failed to register callback for audio mute");
+		free(pack);
+		return;
+	}
+
+	if (!callbacks_audio_mute)
+		callbacks_audio_mute = l;
+
+	g_debug("Registered a callback for audio mute");
+
+}
+
+static void
+_internal_request_audio_mute(FreeSmartphoneAudioControl control, void (*callback)(void*, FreeSmartphoneAudioControl, gboolean), void* data)
+{
+	struct _cb_audio_mute_pack* pack;
+	pack = malloc(sizeof(*pack));
+	if (!pack)
+		return;
+	pack->callback = callback;
+	pack->data = data;
+	pack->control = control;
+	free_smartphone_audio_manager_get_mute(fso.audio, control,
+						    _get_audio_mute_callback, pack);
+}
+
+void
+phoneui_info_request_audio_mute(void (*callback)(void*, FreeSmartphoneAudioControl, gboolean), void* data)
+{
+	_internal_request_audio_mute(FREE_SMARTPHONE_AUDIO_CONTROL_MICROPHONE,
+					 callback, data);
+	_internal_request_audio_mute(FREE_SMARTPHONE_AUDIO_CONTROL_SPEAKER,
+					 callback, data);
+}
+
+void
+phoneui_info_register_and_request_audio_mute(void (*callback)(void*, FreeSmartphoneAudioControl, gboolean), void* data)
+{
+	phoneui_info_register_audio_mute(callback, data);
+	phoneui_info_request_audio_mute(callback, data);
+}
+
 /* --- signal handlers --- */
 
 static void
@@ -1212,6 +1480,41 @@ _device_input_event_handler(GObject* source, char* input_source,
 	_execute_input_event_callbacks(callbacks_input_events,
 				input_source, action, duration);
 }
+
+static void
+_audio_mode_handler(GObject* source, FreeSmartphoneAudioMode mode, gpointer data)
+{
+	(void) source;
+	(void) data;
+	_execute_audio_mode_callbacks(callbacks_audio_mode, mode);
+}
+
+static void
+_audio_device_handler(GObject* source, FreeSmartphoneAudioDevice device, gpointer data)
+{
+	(void) source;
+	(void) data;
+	_execute_audio_device_callbacks(callbacks_audio_device, device);
+}
+
+static void
+_audio_volume_handler(GObject* source, FreeSmartphoneAudioControl control,
+			 int volume, gpointer data)
+{
+	(void) source;
+	(void) data;
+	_execute_audio_volume_callbacks(callbacks_audio_volume, control, volume);
+}
+
+static void
+_audio_mute_handler(GObject* source, FreeSmartphoneAudioControl control,
+		      gboolean mute, gpointer data)
+{
+	(void) source;
+	(void) data;
+	_execute_audio_mute_callbacks(callbacks_audio_mute, control, mute);
+}
+
 
 /* callbacks for request of data */
 
@@ -1458,6 +1761,90 @@ _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 
 }
 
+static void
+_get_audio_mode_callback(GObject* source, GAsyncResult* res, gpointer data)
+{
+	(void) source;
+	GError* error = NULL;
+	FreeSmartphoneAudioMode mode;
+
+	mode = free_smartphone_audio_manager_get_mode_finish(fso.audio, res, &error);
+	if (error) {
+		g_message("_get_audio_mode_callback: error %d: %s",
+			   error->code, error->message);
+		g_error_free(error);
+		return;
+	}
+	if (data) {
+		struct _cb_audio_mode_pack* pack = data;
+		pack->callback(pack->data, mode);
+		free(pack);
+	}
+}
+
+static void
+_get_audio_device_callback(GObject* source, GAsyncResult* res, gpointer data)
+{
+	(void) source;
+	GError* error = NULL;
+	FreeSmartphoneAudioDevice device;
+
+	device = free_smartphone_audio_manager_get_device_finish(fso.audio, res, &error);
+	if (error) {
+		g_message("_get_audio_device_callback: error %d: %s",
+			   error->code, error->message);
+		g_error_free(error);
+		return;
+	}
+	if (data) {
+		struct _cb_audio_device_pack* pack = data;
+		pack->callback(pack->data, device);
+		free(pack);
+	}
+}
+
+static void
+_get_audio_volume_callback(GObject* source, GAsyncResult*res, gpointer data)
+{
+	(void) source;
+	GError* error = NULL;
+	int volume;
+
+	volume = free_smartphone_audio_manager_get_volume_finish(fso.audio, res, &error);
+	if (error) {
+		g_message("_get_audio_volume_callback: error %d: %s",
+			   error->code, error->message);
+		g_error_free(error);
+		return;
+	}
+	if (data) {
+		struct _cb_audio_volume_pack* pack = data;
+		pack->callback(pack->data, pack->control, volume);
+		free(pack);
+	}
+}
+
+static void
+_get_audio_mute_callback(GObject* source, GAsyncResult* res, gpointer data)
+{
+	(void) source;
+	GError* error = NULL;
+	gboolean mute;
+
+	mute =  free_smartphone_audio_manager_get_mute_finish(fso.audio, res, &error);
+	if (error) {
+		g_message("_get_audio_mute_callback: error %d: %s",
+			   error->code, error->message);
+		g_error_free(error);
+		return;
+	}
+	if (data) {
+		struct _cb_audio_mute_pack* pack = data;
+		pack->callback(pack->data, pack->control, mute);
+		free(pack);
+	}
+}
+
 
 //static void _get_alarm_callback(GError *error,
 //		const int time, gpointer userdata)
@@ -1623,3 +2010,60 @@ _execute_gsm_context_status_callbacks(GList *cbs,
 		pack->callback(pack->data, val1, val2);
 	}
 }
+
+static void
+_execute_audio_mode_callbacks(GList* cbs, FreeSmartphoneAudioMode mode)
+{
+	GList* cb;
+
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_audio_mode_pack* pack = cb->data;
+		pack->callback(pack->data, mode);
+	}
+}
+
+static void
+_execute_audio_device_callbacks(GList* cbs, FreeSmartphoneAudioDevice device)
+{
+	GList* cb;
+
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_audio_device_pack* pack = cb->data;
+		pack->callback(pack->data, device);
+	}
+}
+
+static void
+_execute_audio_volume_callbacks(GList* cbs, FreeSmartphoneAudioControl control, int volume)
+{
+	GList* cb;
+
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_audio_volume_pack* pack = cb->data;
+		pack->callback(pack->data, control, volume);
+	}
+}
+
+static void
+_execute_audio_mute_callbacks(GList* cbs, FreeSmartphoneAudioControl control, gboolean mute)
+{
+	GList* cb;
+
+	if (!cbs)
+		return;
+
+	for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+		struct _cb_audio_mute_pack* pack = cb->data;
+		pack->callback(pack->data, control, mute);
+	}
+}
+

@@ -83,5 +83,21 @@ void phoneui_info_register_and_request_signal_strength(void (*_cb)(void *, int),
 
 void phoneui_info_register_input_events(void (*_cb)(void *, const char *, FreeSmartphoneDeviceInputState, int), void *data);
 
+void phoneui_info_register_audio_mode(void (*_cb)(void*, FreeSmartphoneAudioMode), void* data);
+void phoneui_info_request_audio_mode(void (*_cb)(void*, FreeSmartphoneAudioMode), void* data);
+void phoneui_info_register_and_request_audio_mode(void (*_cb)(void*, FreeSmartphoneAudioMode), void* data);
+
+void phoneui_info_register_audio_device(void (*_cb)(void*, FreeSmartphoneAudioDevice), void* data);
+void phoneui_info_request_audio_device(void (*_cb)(void*, FreeSmartphoneAudioDevice), void* data);
+void phoneui_info_register_and_request_audio_device(void (*_cb)(void*, FreeSmartphoneAudioDevice), void* data);
+
+void phoneui_info_register_audio_volume(void (*_cb)(void*, FreeSmartphoneAudioControl, int), void* data);
+void phoneui_info_request_audio_volume(void (*_cb)(void*, FreeSmartphoneAudioControl, int), void* data);
+void phoneui_info_register_and_request_audio_volume(void (*_cb)(void*, FreeSmartphoneAudioControl, int), void* data);
+
+void phoneui_info_register_audio_mute(void (*_cb)(void*, FreeSmartphoneAudioControl, gboolean), void* data);
+void phoneui_info_request_audio_mute(void (*_cb)(void*, FreeSmartphoneAudioControl, gboolean), void* data);
+void phoneui_info_register_and_request_audio_mute(void (*_cb)(void*, FreeSmartphoneAudioControl, gboolean), void* data);
+
 #endif
 

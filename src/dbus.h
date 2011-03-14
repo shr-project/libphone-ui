@@ -48,6 +48,8 @@ gpointer _fso_preferences();
 
 gpointer _fso_usage();
 
+gpointer _fso_audio();
+
 gpointer _phonefso();
 
 #endif
