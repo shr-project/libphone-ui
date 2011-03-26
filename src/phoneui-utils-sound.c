@@ -39,6 +39,8 @@ static void _set_mode_cb(GObject* source, GAsyncResult* res, gpointer data);
 static void _set_device_cb(GObject* source, GAsyncResult* res, gpointer data);
 static void _set_volume_cb(GObject* source, GAsyncResult* res, gpointer data);
 static void _set_mute_cb(GObject* source, GAsyncResult* res, gpointer data);
+static void _push_device_cb(GObject* source, GAsyncResult* res, gpointer data);
+static void _pull_device_cb(GObject* source, GAsyncResult* res, gpointer data);
 
 static void _list_profiles_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_profile_callback(GObject *source, GAsyncResult *res, gpointer data);
@@ -195,6 +197,39 @@ phoneui_utils_sound_volume_mute_set(FreeSmartphoneAudioControl control,
 	free_smartphone_audio_manager_set_mute(fso_audio, control, mute,
 						    _set_mute_cb, pack);
 }
+
+void
+phoneui_utils_sound_speaker_set(int onoff,
+		void (*callback)(void*, GError*), void* data)
+{
+	struct _cb_void_pack* pack;
+
+	if (!fso_audio) {
+		/* FIXME: feed the callback with an appropriate error */
+		return;
+	}
+
+	pack = malloc(sizeof(*pack));
+	if (!pack) {
+		/* FIXME: feed the callback with an appropriate error */
+		return;
+	}
+
+	pack->callback = callback;
+	pack->data = data;
+
+	if (onoff) {
+		free_smartphone_audio_manager_push_device
+				(fso_audio, FREE_SMARTPHONE_AUDIO_DEVICE_BACKSPEAKER,
+				 _push_device_cb, pack);
+	}
+	else {
+		free_smartphone_audio_manager_pull_device
+				(fso_audio, _pull_device_cb, pack);
+	}
+
+}
+
 
 void
 phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpointer),
@@ -375,6 +410,44 @@ _set_mute_cb(GObject* source, GAsyncResult* res, gpointer data)
 		g_error_free(error);
 	}
 
+	free(pack);
+}
+
+static void
+_push_device_cb(GObject* source, GAsyncResult* res, gpointer data)
+{
+	GError* error = NULL;
+	struct _cb_void_pack* pack = data;
+
+	free_smartphone_audio_manager_push_device_finish
+			((FreeSmartphoneAudioManager*)source, res, &error);
+
+	if (pack->callback) {
+		pack->callback(pack->data, error);
+	}
+
+	if (error) {
+		g_error_free(error);
+	}
+	free(pack);
+}
+
+static void
+_pull_device_cb(GObject* source, GAsyncResult* res, gpointer data)
+{
+	GError* error = NULL;
+	struct _cb_void_pack* pack = data;
+
+	free_smartphone_audio_manager_pull_device_finish
+			((FreeSmartphoneAudioManager*)source, res, &error);
+
+	if (pack->callback) {
+		pack->callback(pack->data, error);
+	}
+
+	if (error) {
+		g_error_free(error);
+	}
 	free(pack);
 }
 

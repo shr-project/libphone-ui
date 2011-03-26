@@ -28,16 +28,32 @@
 int phoneui_utils_sound_init(GKeyFile *keyfile);
 int phoneui_utils_sound_deinit();
 
-void phoneui_utils_sound_mode_set(FreeSmartphoneAudioMode mode, void (*callback)(void*, GError*), void* data);
-void phoneui_utils_sound_device_set(FreeSmartphoneAudioDevice device, void(*callback)(void*, GError*), void* data);
-void phoneui_utils_sound_volume_set(FreeSmartphoneAudioControl control, int percent, void (*callback)(void*, GError*), void* data);
-void phoneui_utils_sound_mute_set(FreeSmartphoneAudioControl control, gboolean mute, void (*callback)(void*, GError*), void* data);
+void phoneui_utils_sound_mode_set(FreeSmartphoneAudioMode mode,
+				      void (*callback)(void*, GError*),
+				      void* data);
+
+void phoneui_utils_sound_device_set(FreeSmartphoneAudioDevice device,
+					 void(*callback)(void*, GError*),
+					 void* data);
+
+void phoneui_utils_sound_volume_set(FreeSmartphoneAudioControl control,
+					 int percent,
+					 void (*callback)(void*, GError*),
+					 void* data);
+
+void phoneui_utils_sound_mute_set(FreeSmartphoneAudioControl control,
+				      gboolean mute,
+				      void (*callback)(void*, GError*),
+				      void* data);
+
+void phoneui_utils_sound_speaker_set(int onoff,
+					  void (*callback)(void*, GError*),
+					  void* data);
 
 void phoneui_utils_sound_profile_list(void (*callback)(GError *, char **, int, gpointer),
-				void *userdata);
-void phoneui_utils_sound_profile_set(const char *profile,
-				void (*callback)(GError *, gpointer),
-				void *userdata);
+					   void *userdata);
+
+void phoneui_utils_sound_profile_set(const char *profile, void (*callback)(GError *, gpointer), void *userdata);
 void phoneui_utils_sound_profile_get(void (*callback)(GError *, char *, gpointer),
 					void *userdata);
 
