@@ -438,7 +438,7 @@ phoneui_info_unregister_single_contact_changes(int entryid,
 				g_object_unref(pack->proxy);
 				free(pack);
 				g_hash_table_remove(single_contact_changes,
-						    &entryid);
+						      &entryid);
 			}
 			return;
 		}
@@ -1063,6 +1063,30 @@ phoneui_info_register_and_request_audio_mode(void (*callback)(void*, FreeSmartph
 }
 
 void
+phoneui_info_unregister_audio_mode(void (*callback)(void*, FreeSmartphoneAudioMode), void* data)
+{
+	GList *cb;
+	struct _cb_audio_mode_pack *cbpack;
+
+	if (!callbacks_audio_mode) {
+		g_debug("No one registered for audio mode changes - Nothing to unregister");
+		return;
+	}
+
+	for (cb = g_list_first(callbacks_audio_mode); cb; cb = g_list_next(cb)) {
+		cbpack = cb->data;
+		g_debug("comparing a callback");
+		if ((void *)cbpack->callback == (void *)callback && cbpack->data == data) {
+			callbacks_audio_mode = g_list_remove(callbacks_audio_mode, cbpack);
+			g_debug("Removed callback for audio mode");
+			return;
+		}
+	}
+	g_debug("Callback not found for audio mode");
+}
+
+
+void
 phoneui_info_register_audio_device(void (*callback)(void*, FreeSmartphoneAudioDevice), void* data)
 {
 	GList* l;
@@ -1091,7 +1115,6 @@ phoneui_info_register_audio_device(void (*callback)(void*, FreeSmartphoneAudioDe
 		callbacks_audio_device = l;
 
 	g_debug("Registered a callback for audio device");
-
 }
 
 void
@@ -1113,6 +1136,29 @@ phoneui_info_register_and_request_audio_device(void (*callback)(void*, FreeSmart
 {
 	phoneui_info_register_audio_device(callback, data);
 	phoneui_info_request_audio_device(callback, data);
+}
+
+void
+phoneui_info_unregister_audio_device(void (*callback)(void*, FreeSmartphoneAudioDevice), void* data)
+{
+	GList *cb;
+	struct _cb_audio_device_pack *cbpack;
+
+	if (!callbacks_audio_device) {
+		g_debug("No one registered for audio device changes - Nothing to unregister");
+		return;
+	}
+
+	for (cb = g_list_first(callbacks_audio_device); cb; cb = g_list_next(cb)) {
+		cbpack = cb->data;
+		g_debug("comparing a callback");
+		if ((void *)cbpack->callback == (void *)callback && cbpack->data == data) {
+			callbacks_audio_device = g_list_remove(callbacks_audio_device, cbpack);
+			g_debug("Removed callback for audio device");
+			return;
+		}
+	}
+	g_debug("Callback not found for audio device");
 }
 
 void
@@ -1171,6 +1217,29 @@ phoneui_info_request_audio_volume(void (*callback)(void*, FreeSmartphoneAudioCon
 					   callback, data);
 }
 
+void
+phoneui_info_unregister_audio_volume(void (*callback)(void*, FreeSmartphoneAudioControl, int), void* data)
+{
+	GList *cb;
+	struct _cb_audio_volume_pack *cbpack;
+
+	if (!callbacks_audio_volume) {
+		g_debug("No one registered for audio volume changes - Nothing to unregister");
+		return;
+	}
+
+	for (cb = g_list_first(callbacks_audio_volume); cb; cb = g_list_next(cb)) {
+		cbpack = cb->data;
+		g_debug("comparing a callback");
+		if ((void *)cbpack->callback == (void *)callback && cbpack->data == data) {
+			callbacks_audio_volume = g_list_remove(callbacks_audio_volume, cbpack);
+			g_debug("Removed callback for audio volume");
+			return;
+		}
+	}
+	g_debug("Callback not found for audio volume");
+
+}
 void
 phoneui_info_register_and_request_audio_volume(void (*callback)(void*, FreeSmartphoneAudioControl, int), void* data)
 {
@@ -1238,6 +1307,30 @@ phoneui_info_register_and_request_audio_mute(void (*callback)(void*, FreeSmartph
 {
 	phoneui_info_register_audio_mute(callback, data);
 	phoneui_info_request_audio_mute(callback, data);
+}
+
+void
+phoneui_info_unregister_audio_mute(void (*callback)(void*, FreeSmartphoneAudioControl, gboolean), void* data)
+{
+	GList *cb;
+	struct _cb_audio_mute_pack *cbpack;
+
+	if (!callbacks_audio_mute) {
+		g_debug("No one registered for audio mute changes - Nothing to unregister");
+		return;
+	}
+
+	for (cb = g_list_first(callbacks_audio_mute); cb; cb = g_list_next(cb)) {
+		cbpack = cb->data;
+		g_debug("comparing a callback");
+		if ((void *)cbpack->callback == (void *)callback && cbpack->data == data) {
+			callbacks_audio_mute = g_list_remove(callbacks_audio_mute, cbpack);
+			g_debug("Removed callback for audio mute");
+			return;
+		}
+	}
+	g_debug("Callback not found for audio mute");
+
 }
 
 /* --- signal handlers --- */
