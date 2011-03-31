@@ -213,7 +213,7 @@ _fso_audio()
 {
 	return _fso(FREE_SMARTPHONE_AUDIO_TYPE_MANAGER_PROXY,
 		     FSO_FRAMEWORK_AUDIO_ServiceDBusName,
-		     FSO_FRAMEWORK_AUDIO_ServicePathPrefix "/Manager",
+		     FSO_FRAMEWORK_AUDIO_ServicePathPrefix,
 	            FSO_FRAMEWORK_AUDIO_ServiceFacePrefix ".Manager");
 }
 
