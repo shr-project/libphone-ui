@@ -118,18 +118,17 @@ int
 phoneui_utils_init(GKeyFile *keyfile)
 {
 	GError *error = NULL;
-	int ret;
 
-	request_message_receipt = g_key_file_get_integer(keyfile, "messages", 
+	request_message_receipt = g_key_file_get_integer(keyfile, "messages",
 						"request_message_receipt", &error);
 	if (error) {
 		request_message_receipt = FALSE;
 		g_error_free(error);
 	}
-	
-	ret = phoneui_utils_sound_init(keyfile);
-	ret = phoneui_utils_device_init(keyfile);
-	ret = phoneui_utils_feedback_init(keyfile);
+
+	phoneui_utils_sound_init(keyfile);
+	phoneui_utils_device_init(keyfile);
+	phoneui_utils_feedback_init(keyfile);
 
 	return 0;
 }
@@ -149,11 +148,6 @@ _pim_query_results_callback(GObject *source, GAsyncResult *res, gpointer data)
 	GHashTable **results;
 	GError *error = NULL;
 	struct _query_pack *pack = data;
-	void (*dispose_func)(void *query, GAsyncReadyCallback, gpointer);
-	GHashTable** (*results_func)(void *query, GAsyncResult*, int* count, GError**);
-
-	dispose_func = NULL;
-	results_func = NULL;
 
 	switch (pack->domain_type) {
 		case PHONEUI_PIM_DOMAIN_CALLS:

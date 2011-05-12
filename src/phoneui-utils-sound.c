@@ -151,7 +151,7 @@ _phoneui_utils_sound_volume_load_stats(struct SoundControl *control)
 	if (!control->element)
 		return -1;
 
-	snd_ctl_elem_type_t element_type;
+	//snd_ctl_elem_type_t element_type;
 	snd_ctl_elem_info_t *info;
 	snd_hctl_elem_t *elem;
 
@@ -165,7 +165,7 @@ _phoneui_utils_sound_volume_load_stats(struct SoundControl *control)
 	}
 
 	/* verify type == integer */
-	element_type = snd_ctl_elem_info_get_type(info);
+	//element_type = snd_ctl_elem_info_get_type(info);
 
 	control->min = snd_ctl_elem_info_get_min(info);
 	control->max = snd_ctl_elem_info_get_max(info);
