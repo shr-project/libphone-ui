@@ -184,63 +184,72 @@ callbacks_list_free(GList *list)
 int
 phoneui_info_init()
 {
-#if 0
-	DBusGProxy *dbus_proxy;
-
-	/* register for NameOwnerChanged */
-	dbus_proxy = dbus_g_proxy_new_for_name (_dbus(), DBUS_SERVICE_DBUS,
-						DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
-
-	dbus_g_proxy_add_signal(dbus_proxy, "NameOwnerChanged", G_TYPE_STRING,
-				G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-
-	dbus_g_proxy_connect_signal(dbus_proxy, "NameOwnerChanged",
-				    G_CALLBACK(_name_owner_changed), NULL, NULL);
-
-#endif
-
 	fso.usage = _fso_usage();
-	g_signal_connect(fso.usage, "resource-changed", G_CALLBACK(_resource_changed_handler), NULL);
+	if (fso.usage) {
+		g_signal_connect(fso.usage, "resource-changed", G_CALLBACK(_resource_changed_handler), NULL);
+	}
 
 	fso.gsm_call = _fso_gsm_call();
-	g_signal_connect(fso.gsm_call, "call-status", G_CALLBACK(_call_status_handler), NULL);
+	if (fso.gsm_call) {
+		g_signal_connect(fso.gsm_call, "call-status", G_CALLBACK(_call_status_handler), NULL);
+	}
 
 	fso.gsm_network =_fso_gsm_network();
-	g_signal_connect(fso.gsm_network, "status", G_CALLBACK(_network_status_handler), NULL);
-	g_signal_connect(fso.gsm_network, "signal-strength", G_CALLBACK(_signal_strength_handler), NULL);
+	if (fso.gsm_network) {
+		g_signal_connect(fso.gsm_network, "status", G_CALLBACK(_network_status_handler), NULL);
+		g_signal_connect(fso.gsm_network, "signal-strength", G_CALLBACK(_signal_strength_handler), NULL);
+	}
 
 	fso.gsm_pdp = _fso_gsm_pdp();
-	g_signal_connect(fso.gsm_pdp, "context-status", G_CALLBACK(_pdp_context_status_handler), NULL);
+	if (fso.gsm_pdp) {
+		g_signal_connect(fso.gsm_pdp, "context-status", G_CALLBACK(_pdp_context_status_handler), NULL);
+	}
 
 	fso.power_supply = _fso_device_power_supply();
-	g_signal_connect(fso.power_supply, "capacity", G_CALLBACK(_capacity_changed_handler), NULL);
+	if (fso.power_supply) {
+		g_signal_connect(fso.power_supply, "capacity", G_CALLBACK(_capacity_changed_handler), NULL);
+	}
 
 	fso.input = _fso_device_input();
-	g_signal_connect(fso.input, "event", G_CALLBACK(_device_input_event_handler), NULL);
+	if (fso.input) {
+		g_signal_connect(fso.input, "event", G_CALLBACK(_device_input_event_handler), NULL);
+	}
 
 	fso.idle_notifier = _fso_device_idle_notifier();
-	g_signal_connect(fso.idle_notifier, "state", G_CALLBACK(_idle_notifier_handler), NULL);
+	if (fso.idle_notifier) {
+		g_signal_connect(fso.idle_notifier, "state", G_CALLBACK(_idle_notifier_handler), NULL);
+	}
 
 	fso.preferences = _fso_preferences();
-	g_signal_connect(fso.preferences, "changed", G_CALLBACK(_profile_changed_handler), NULL);
+	if (fso.preferences) {
+		g_signal_connect(fso.preferences, "changed", G_CALLBACK(_profile_changed_handler), NULL);
+	}
 
 	fso.pim_contacts = _fso_pim_contacts();
-	g_signal_connect(fso.pim_contacts, "new-contact", G_CALLBACK(_pim_contact_new_handler), NULL);
-	g_signal_connect(fso.pim_contacts, "updated-contact", G_CALLBACK(_pim_contact_updated_handler), NULL);
-	g_signal_connect(fso.pim_contacts, "deleted-contact", G_CALLBACK(_pim_contact_deleted_handler), NULL);
+	if (fso.pim_contacts) {
+		g_signal_connect(fso.pim_contacts, "new-contact", G_CALLBACK(_pim_contact_new_handler), NULL);
+		g_signal_connect(fso.pim_contacts, "updated-contact", G_CALLBACK(_pim_contact_updated_handler), NULL);
+		g_signal_connect(fso.pim_contacts, "deleted-contact", G_CALLBACK(_pim_contact_deleted_handler), NULL);
+	}
 
 	fso.pim_messages = _fso_pim_messages();
-	g_signal_connect(fso.pim_messages, "unread-messages", G_CALLBACK(_pim_unread_messages_handler), NULL);
-	g_signal_connect(fso.pim_messages, "new-message", G_CALLBACK(_pim_message_new_handler), NULL);
-	g_signal_connect(fso.pim_messages, "updated-message", G_CALLBACK(_pim_message_updated_handler), NULL);
-	g_signal_connect(fso.pim_messages, "deleted-message", G_CALLBACK(_pim_message_deleted_handler), NULL);
+	if (fso.pim_messages) {
+		g_signal_connect(fso.pim_messages, "unread-messages", G_CALLBACK(_pim_unread_messages_handler), NULL);
+		g_signal_connect(fso.pim_messages, "new-message", G_CALLBACK(_pim_message_new_handler), NULL);
+		g_signal_connect(fso.pim_messages, "updated-message", G_CALLBACK(_pim_message_updated_handler), NULL);
+		g_signal_connect(fso.pim_messages, "deleted-message", G_CALLBACK(_pim_message_deleted_handler), NULL);
+	}
 
 	fso.pim_tasks = _fso_pim_tasks();
-	g_signal_connect(fso.pim_tasks, "unfinished-tasks", G_CALLBACK(_pim_unfinished_tasks_handler), NULL);
+	if (fso.pim_tasks) {
+		g_signal_connect(fso.pim_tasks, "unfinished-tasks", G_CALLBACK(_pim_unfinished_tasks_handler), NULL);
+	}
 
 	fso.pim_calls = _fso_pim_calls();
-	g_signal_connect(fso.pim_calls, "new-missed-calls", G_CALLBACK(_pim_missed_calls_handler), NULL);
-	g_signal_connect(fso.pim_calls, "new-call", G_CALLBACK(_pim_new_call_handler), NULL);
+	if (fso.pim_calls) {
+		g_signal_connect(fso.pim_calls, "new-missed-calls", G_CALLBACK(_pim_missed_calls_handler), NULL);
+		g_signal_connect(fso.pim_calls, "new-call", G_CALLBACK(_pim_new_call_handler), NULL);
+	}
 
 	return 0;
 }
@@ -544,6 +553,9 @@ phoneui_info_register_profile_changes(void (*callback)(void *, const char *),
 void
 phoneui_info_request_profile(void (*callback)(void *, const char *), void *data)
 {
+	if (!fso.preferences)
+		return;
+
 	struct _cb_charp_pack *pack = malloc(sizeof(struct _cb_charp_pack));
 	pack->callback = callback;
 	pack->data = data;
@@ -592,6 +604,9 @@ phoneui_info_register_capacity_changes(void (*callback)(void *, int),
 void
 phoneui_info_request_capacity(void (*callback)(void *, int), void *data)
 {
+	if (!fso.power_supply)
+		return;
+
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
@@ -641,6 +656,9 @@ phoneui_info_register_missed_calls(void (*callback)(void *, int),
 void
 phoneui_info_request_missed_calls(void (*callback)(void *, int), void *data)
 {
+	if (!fso.pim_calls)
+		return;
+
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
@@ -689,6 +707,9 @@ phoneui_info_register_unread_messages(void (*callback)(void *, int),
 void
 phoneui_info_request_unread_messages(void (*callback)(void *, int), void *data)
 {
+	if (!fso.pim_messages)
+		return;
+
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
@@ -790,6 +811,8 @@ void
 phoneui_info_request_resource_status(void (*callback)(void *, const char *,
 					gboolean, GHashTable *), void *data)
 {
+	if (!fso.usage)
+		return;
 
 	struct _cb_resource_changes_pack *pack =
 			malloc(sizeof(struct _cb_resource_changes_pack));
@@ -842,6 +865,9 @@ void
 phoneui_info_request_network_status(void (*callback)(void *, GHashTable *),
 				    void *data)
 {
+	if (!fso.gsm_network)
+		return;
+
 	struct _cb_hashtable_pack *pack =
 			malloc(sizeof(struct _cb_hashtable_pack));
 	pack->callback = callback;
@@ -894,6 +920,9 @@ phoneui_info_request_pdp_context_status(void (*callback)(void *,
 					FreeSmartphoneGSMContextStatus,
 					GHashTable *), void *data)
 {
+	if (!fso.gsm_pdp)
+		return;
+
 	struct _cb_gsm_context_status_pack *pack =
 			malloc(sizeof(struct _cb_gsm_context_status_pack));
 	pack->callback = callback;
@@ -943,6 +972,9 @@ phoneui_info_register_signal_strength(void (*callback)(void *, int),
 void
 phoneui_info_request_signal_strength(void (*callback)(void *, int), void *data)
 {
+	if (!fso.gsm_network)
+		return;
+
 	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
 	pack->callback = callback;
 	pack->data = data;
