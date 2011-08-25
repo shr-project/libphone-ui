@@ -85,5 +85,9 @@ void phoneui_info_register_idle_notifier(void (*_cb)(void *, FreeSmartphoneDevic
 
 void phoneui_info_register_input_events(void (*_cb)(void *, const char *, FreeSmartphoneDeviceInputState, int), void *data);
 
+void phoneui_info_register_backlight_power(void (*_cb)(void *, int), void *data);
+void phoneui_info_request_backlight_power(void (*_cb)(void *, int), void *data);
+void phoneui_info_register_and_request_backlight_power(void (*_cb)(void *, int), void *data);
+
 #endif
 

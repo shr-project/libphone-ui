@@ -43,6 +43,7 @@ gpointer _fso_gsm_pdp();
 gpointer _fso_device_power_supply();
 gpointer _fso_device_input();
 gpointer _fso_device_idle_notifier();
+gpointer _fso_device_display();
 
 gpointer _fso_preferences();
 

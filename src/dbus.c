@@ -173,6 +173,15 @@ _fso_device_idle_notifier()
 }
 
 gpointer
+_fso_device_display()
+{
+	return _fso(FREE_SMARTPHONE_DEVICE_TYPE_DISPLAY_PROXY,
+		     FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+		     FSO_FRAMEWORK_DEVICE_DisplayServicePath "/0",
+		     FSO_FRAMEWORK_DEVICE_DisplayServiceFace);
+}
+
+gpointer
 _fso_device_input()
 {
 	return _fso(FREE_SMARTPHONE_DEVICE_TYPE_INPUT_PROXY,

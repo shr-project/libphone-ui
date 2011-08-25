@@ -39,6 +39,7 @@ struct _fso {
 	FreeSmartphoneDeviceIdleNotifier *idle_notifier;
 	FreeSmartphoneDeviceInput *input;
 	FreeSmartphoneDevicePowerSupply *power_supply;
+	FreeSmartphoneDeviceDisplay *display;
 	FreeSmartphonePreferences *preferences;
 	FreeSmartphonePIMMessages *pim_messages;
 	FreeSmartphonePIMContacts *pim_contacts;
@@ -62,6 +63,7 @@ static GList *callbacks_pdp_context_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
 static GList *callbacks_idle_notifier = NULL;
+static GList *callbacks_backlight_power = NULL;
 static GList *callbacks_call_status = NULL;
 static GHashTable *single_contact_changes = NULL;
 
@@ -132,6 +134,7 @@ static void _network_status_handler(GObject *source, GHashTable *properties, gpo
 static void _pdp_context_status_handler(GObject *source, FreeSmartphoneGSMContextStatus status, GHashTable *properties, gpointer data);
 static void _signal_strength_handler(GObject *source, int signal, gpointer data);
 static void _idle_notifier_handler(GObject *source, FreeSmartphoneDeviceIdleState state, gpointer data);
+static void _backlight_power_handler(GObject *source, int state, gpointer data);
 static void _pim_contact_new_handler(GObject *source, const char *path, gpointer data);
 static void _pim_contact_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
 static void _pim_contact_deleted_handler(GObject *source, const char *path, gpointer data);
@@ -152,6 +155,7 @@ static void _get_capacity_callback(GObject *source, GAsyncResult *res, gpointer 
 static void _get_network_status_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_pdp_context_status_callback(GObject *source, GAsyncResult *res, gpointer data);
 static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data);
+static void _get_backlight_power_callback(GObject *source, GAsyncResult *res, gpointer data);
 //static void _get_alarm_callback(GError *error, int time, gpointer userdata);
 
 // static void _name_owner_changed(DBusGProxy *proxy, const char *name, const char *prev, const char *new, gpointer data);
@@ -226,6 +230,11 @@ phoneui_info_init()
 		g_signal_connect(fso.idle_notifier, "state", G_CALLBACK(_idle_notifier_handler), NULL);
 	}
 
+	fso.display = _fso_device_display();
+	if (fso.display) {
+		g_signal_connect(fso.display, "backlight-power", G_CALLBACK(_backlight_power_handler), NULL);
+	}
+
 	fso.preferences = _fso_preferences();
 	if (fso.preferences) {
 		g_signal_connect(fso.preferences, "changed", G_CALLBACK(_profile_changed_handler), NULL);
@@ -286,7 +295,9 @@ phoneui_info_deinit()
 
 	callbacks_list_free(callbacks_pdp_context_status);
 
-        callbacks_list_free(callbacks_idle_notifier);
+	callbacks_list_free(callbacks_idle_notifier);
+
+	callbacks_list_free(callbacks_backlight_power);
 
 	callbacks_list_free(callbacks_signal_strength);
 
@@ -1057,6 +1068,56 @@ phoneui_info_register_input_events(void (*callback)(void *, const char *,
 	}
 }
 
+void
+phoneui_info_register_backlight_power(void (*callback)(void *, int),
+				      void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (backlight power)");
+		return;
+	}
+	struct _cb_int_pack *pack =
+			malloc(sizeof(struct _cb_int_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (backlight power)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_backlight_power, pack);
+	if (!l) {
+		g_warning("Failed to register callback for backlight power");
+	}
+	else {
+		if (!callbacks_backlight_power) {
+			callbacks_backlight_power = l;
+			g_debug("Registered a callback for backlight power");
+		}
+	}
+}
+
+void
+phoneui_info_request_backlight_power(void (*callback)(void *, int), void *data)
+{
+	if (!fso.display)
+		return;
+
+	struct _cb_int_pack *pack = malloc(sizeof(struct _cb_int_pack));
+	pack->callback = callback;
+	pack->data = data;
+	free_smartphone_device_display_get_backlight_power(fso.display,
+		(GAsyncReadyCallback)_get_backlight_power_callback, pack);
+}
+
+void
+phoneui_info_register_and_request_backlight_power(void (*callback)(void *, int), void *data)
+{
+	phoneui_info_register_backlight_power(callback, data);
+	phoneui_info_request_backlight_power(callback, data);
+}
+
 /* --- signal handlers --- */
 
 static void
@@ -1177,6 +1238,15 @@ _idle_notifier_handler(GObject* source, FreeSmartphoneDeviceIdleState state, gpo
 	(void) data;
 	g_debug("_idle_notifier_handler: idle state now %d", state);
         _execute_idle_callbacks(callbacks_idle_notifier, state);
+}
+
+static void
+_backlight_power_handler(GObject* source, int state, gpointer data)
+{
+	(void) source;
+	(void) data;
+	g_debug("_backlight_power_handler: state now %d", state);
+        _execute_int_callbacks(callbacks_backlight_power, state);
 }
 
 static void
@@ -1544,6 +1614,31 @@ _get_signal_strength_callback(GObject *source, GAsyncResult *res, gpointer data)
 
 }
 
+static void
+_get_backlight_power_callback(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void) source;
+	GError *error = NULL;
+	int signal;
+
+	g_debug("_get_backlight_power_callback");
+	signal = free_smartphone_device_display_get_backlight_power_finish
+						(fso.display, res, &error);
+	if (error) {
+		g_message("_get_backlight_power_callback: error %d: %s",
+				error->code, error->message);
+		g_error_free(error);
+		return;
+	}
+	if (data) {
+		struct _cb_int_pack *pack = data;
+		g_debug("calling signal callback");
+		pack->callback(pack->data, signal);
+		free(pack);
+	}
+	g_debug("_get_backlight_power_callback DONE");
+
+}
 
 //static void _get_alarm_callback(GError *error,
 //		const int time, gpointer userdata)
