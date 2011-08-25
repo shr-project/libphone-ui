@@ -81,6 +81,8 @@ void phoneui_info_register_signal_strength(void (*_cb)(void *, int), void *data)
 void phoneui_info_request_signal_strength(void (*_cb)(void *, int), void *data);
 void phoneui_info_register_and_request_signal_strength(void (*_cb)(void *, int), void *data);
 
+void phoneui_info_register_idle_notifier(void (*_cb)(void *, FreeSmartphoneDeviceIdleState), void *data);
+
 void phoneui_info_register_input_events(void (*_cb)(void *, const char *, FreeSmartphoneDeviceInputState, int), void *data);
 
 #endif

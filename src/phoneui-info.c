@@ -61,6 +61,7 @@ static GList *callbacks_network_status = NULL;
 static GList *callbacks_pdp_context_status = NULL;
 static GList *callbacks_signal_strength = NULL;
 static GList *callbacks_input_events = NULL;
+static GList *callbacks_idle_notifier = NULL;
 static GList *callbacks_call_status = NULL;
 static GHashTable *single_contact_changes = NULL;
 
@@ -87,6 +88,10 @@ struct _cb_hashtable_pack {
 struct _cb_int_pack {
 	void (*callback)(void *, int);
 	void *data;
+};
+struct _cb_idle_pack {
+        void (*callback)(void *, FreeSmartphoneDeviceIdleState);
+        void *data;
 };
 struct _cb_charp_pack {
 	void (*callback)(void *, const char *);
@@ -126,7 +131,7 @@ static void _capacity_changed_handler(GObject *source, int energy, gpointer data
 static void _network_status_handler(GObject *source, GHashTable *properties, gpointer data);
 static void _pdp_context_status_handler(GObject *source, FreeSmartphoneGSMContextStatus status, GHashTable *properties, gpointer data);
 static void _signal_strength_handler(GObject *source, int signal, gpointer data);
-static void _idle_notifier_handler(GObject *source, int state, gpointer data);
+static void _idle_notifier_handler(GObject *source, FreeSmartphoneDeviceIdleState state, gpointer data);
 static void _pim_contact_new_handler(GObject *source, const char *path, gpointer data);
 static void _pim_contact_updated_handler(GObject *source, const char *path, GHashTable *content, gpointer data);
 static void _pim_contact_deleted_handler(GObject *source, const char *path, gpointer data);
@@ -154,6 +159,7 @@ static void _get_signal_strength_callback(GObject *source, GAsyncResult *res, gp
 static void _execute_pim_changed_callbacks(GList *cbs, const char *path, enum PhoneuiInfoChangeType type);
 static void _execute_pim_single_changed_callbacks(GList* cbs, int entryid, enum PhoneuiInfoChangeType type);
 static void _execute_int_callbacks(GList *cbs, int value);
+static void _execute_idle_callbacks(GList *cbs, FreeSmartphoneDeviceIdleState value);
 static void _execute_charp_callbacks(GList *cbs, const char *value);
 static void _execute_input_event_callbacks(GList *cbs, const char *value1, FreeSmartphoneDeviceInputState value2, int value3);
 static void _execute_hashtable_callbacks(GList *cbs, GHashTable *properties);
@@ -279,6 +285,8 @@ phoneui_info_deinit()
 	callbacks_list_free(callbacks_network_status);
 
 	callbacks_list_free(callbacks_pdp_context_status);
+
+        callbacks_list_free(callbacks_idle_notifier);
 
 	callbacks_list_free(callbacks_signal_strength);
 
@@ -940,6 +948,36 @@ phoneui_info_register_and_request_pdp_context_status(void (*callback)(void *,
 }
 
 void
+phoneui_info_register_idle_notifier(void (*callback)(void *, FreeSmartphoneDeviceIdleState),
+				      void *data)
+{
+	GList *l;
+
+	if (!callback) {
+		g_debug("Not registering an empty callback (idle notifier)");
+		return;
+	}
+	struct _cb_idle_pack *pack =
+			malloc(sizeof(struct _cb_idle_pack));
+	if (!pack) {
+		g_warning("Failed allocating callback pack (idle notifier)");
+		return;
+	}
+	pack->callback = callback;
+	pack->data = data;
+	l = g_list_append(callbacks_idle_notifier, pack);
+	if (!l) {
+		g_warning("Failed to register callback for idle notifier");
+	}
+	else {
+		if (!callbacks_idle_notifier) {
+			callbacks_idle_notifier = l;
+			g_debug("Registered a callback for idle notifier");
+		}
+	}
+}
+
+void
 phoneui_info_register_signal_strength(void (*callback)(void *, int),
 				      void *data)
 {
@@ -1133,11 +1171,12 @@ _signal_strength_handler(GObject* source, int signal, gpointer data)
 }
 
 static void
-_idle_notifier_handler(GObject* source, int state, gpointer data)
+_idle_notifier_handler(GObject* source, FreeSmartphoneDeviceIdleState state, gpointer data)
 {
 	(void) source;
 	(void) data;
 	g_debug("_idle_notifier_handler: idle state now %d", state);
+        _execute_idle_callbacks(callbacks_idle_notifier, state);
 }
 
 static void
@@ -1580,6 +1619,20 @@ _execute_int_callbacks(GList *cbs, int value)
 		struct _cb_int_pack *pack = (struct _cb_int_pack *)cb->data;
 		pack->callback(pack->data, value);
 	}
+}
+
+static void
+_execute_idle_callbacks(GList *cbs, FreeSmartphoneDeviceIdleState value)
+{
+        GList *cb;
+
+        if (!cbs)
+                return;
+
+        for (cb = g_list_first(cbs); cb; cb = g_list_next(cb)) {
+                struct _cb_idle_pack *pack = (struct _cb_idle_pack *)cb->data;
+                pack->callback(pack->data, value);
+        }
 }
 
 static void

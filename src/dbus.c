@@ -168,7 +168,7 @@ _fso_device_idle_notifier()
 {
 	return _fso(FREE_SMARTPHONE_DEVICE_TYPE_IDLE_NOTIFIER_PROXY,
 		     FSO_FRAMEWORK_DEVICE_ServiceDBusName,
-		     FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath,
+		     FSO_FRAMEWORK_DEVICE_IdleNotifierServicePath "/0",
 		     FSO_FRAMEWORK_DEVICE_IdleNotifierServiceFace);
 }
 

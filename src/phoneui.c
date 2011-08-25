@@ -457,6 +457,7 @@ phoneui_idle_screen_toggle()
 	PHONEUI_FUNCTION_CONTENT(idle_screen_toggle);
 }
 
+/* Phone Log */
 void
 phoneui_phone_log_show()
 {
@@ -468,6 +469,7 @@ phoneui_phone_log_hide()
 	PHONEUI_FUNCTION_CONTENT(phone_log_hide);
 }
 
+/* SIM Manager */
 void
 phoneui_sim_manager_show()
 {

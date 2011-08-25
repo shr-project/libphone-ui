@@ -476,7 +476,7 @@ phoneui_utils_get_message_receipt(void)
 static GHashTable *
 _create_opimd_message(const char *number, const char *message)
 {
-	/* TODO: add timzone */
+	/* TODO: add timezone */
 
 	GHashTable *message_opimd =
 		g_hash_table_new_full(g_str_hash, g_str_equal,
