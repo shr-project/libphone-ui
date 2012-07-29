@@ -114,7 +114,7 @@ scenario_name_from_state(enum SoundState state, enum SoundStateType type)
 			scenario = "gsmbluetooth";
 			break;
 		default:
-			g_critical("Unknown sound state type (%d), not saving. Please inform developers.\n", (int) type);
+			g_warning("Unknown sound state type (%d), not saving. Please inform developers.\n", (int) type);
 			break;
 		}
 		break;
@@ -128,7 +128,7 @@ scenario_name_from_state(enum SoundState state, enum SoundStateType type)
 			scenario = "headset";
 			break;
 		default:
-			g_critical("Unknown sound state type (%d), not saving. Please inform developers.\n", (int) type);
+			g_warning("Unknown sound state type (%d), not saving. Please inform developers.\n", (int) type);
 			break;
 		}
 		break;
@@ -136,7 +136,7 @@ scenario_name_from_state(enum SoundState state, enum SoundStateType type)
 		scenario = "gsmspeaker";
 		break;
 	default:
-		g_critical("Unknown sound state (%d), not saving. Please inform developers.\n", (int) state);
+		g_warning("Unknown sound state (%d), not saving. Please inform developers.\n", (int) state);
 		break;
 	}
 
@@ -389,7 +389,7 @@ _phoneui_utils_sound_init_set_volume_control(enum SoundState state, enum SoundSt
 		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_volume_changed_cb);
 	}
 	else {
-		g_critical("ALSA: No control named '%s' found - "
+		g_warning("ALSA: No control named '%s' found - "
 			"Sound state: %d control type: %d", ctl_name, state, control_type);
 	}
 
@@ -412,7 +412,7 @@ _phoneui_utils_sound_init_set_volume_mute_control(enum SoundState state, enum So
 		snd_hctl_elem_set_callback(elem, _phoneui_utils_sound_volume_mute_changed_cb);
 	}
 	else {
-		g_critical("ALSA: No control named '%s' found - "
+		g_warning("ALSA: No control named '%s' found - "
 				"Sound state: %d type: %d", ctl_name, state, control_type);
 	}
 
@@ -604,16 +604,17 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		snd_hctl_close(hctl);
 	}
 	err = snd_hctl_open(&hctl, device_name, 0);
-	free(device_name);
 	if (err) {
-		g_critical("%s", snd_strerror(err));
+		g_warning("Cannot open alsa:hardware_control_name '%s': %s", device_name, snd_strerror(err));
 		return err;
 	}
 
 	err = snd_hctl_load(hctl);
 	if (err) {
-		g_critical("%s", snd_strerror(err));
+		g_warning("Cannot load alsa:hardware_control_name '%s': %s", device_name, snd_strerror(err));
 	}
+	
+	free(device_name);
 
 	/*FIXME: add idle bt */
 	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE, SOUND_STATE_TYPE_HANDSET);
@@ -865,7 +866,7 @@ _set_profile_callback(GObject *source, GAsyncResult *res, gpointer data)
 		pack->callback(error, pack->data);
 	}
 	if (error) {
-		g_critical("SetProfile error: (%d) %s",
+		g_warning("SetProfile error: (%d) %s",
 			   error->code, error->message);
 		g_error_free(error);
 	}

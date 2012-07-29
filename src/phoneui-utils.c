@@ -126,7 +126,11 @@ phoneui_utils_init(GKeyFile *keyfile)
 		g_error_free(error);
 	}
 
-	phoneui_utils_sound_init(keyfile);
+	int err;
+	err = phoneui_utils_sound_init(keyfile);
+	if (err)
+		g_warning("Cannot initialize sound, phoneuid running without sound support!");
+
 	phoneui_utils_device_init(keyfile);
 	phoneui_utils_feedback_init(keyfile);
 
