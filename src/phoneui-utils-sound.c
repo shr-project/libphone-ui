@@ -420,7 +420,7 @@ _phoneui_utils_sound_init_set_volume_mute_control(enum SoundState state, enum So
 
 static void
 _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
-				enum SoundState state, enum SoundStateType type)
+			const char *suffix, enum SoundState state, enum SoundStateType type)
 {
 	char *field;
 	char *speaker = NULL;
@@ -433,11 +433,12 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 		return;
 	}
 	/*FIXME: split to a generic function for both speaker and microphone */
-	field = malloc(strlen(_field) + strlen("alsa_control_") + 1);
+	field = malloc(strlen(_field) + strlen(suffix) + strlen("alsa_control_") + 1);
 	if (field) {
 		/* init for now and for the next if */
 		strcpy(field, "alsa_control_");
 		strcat(field, _field);
+		strcat(field, suffix);
 
 		speaker = g_key_file_get_string(keyfile, field, "speaker", NULL);
 		microphone = g_key_file_get_string(keyfile, field, "microphone", NULL);
@@ -582,6 +583,8 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 {
 	int err, f;
 	char *device_name;
+	char *suffix;
+	char *alsa;
 	static GSourceFuncs funcs = {
                 _sourcefunc_prepare,
                 _sourcefunc_check,
@@ -592,9 +595,20 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
         };
 
 
+	/* TODO: detect the GTA04 A3 and set suffix to _gta04a3 only if detected */
+	suffix = strdup("");
+	alsa = malloc(strlen(suffix) + strlen("alsa") + 1);
+	if (alsa) {
+		strcpy(alsa, "alsa");
+		strcat(alsa, suffix);
+	}else{
+		alsa = strdup("alsa");
+		g_warning("Malloc failure in %s at line %d",__func__,__LINE__);
+	}
+
 	sound_state = SOUND_STATE_IDLE;
 	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
-	device_name = g_key_file_get_string(keyfile, "alsa", "hardware_control_name", NULL);
+	device_name = g_key_file_get_string(keyfile, alsa, "hardware_control_name", NULL);
 	if (!device_name) {
 		g_message("No hw control found, using default");
 		device_name = strdup("hw:0");
@@ -617,11 +631,11 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	free(device_name);
 
 	/*FIXME: add idle bt */
-	_phoneui_utils_sound_init_set_control(keyfile, "idle", SOUND_STATE_IDLE, SOUND_STATE_TYPE_HANDSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", SOUND_STATE_CALL, SOUND_STATE_TYPE_BLUETOOTH);
-	_phoneui_utils_sound_init_set_control(keyfile, "handset", SOUND_STATE_CALL, SOUND_STATE_TYPE_HANDSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "headset", SOUND_STATE_CALL, SOUND_STATE_TYPE_HEADSET);
-	_phoneui_utils_sound_init_set_control(keyfile, "speaker", SOUND_STATE_SPEAKER, SOUND_STATE_TYPE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "idle", suffix, SOUND_STATE_IDLE, SOUND_STATE_TYPE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "bluetooth", suffix, SOUND_STATE_CALL, SOUND_STATE_TYPE_BLUETOOTH);
+	_phoneui_utils_sound_init_set_control(keyfile, "handset", suffix, SOUND_STATE_CALL, SOUND_STATE_TYPE_HANDSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "headset", suffix, SOUND_STATE_CALL, SOUND_STATE_TYPE_HEADSET);
+	_phoneui_utils_sound_init_set_control(keyfile, "speaker", suffix, SOUND_STATE_SPEAKER, SOUND_STATE_TYPE_HANDSET);
 
 	snd_hctl_nonblock(hctl, 1);
 
