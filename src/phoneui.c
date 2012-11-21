@@ -185,8 +185,6 @@ phoneui_load(const char *application_name)
 	phone_utils_init();
 
 	phoneui_utils_init(keyfile);
-
-	g_key_file_free(keyfile);
 }
 
 
