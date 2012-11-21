@@ -56,6 +56,7 @@ struct SoundControl {
 static struct SoundControl controls[CONTROLS_LEN][CONTROL_END];
 
 static FreeSmartphoneDeviceAudio *fso_audio = NULL;
+static FreeSmartphoneDeviceInfo *fso_info = NULL;
 
 /* The sound cards hardware control */
 static snd_hctl_t *hctl = NULL;
@@ -578,6 +579,111 @@ _input_events_cb(void *error, const char *name,
 	}
 }
 
+struct _device_infos_pack {
+	char* (*callback)(GHashTable*);
+	gpointer data;
+};
+
+char* phoneui_utils_sound_revision_to_suffix(char* machine, char* revision)
+{
+	if ( strcmp(machine, "GTA04") && strcmp(revision,"A3") )
+		return "_gta04a3";
+	else
+		return "";
+
+}
+
+char* phoneui_utils_sound_get_revision(GHashTable* cpuinfo)
+{
+	/* 'Revision': <'A3'> */
+	(void) cpuinfo;
+	gpointer revision;
+	gpointer machine;
+
+	machine = g_hash_table_lookup(cpuinfo, "Hardware");
+	if (machine)
+		g_message("Machine: %s",(char*)machine);
+
+	revision = g_hash_table_lookup(cpuinfo, "Revision");
+	if (revision)
+		g_message("Revision: %s",(char*)revision);
+
+	return strdup(phoneui_utils_sound_revision_to_suffix(machine,revision));
+}
+
+static void
+phoneui_utils_sound_parse_machine_infos(GObject *source, GAsyncResult *res, gpointer data)
+{
+	(void)source;
+	GError *error = NULL;
+	GHashTable* cpuinfo;
+	char* suffix = "";
+
+	g_debug("%s",__func__);
+	cpuinfo = free_smartphone_device_info_get_cpu_info_finish(fso_info, res, &error);
+
+	if (error){
+		g_message("%s:error %d: %s", __func__, error->code, error->message);
+	}
+
+	if (cpuinfo){
+		g_debug("%s: cpuinfo available! ",__func__);
+	}
+	if (data) {
+		struct _device_infos_pack *pack = data;
+		g_debug("%s: data available! ",__func__);
+		suffix = pack->callback(cpuinfo);
+		free(pack);
+	}
+	g_message("The suffix is \"%s\"",suffix);
+	g_debug("phoneui_utils_sound_parse_machine_infos DONE");
+}
+
+void
+phoneui_utils_sound_call_request_machine_infos(
+				void (*callback)(GObject *source, GAsyncResult *res,gpointer data),
+				void *data)
+{
+	(void)callback;
+	(void)data;
+
+	free_smartphone_device_info_get_cpu_info(fso_info, (GAsyncReadyCallback)phoneui_utils_sound_parse_machine_infos,NULL);
+}
+
+int
+phoneui_utils_sound_get_machine_infos(void (*callback)(GError *, GAsyncResult *, gpointer),
+					gpointer userdata)
+{
+	struct _device_infos_pack *pack;
+	(void)callback;
+	pack = malloc(sizeof(*pack));
+	if (!pack) {
+		g_critical("Failed to allocate memory %s:%d", __FUNCTION__,
+				__LINE__);
+		return 1;
+	}
+
+	pack->data = userdata;
+	pack->callback = phoneui_utils_sound_get_revision;
+
+	phoneui_utils_sound_call_request_machine_infos(phoneui_utils_sound_parse_machine_infos,
+							NULL);
+
+	return 0;
+}
+
+int
+phoneui_utils_sound_identify_machine()
+{
+	fso_info = _fso(FREE_SMARTPHONE_DEVICE_TYPE_INFO_PROXY,
+			FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+			FSO_FRAMEWORK_DEVICE_InfoServicePath,
+			FSO_FRAMEWORK_DEVICE_InfoServiceFace);
+
+	phoneui_utils_sound_get_machine_infos(NULL,NULL);
+	return 0;
+}
+
 int
 phoneui_utils_sound_init(GKeyFile *keyfile)
 {
@@ -594,8 +700,8 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		0
         };
 
-
 	/* TODO: detect the GTA04 A3 and set suffix to _gta04a3 only if detected */
+	phoneui_utils_sound_identify_machine();
 	suffix = strdup("");
 	alsa = malloc(strlen(suffix) + strlen("alsa") + 1);
 	if (alsa) {
