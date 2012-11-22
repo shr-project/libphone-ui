@@ -585,7 +585,7 @@ struct _device_infos_pack {
 
 char* phoneui_utils_sound_revision_to_suffix(const char* machine,const char* revision)
 {
-	if ( strcmp(machine, "GTA04") && strcmp(revision,"A3") )
+	if ( !strcmp(machine, "GTA04") && !strcmp(revision,"A3") )
 		return "_gta04a3";
 	else
 		return "";
@@ -595,17 +595,16 @@ char* phoneui_utils_sound_revision_to_suffix(const char* machine,const char* rev
 char* phoneui_utils_sound_get_revision(GHashTable* cpuinfo)
 {
 	/* 'Revision': <'A3'> */
-	(void) cpuinfo;
-	const char * revision;
-	const char * machine;
+	char* revision;
+	char* machine;
 
-	machine = g_value_get_string(g_hash_table_lookup(cpuinfo, "Hardware"));
+	machine = g_strdup(g_variant_get_string(g_hash_table_lookup(cpuinfo, "Hardware"),NULL));
 	if (machine)
-		g_message("Machine: %s",(char*)machine);
+		g_message("machine value type = %s", machine);
 
-	revision = g_value_get_string(g_hash_table_lookup(cpuinfo, "Revision"));
+	revision = g_strdup(g_variant_get_string(g_hash_table_lookup(cpuinfo, "Revision"),NULL));
 	if (revision)
-		g_message("Revision: %s",(char*)revision);
+		g_message("revision value type = %s", revision);
 
 	return strdup(phoneui_utils_sound_revision_to_suffix(machine,revision));
 }
