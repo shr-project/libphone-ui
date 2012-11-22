@@ -429,6 +429,10 @@ _phoneui_utils_sound_init_set_control(GKeyFile *keyfile, const char *_field,
 	char *speaker_mute = NULL;
 	char *microphone_mute = NULL;
 	int state_index = calc_state_index(state, type);
+	g_debug("func=%s keyfile=[0x%x]",__func__, (unsigned int)keyfile);
+
+	g_debug("%s(keyfile, field=%s, suffix=%s,... )", __func__, _field, suffix);
+
 	if (controls[state_index][CONTROL_SPEAKER].name) {
 		g_warning("Trying to allocate already allocated index %d.", state_index);
 		return;
@@ -579,8 +583,12 @@ _input_events_cb(void *error, const char *name,
 	}
 }
 
+int phoneui_utils_sound_init_finish(GKeyFile *keyfile,char* suffix);
+
 struct _device_infos_pack {
-	char* (*callback)(GHashTable*);
+	char* (*callback_dbus)(GHashTable*);
+	int (*callback_init)(GKeyFile*, char*);
+	GKeyFile* callback_init_data;
 };
 
 char* phoneui_utils_sound_revision_to_suffix(const char* machine,const char* revision)
@@ -589,7 +597,6 @@ char* phoneui_utils_sound_revision_to_suffix(const char* machine,const char* rev
 		return "_gta04a3";
 	else
 		return "";
-
 }
 
 char* phoneui_utils_sound_get_revision(GHashTable* cpuinfo)
@@ -629,17 +636,19 @@ phoneui_utils_sound_parse_machine_infos(GObject *source, GAsyncResult *res, gpoi
 
 	if (data) {
 		struct _device_infos_pack *pack = data;
+
 		g_debug("%s: data available! ",__func__);
-		suffix = pack->callback(cpuinfo);
+		suffix = pack->callback_dbus(cpuinfo);
+		g_message("The suffix is \"%s\"",suffix);
+		pack->callback_init(pack->callback_init_data, g_strdup(suffix));
 		free(pack);
 	}
-
-	g_message("The suffix is \"%s\"",suffix);
 	g_debug("phoneui_utils_sound_parse_machine_infos DONE");
 }
 
 int
-phoneui_utils_sound_identify_machine()
+phoneui_utils_sound_identify_machine( int (*callback_init)(GKeyFile*, char*),
+					 GKeyFile* data)
 {
 	struct _device_infos_pack *pack;
 
@@ -655,8 +664,9 @@ phoneui_utils_sound_identify_machine()
 		return 1;
 	}
 
-	pack->callback = phoneui_utils_sound_get_revision;
-//	phoneui_utils_sound_get_machine_infos(pack);
+	pack->callback_dbus = phoneui_utils_sound_get_revision;
+	pack->callback_init = callback_init;
+	pack->callback_init_data = data;
 	free_smartphone_device_info_get_cpu_info(fso_info, (GAsyncReadyCallback)phoneui_utils_sound_parse_machine_infos,pack);
 	return 0;
 }
@@ -664,22 +674,30 @@ phoneui_utils_sound_identify_machine()
 int
 phoneui_utils_sound_init(GKeyFile *keyfile)
 {
+	g_debug("func=%s keyfile=[0x%x]",__func__, (unsigned int)keyfile);
+	phoneui_utils_sound_identify_machine(phoneui_utils_sound_init_finish, keyfile);
+	/* TODO: get the return value of phoneui_utils_sound_init_finish ... */
+	return 0;
+}
+
+int
+phoneui_utils_sound_init_finish(GKeyFile *keyfile,char* suffix)
+{
 	int err, f;
 	char *device_name;
-	char *suffix;
 	char *alsa;
 	static GSourceFuncs funcs = {
-                _sourcefunc_prepare,
-                _sourcefunc_check,
-                _sourcefunc_dispatch,
-                0,
+		_sourcefunc_prepare,
+		_sourcefunc_check,
+		_sourcefunc_dispatch,
+		0,
 		0,
 		0
-        };
+	};
 
-	/* TODO: detect the GTA04 A3 and set suffix to _gta04a3 only if detected */
-	phoneui_utils_sound_identify_machine();
-	suffix = strdup("");
+	g_debug("%s",__func__);
+	g_debug("func=%s keyfile=[0x%x]",__func__, (unsigned int)keyfile);
+
 	alsa = malloc(strlen(suffix) + strlen("alsa") + 1);
 	if (alsa) {
 		strcpy(alsa, "alsa");
@@ -691,7 +709,14 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 
 	sound_state = SOUND_STATE_IDLE;
 	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
+	g_debug("%s: alsa=\"%s\"", __func__, alsa);
+	if (keyfile == NULL)
+		g_debug("%s: keyfile is null!!!!",__func__);
+	else
+		g_debug("%s: keyfile is not null!!!!",__func__);
+
 	device_name = g_key_file_get_string(keyfile, alsa, "hardware_control_name", NULL);
+	g_debug("%s: after", __func__);
 	if (!device_name) {
 		g_message("No hw control found, using default");
 		device_name = strdup("hw:0");
@@ -703,6 +728,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 	err = snd_hctl_open(&hctl, device_name, 0);
 	if (err) {
 		g_warning("Cannot open alsa:hardware_control_name '%s': %s", device_name, snd_strerror(err));
+		g_key_file_free(keyfile);
 		return err;
 	}
 
@@ -741,6 +767,7 @@ phoneui_utils_sound_init(GKeyFile *keyfile)
 		 FSO_FRAMEWORK_DEVICE_AudioServicePath,
 		 FSO_FRAMEWORK_DEVICE_AudioServiceFace);
 
+	g_key_file_free(keyfile);
 	return err;
 }
 
