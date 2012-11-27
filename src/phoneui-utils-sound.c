@@ -623,7 +623,6 @@ phoneui_utils_sound_parse_machine_infos(GObject *source, GAsyncResult *res, gpoi
 	GError *error = NULL;
 	GHashTable* cpuinfo;
 	char* suffix = "";
-	g_debug("%s",__func__);
 
 	cpuinfo = free_smartphone_device_info_get_cpu_info_finish(fso_info, res, &error);
 	if (error){
@@ -637,9 +636,8 @@ phoneui_utils_sound_parse_machine_infos(GObject *source, GAsyncResult *res, gpoi
 	if (data) {
 		struct _device_infos_pack *pack = data;
 
-		g_debug("%s: data available! ",__func__);
 		suffix = pack->callback_dbus(cpuinfo);
-		g_message("The suffix is \"%s\"",suffix);
+		g_message("%s: The suffix is \"%s\"",__func__,suffix);
 		pack->callback_init(pack->callback_init_data, g_strdup(suffix));
 		free(pack);
 	}
@@ -668,13 +666,13 @@ phoneui_utils_sound_identify_machine( int (*callback_init)(GKeyFile*, char*),
 	pack->callback_init = callback_init;
 	pack->callback_init_data = data;
 	free_smartphone_device_info_get_cpu_info(fso_info, (GAsyncReadyCallback)phoneui_utils_sound_parse_machine_infos,pack);
+
 	return 0;
 }
 
 int
 phoneui_utils_sound_init(GKeyFile *keyfile)
 {
-	g_debug("func=%s keyfile=[0x%x]",__func__, (unsigned int)keyfile);
 	phoneui_utils_sound_identify_machine(phoneui_utils_sound_init_finish, keyfile);
 	/* TODO: get the return value of phoneui_utils_sound_init_finish ... */
 	return 0;
@@ -695,9 +693,6 @@ phoneui_utils_sound_init_finish(GKeyFile *keyfile,char* suffix)
 		0
 	};
 
-	g_debug("%s",__func__);
-	g_debug("func=%s keyfile=[0x%x]",__func__, (unsigned int)keyfile);
-
 	alsa = malloc(strlen(suffix) + strlen("alsa") + 1);
 	if (alsa) {
 		strcpy(alsa, "alsa");
@@ -709,14 +704,8 @@ phoneui_utils_sound_init_finish(GKeyFile *keyfile,char* suffix)
 
 	sound_state = SOUND_STATE_IDLE;
 	sound_state_type = SOUND_STATE_TYPE_DEFAULT;
-	g_debug("%s: alsa=\"%s\"", __func__, alsa);
-	if (keyfile == NULL)
-		g_debug("%s: keyfile is null!!!!",__func__);
-	else
-		g_debug("%s: keyfile is not null!!!!",__func__);
 
 	device_name = g_key_file_get_string(keyfile, alsa, "hardware_control_name", NULL);
-	g_debug("%s: after", __func__);
 	if (!device_name) {
 		g_message("No hw control found, using default");
 		device_name = strdup("hw:0");
