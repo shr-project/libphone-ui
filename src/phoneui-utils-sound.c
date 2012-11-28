@@ -591,7 +591,7 @@ struct _device_infos_pack {
 char* phoneui_utils_sound_revision_to_suffix(const char* machine,const char* revision)
 {
 	if ( !strcmp(machine, "GTA04") && !strcmp(revision,"A3") )
-		return "_gta04a3";
+		return "@gta04a3";
 	else
 		return "";
 }
