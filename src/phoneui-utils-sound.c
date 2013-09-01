@@ -3,6 +3,7 @@
  *      Authors (alphabetical) :
  *		Tom "TAsn" Hacohen <tom@stosb.com>
  *		Klaus 'mrmoku' Kurzmann <mok@fluxnetz.de>
+ *		Thomas 'Thamos' Munker
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -229,11 +230,11 @@ phoneui_utils_sound_volume_get(enum SoundControlType type)
 		value = 100;
 	}
 	else {
-		value = ((double) (value - min) / (max - min)) * 100.0;
+		value = round(((double) (value - min) / (max - min)) * 100.0);
 	}
-	g_debug("Probing volume of control '%s' returned %d",
-		controls[STATE_INDEX][type].name, (int) value);
-	return value;
+	g_debug("Probing volume of control '%s' returned %ld, raw: %ld",
+		controls[STATE_INDEX][type].name, value, phoneui_utils_sound_volume_raw_get(type));
+	return round(value);
 }
 
 int
@@ -336,10 +337,10 @@ phoneui_utils_sound_volume_set(enum SoundControlType type, int percent)
 	min = controls[STATE_INDEX][type].min;
 	max = controls[STATE_INDEX][type].max;
 
-	value = min + ((max - min) * percent) / 100;
+	value = round((float) min + ((max - min) * percent) / 100.0);
 	phoneui_utils_sound_volume_raw_set(type, value);
-	g_debug("Setting volume for control %s to %d",
-			controls[STATE_INDEX][type].name, percent);
+	g_debug("Setting volume for control %s to %d percent, value %ld",
+			controls[STATE_INDEX][type].name, percent, value);
 	return 0;
 }
 
