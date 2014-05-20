@@ -33,6 +33,7 @@ gpointer _fso_pim_notes();
 gpointer _fso_pim_tasks();
 gpointer _fso_pim_calls();
 gpointer _fso_pim_dates();
+gpointer _fso_pim_date(const gchar *path);
 gpointer _fso_pim_fields(const gchar *path);
 
 gpointer _fso_gsm_sim();

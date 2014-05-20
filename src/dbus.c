@@ -63,15 +63,24 @@ _fso_pim_contact(const gchar* path)
 {
 	return _fso(FREE_SMARTPHONE_PIM_TYPE_CONTACT_PROXY,
 		     FSO_FRAMEWORK_PIM_ServiceDBusName, path,
-		     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".Contact");
+		     FSO_FRAMEWORK_PIM_ContactServiceFace);
 }
 
 gpointer
-_fso_pim_dates(const gchar* path)
+_fso_pim_dates()
+{
+        return _fso(FREE_SMARTPHONE_PIM_TYPE_DATES_PROXY,
+                     FSO_FRAMEWORK_PIM_ServiceDBusName,
+                     FSO_FRAMEWORK_PIM_DatesServicePath,
+                     FSO_FRAMEWORK_PIM_DatesServiceFace);
+}
+
+gpointer
+_fso_pim_date(const gchar* path)
 {
 	return _fso(FREE_SMARTPHONE_PIM_TYPE_DATE_PROXY,
 		     FSO_FRAMEWORK_PIM_ServiceDBusName, path,
-		     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".Date");
+		     FSO_FRAMEWORK_PIM_DateServiceFace);
 }
 
 gpointer
@@ -88,7 +97,7 @@ _fso_pim_message(const gchar* path)
 {
 	return _fso(FREE_SMARTPHONE_PIM_TYPE_MESSAGE_PROXY,
 		     FSO_FRAMEWORK_PIM_ServiceDBusName, path,
-		     FSO_FRAMEWORK_PIM_ServiceFacePrefix ".Message");
+		     FSO_FRAMEWORK_PIM_MessageServiceFace);
 }
 
 gpointer
