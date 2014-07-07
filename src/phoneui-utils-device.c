@@ -30,10 +30,15 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <poll.h>
 #include <glib.h>
+#include <freesmartphone.h>
+#include <fsoframework.h>
 #include <X11/Xlib.h>
 
-static const char *device_vibrator = NULL;
+
+
+#include "dbus.h"
 
 struct VibrationData {
 	int fd;
@@ -43,6 +48,7 @@ struct VibrationData {
 	char systring[5];
 };
 
+static FreeSmartphoneDeviceVibrator *fso_vibrator = NULL;
 
 static int
 _vibration_on(gpointer data);
@@ -52,15 +58,15 @@ _vibration_off(gpointer data);
 int
 phoneui_utils_device_init(GKeyFile *keyfile)
 {
-	const char *vibrator =
-		g_key_file_get_string(keyfile, "device", "vibrator", NULL);
-	if (vibrator) {
-		g_debug("using %s for vibration", vibrator);
-		device_vibrator = strdup(vibrator);
-	}
-	else {
+	fso_vibrator = (FreeSmartphoneDeviceVibrator *)_fso
+		(FREE_SMARTPHONE_DEVICE_TYPE_VIBRATOR_PROXY,
+		 FSO_FRAMEWORK_DEVICE_ServiceDBusName,
+		 FSO_FRAMEWORK_DEVICE_VibratorServicePath,
+		 FSO_FRAMEWORK_DEVICE_VibratorServiceFace);
+	if (!fso_vibrator) {
 		g_message("no vibrator configured - turning vibration off");
 	}
+	g_key_file_free(keyfile);
 	return 0;
 }
 
@@ -94,25 +100,9 @@ _vibration_off(gpointer data)
 void
 phoneui_utils_device_vibrate(int duration, int intensity, int repeat, int pause)
 {
-	int fd;
+	
 
-	if (!device_vibrator)
-		return;
-
-	fd = open(device_vibrator, O_WRONLY);
-	if (fd == -1) {
-		g_warning("vibrate error %d: %s", errno, strerror(errno));
-		return;
-	}
-	struct VibrationData *vdata = malloc(sizeof(struct VibrationData));
-	vdata->fd = fd;
-	vdata->duration = duration;
-	vdata->repeat = repeat;
-	vdata->pause = pause;
-	snprintf(vdata->systring, 4, "%d\n", intensity);
-	ssize_t len = write(fd, vdata->systring, strlen(vdata->systring));
-	g_return_if_fail(len != -1);
-	g_timeout_add(duration, _vibration_off, vdata);
+	free_smartphone_device_vibrator_vibrate_pattern(fso_vibrator, repeat, duration, pause, intensity, NULL, NULL);
 }
 
 
